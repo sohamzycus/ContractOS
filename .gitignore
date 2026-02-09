@@ -1,0 +1,27 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+*.egg-info/
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+build/
+out/
