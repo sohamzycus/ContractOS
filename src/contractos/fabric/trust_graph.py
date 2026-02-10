@@ -140,17 +140,17 @@ class TrustGraph:
     def get_facts_by_document(
         self,
         document_id: str,
-        fact_type: FactType | None = None,
-        entity_type: EntityType | None = None,
+        fact_type: FactType | str | None = None,
+        entity_type: EntityType | str | None = None,
     ) -> list[Fact]:
         query = "SELECT * FROM facts WHERE document_id = ?"
         params: list[Any] = [document_id]
         if fact_type is not None:
             query += " AND fact_type = ?"
-            params.append(fact_type.value)
+            params.append(fact_type.value if hasattr(fact_type, "value") else fact_type)
         if entity_type is not None:
             query += " AND entity_type = ?"
-            params.append(entity_type.value)
+            params.append(entity_type.value if hasattr(entity_type, "value") else entity_type)
         rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_fact(r) for r in rows]
 
@@ -307,13 +307,13 @@ class TrustGraph:
         self._conn.commit()
 
     def get_clauses_by_document(
-        self, document_id: str, clause_type: ClauseTypeEnum | None = None
+        self, document_id: str, clause_type: ClauseTypeEnum | str | None = None
     ) -> list[Clause]:
         query = "SELECT * FROM clauses WHERE document_id = ?"
         params: list[Any] = [document_id]
         if clause_type is not None:
             query += " AND clause_type = ?"
-            params.append(clause_type.value)
+            params.append(clause_type.value if hasattr(clause_type, "value") else clause_type)
         rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_clause(r) for r in rows]
 

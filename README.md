@@ -156,12 +156,68 @@ contractos bindings doc-xxx
 
 ---
 
+## Postman / Newman Integration Tests
+
+ContractOS ships with a comprehensive Postman collection for API integration testing,
+including LegalBench and CUAD benchmark document workflows.
+
+### Setup
+
+```bash
+# Install Newman (Postman CLI runner)
+npm install -g newman newman-reporter-htmlextra
+```
+
+### Run via Newman (CLI)
+
+```bash
+# Run all integration tests (requires server running)
+./postman/run_integration_tests.sh
+
+# Auto-start server + run tests
+./postman/run_integration_tests.sh --server
+
+# Run a specific folder
+./postman/run_integration_tests.sh --folder "0 — Health & Config"
+./postman/run_integration_tests.sh --folder "5 — LegalBench Benchmark Queries"
+```
+
+### Run via Postman GUI
+
+1. Import `postman/ContractOS.postman_collection.json`
+2. Import `postman/ContractOS.postman_environment.json`
+3. Start the server: `python -m uvicorn contractos.api.app:create_app --host 127.0.0.1 --port 8742 --factory`
+4. Run the collection folders in order (0 → 6)
+
+### Collection Structure
+
+| Folder | Requests | Description |
+|--------|----------|-------------|
+| 0 — Health & Config | 2 | Service health, configuration |
+| 1 — Contract Upload & Indexing | 7 | Upload DOCX/PDF (simple + complex + LegalBench + CUAD), error handling |
+| 2 — Contract Retrieval & Exploration | 10 | Metadata, facts (filtered/paginated), clauses, bindings, gaps, TrustGraph |
+| 3 — Q&A with Provenance | 5 | Questions with confidence + provenance, error handling |
+| 4 — Workspace Management | 9 | CRUD, document association, session history, error handling |
+| 5 — LegalBench Benchmark Queries | 8 | CUAD + contract_nli + definition benchmark-style queries |
+| 6 — Complex Document Deep Dive | 6 | SLA, data protection, price escalation, volume discounts, liquidated damages |
+
+### LegalBench / CUAD Benchmark Fixtures
+
+| Fixture | Source | Categories Covered |
+|---------|--------|--------------------|
+| `legalbench_nda.docx` | LegalBench-style | contract_nli_confidentiality, survival_of_obligations, definition_extraction |
+| `cuad_license_agreement.docx` | CUAD-style | license_grant, non-compete, termination, cap_on_liability, governing_law, insurance, audit_rights |
+| `complex_it_outsourcing.docx` | Real-world sim | SLA, data protection, price escalation, multi-party, insurance matrix |
+| `complex_procurement_framework.pdf` | Real-world sim | Volume discounts, liquidated damages, performance bonds, ESG, KPIs |
+
+---
+
 ## Running Tests
 
 ### Run the Full Suite
 
 ```bash
-# All 421 tests
+# All 467 tests
 python -m pytest tests/
 
 # Verbose output
@@ -177,11 +233,15 @@ python -m pytest tests/ --cov=src/contractos --cov-report=term-missing
 # Unit tests only (389 tests)
 python -m pytest tests/unit/
 
-# Integration tests only (19 tests)
+# Integration tests only (51 tests)
 python -m pytest tests/integration/
 
-# Contract tests (13 tests)
+# Contract tests (27 tests)
 python -m pytest tests/contract/
+
+# LegalBench / CUAD benchmark tests
+python -m pytest tests/integration/test_legalbench_extraction.py -v
+python -m pytest tests/contract/test_legalbench_api.py -v
 
 # Specific module
 python -m pytest tests/unit/test_fact_extractor.py -v
@@ -222,7 +282,7 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py \
 
 ## Test Report
 
-**421 tests, all passing** (Python 3.14.2, pytest 9.0.2)
+**467 tests, all passing** (Python 3.14.2, pytest 9.0.2)
 
 ### Test Breakdown by Module
 
@@ -230,6 +290,7 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py \
 |--------|------:|----------|
 | `test_fact_extractor.py` | 40 | Tools — extraction orchestrator + complex fixtures |
 | `test_trust_graph.py` | 39 | Storage — TrustGraph CRUD |
+| `test_legalbench_extraction.py` | 32 | Integration — LegalBench/CUAD benchmark extraction |
 | `test_clause_classifier.py` | 29 | Tools — clause type classification |
 | `test_contract_patterns.py` | 25 | Tools — regex pattern extraction |
 | `test_workspace_store.py` | 17 | Storage — workspace persistence |
@@ -237,6 +298,7 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py \
 | `test_docx_parser.py` | 16 | Tools — Word document parser |
 | `test_api.py` (unit) | 16 | API — all endpoints |
 | `test_confidence.py` | 15 | Tools — confidence labels |
+| `test_legalbench_api.py` (contract) | 14 | Contract — LegalBench/CUAD API endpoints |
 | `test_models_clause.py` | 14 | Models — Clause, CrossReference |
 | `test_workspace_api.py` (contract) | 13 | Contract — workspace API endpoints |
 | `test_binding_resolver.py` | 13 | Tools — binding resolution |
