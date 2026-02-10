@@ -13,6 +13,7 @@ class ClauseTypeEnum(StrEnum):
     TERMINATION = "termination"
     PAYMENT = "payment"
     INDEMNITY = "indemnity"
+    INDEMNIFICATION = "indemnification"
     LIABILITY = "liability"
     CONFIDENTIALITY = "confidentiality"
     SLA = "sla"
@@ -23,8 +24,16 @@ class ClauseTypeEnum(StrEnum):
     GOVERNING_LAW = "governing_law"
     WARRANTY = "warranty"
     IP = "ip"
+    IP_RIGHTS = "ip_rights"
     SCHEDULE_ADHERENCE = "schedule_adherence"
     DEFINITIONS = "definitions"
+    DISPUTE_RESOLUTION = "dispute_resolution"
+    NOTICE = "notice"
+    INSURANCE = "insurance"
+    COMPLIANCE = "compliance"
+    DATA_PROTECTION = "data_protection"
+    NON_COMPETE = "non_compete"
+    SCOPE = "scope"
     GENERAL = "general"
     CUSTOM = "custom"
 
@@ -36,6 +45,8 @@ class ReferenceType(StrEnum):
     CLAUSE_REF = "clause_ref"
     APPENDIX_REF = "appendix_ref"
     SCHEDULE_REF = "schedule_ref"
+    EXHIBIT_REF = "exhibit_ref"
+    ANNEX_REF = "annex_ref"
     EXTERNAL_DOC_REF = "external_doc_ref"
 
 
@@ -48,6 +59,9 @@ class ReferenceEffect(StrEnum):
     INCORPORATES = "incorporates"
     EXEMPTS = "exempts"
     DELEGATES = "delegates"
+    REFERENCES = "references"
+    LIMITS = "limits"
+    DEFINES = "defines"
 
 
 class CrossReference(BaseModel):
@@ -61,7 +75,7 @@ class CrossReference(BaseModel):
     effect: ReferenceEffect
     context: str = Field(min_length=1)
     resolved: bool = False
-    source_fact_id: str = Field(min_length=1)
+    source_fact_id: str = ""
 
 
 class Clause(BaseModel):
@@ -72,7 +86,7 @@ class Clause(BaseModel):
     clause_type: ClauseTypeEnum
     heading: str = Field(min_length=1)
     section_number: str | None = None
-    fact_id: str = Field(min_length=1)
+    fact_id: str = ""
     contained_fact_ids: list[str] = Field(default_factory=list)
     cross_reference_ids: list[str] = Field(default_factory=list)
     classification_method: str = Field(min_length=1)

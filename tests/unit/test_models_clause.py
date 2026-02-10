@@ -15,22 +15,28 @@ from contractos.models.fact import EntityType
 
 
 class TestClauseTypeEnum:
-    def test_has_all_14_standard_types_plus_general_and_custom(self):
-        assert len(ClauseTypeEnum) == 17
+    def test_has_all_standard_types_plus_general_and_custom(self):
+        assert len(ClauseTypeEnum) == 26
         assert ClauseTypeEnum.TERMINATION == "termination"
         assert ClauseTypeEnum.GENERAL == "general"
         assert ClauseTypeEnum.CUSTOM == "custom"
+        # Verify new types added for Phase 3
+        assert ClauseTypeEnum.INDEMNIFICATION == "indemnification"
+        assert ClauseTypeEnum.IP_RIGHTS == "ip_rights"
+        assert ClauseTypeEnum.DISPUTE_RESOLUTION == "dispute_resolution"
+        assert ClauseTypeEnum.NOTICE == "notice"
+        assert ClauseTypeEnum.SCOPE == "scope"
 
 
 class TestReferenceType:
     def test_all_types(self):
-        expected = {"section_ref", "clause_ref", "appendix_ref", "schedule_ref", "external_doc_ref"}
+        expected = {"section_ref", "clause_ref", "appendix_ref", "schedule_ref", "exhibit_ref", "annex_ref", "external_doc_ref"}
         assert {t.value for t in ReferenceType} == expected
 
 
 class TestReferenceEffect:
     def test_all_effects(self):
-        expected = {"modifies", "overrides", "conditions", "incorporates", "exempts", "delegates"}
+        expected = {"modifies", "overrides", "conditions", "incorporates", "exempts", "delegates", "references", "limits", "defines"}
         assert {e.value for e in ReferenceEffect} == expected
 
 
