@@ -71,6 +71,19 @@ class WorkspaceStore:
             )
             self._conn.commit()
 
+    def remove_document_from_workspace(self, workspace_id: str, document_id: str) -> None:
+        ws = self.get_workspace(workspace_id)
+        if ws is None:
+            msg = f"Workspace {workspace_id} not found"
+            raise ValueError(msg)
+        if document_id in ws.indexed_documents:
+            ws.indexed_documents.remove(document_id)
+            self._conn.execute(
+                "UPDATE workspaces SET indexed_documents = ? WHERE workspace_id = ?",
+                (json.dumps(ws.indexed_documents), workspace_id),
+            )
+            self._conn.commit()
+
     def delete_workspace(self, workspace_id: str) -> bool:
         cursor = self._conn.execute(
             "DELETE FROM workspaces WHERE workspace_id = ?", (workspace_id,)

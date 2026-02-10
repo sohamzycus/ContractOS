@@ -8,7 +8,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 
 from contractos.api.deps import init_state, shutdown_state
-from contractos.api.routes import contracts, health, query
+from contractos.api.routes import contracts, health, query, workspace
 from contractos.config import ContractOSConfig
 
 
@@ -30,4 +30,5 @@ def create_app(config: ContractOSConfig | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(contracts.router)
     app.include_router(query.router)
+    app.include_router(workspace.router)
     return app
