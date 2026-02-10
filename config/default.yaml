@@ -1,0 +1,35 @@
+contractos:
+  llm:
+    provider: "claude"
+    model: "claude-sonnet-4-20250514"
+    api_key_env: "ANTHROPIC_API_KEY"
+    max_tokens: 4096
+    temperature: 0.1
+
+  extraction:
+    pipeline:
+      - "docx_parser"
+      - "pdf_parser"
+    spacy_model: "en_core_web_lg"
+
+  clause_types:
+    registry: "config/clause_types.yaml"
+    custom_types_enabled: true
+
+  storage:
+    backend: "sqlite"
+    path: "~/.contractos/trustgraph.db"
+
+  workspace:
+    auto_persist: true
+    session_history_limit: 100
+
+  server:
+    host: "127.0.0.1"
+    port: 8742
+    cors_origins:
+      - "https://localhost"
+
+  logging:
+    level: "INFO"
+    audit_log: true
