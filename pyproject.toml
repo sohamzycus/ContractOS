@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "The operating system for contract intelligence"
 readme = "README.md"
 requires-python = ">=3.12"
+# Note: spaCy does not yet support Python 3.14. Use Python 3.12 or 3.13
+# for full NER functionality. Core features work without spaCy.
 license = { text = "MIT" }
 dependencies = [
     "anthropic>=0.40.0",
@@ -18,7 +20,7 @@ dependencies = [
     "python-docx>=1.1.0",
     "PyMuPDF>=1.25.0",
     "pdfplumber>=0.11.0",
-    "spacy>=3.8.0",
+    # "spacy>=3.8.0",  # Optional: requires Python <=3.13
     "pyyaml>=6.0.0",
     "python-multipart>=0.0.18",
     "sse-starlette>=2.2.0",
