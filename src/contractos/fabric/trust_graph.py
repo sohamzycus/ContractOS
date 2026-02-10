@@ -348,6 +348,16 @@ class TrustGraph:
         )
         self._conn.commit()
 
+    def get_cross_references_by_document(self, document_id: str) -> list[CrossReference]:
+        """Get all cross-references for clauses in a document."""
+        rows = self._conn.execute(
+            """SELECT cr.* FROM cross_references cr
+               JOIN clauses c ON cr.source_clause_id = c.clause_id
+               WHERE c.document_id = ?""",
+            (document_id,),
+        ).fetchall()
+        return [self._row_to_cross_reference(r) for r in rows]
+
     def get_cross_references_by_clause(self, clause_id: str) -> list[CrossReference]:
         rows = self._conn.execute(
             "SELECT * FROM cross_references WHERE source_clause_id = ?", (clause_id,)

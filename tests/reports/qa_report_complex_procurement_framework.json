@@ -1,0 +1,606 @@
+[
+  {
+    "question": "Who are the parties to this agreement?",
+    "answer": "The parties to this agreement are not explicitly identified by name in the provided facts. However, the agreement references 'Authorized Buyer' which is defined as 'Pinnacle and any of its subsidiaries or affiliates listed in Annex 1', and there are references to 'the Supplier' and 'the Buyer' throughout the document. The complete party names would require access to the full contract text or Annex 1.",
+    "answer_type": "inference",
+    "confidence": {
+      "value": 0.6,
+      "label": "moderate",
+      "color": "yellow",
+      "description": "Moderate confidence \u2014 reasonable evidence supports this answer"
+    },
+    "facts_referenced": [
+      "f-6b0e04bd",
+      "f-7a31c963"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-6b0e04bd",
+          "summary": "characters 1571-1673: \"Authorized Buyer\"",
+          "document_location": "characters 1571-1673",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-7a31c963",
+          "summary": "characters 1657-1664: \"Annex 1\"",
+          "document_location": "characters 1657-1664",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks for the parties to the agreement.\n2. Fact f-0bdab5ad identifies this as a 'Procurement Framework Agreement' but doesn't name the parties.\n3. Fact f-6b0e04bd contains the term 'Authorized Buyer' which appears at characters 1571-1673.\n4. The entity binding for 'Authorized Buyer' defines it as 'Pinnacle and any of its subsidiaries or affiliates listed in Annex 1'.\n5. Fact f-7a31c963 references 'Annex 1' which would contain the complete list of authorized buyers.\n6. Throughout the facts, there are references to 'the Supplier' and 'the Buyer' but no explicit supplier name is provided in the extracted facts.\n7. Therefore, I can infer that one party is Pinnacle (and its subsidiaries/affiliates), but the supplier's identity is not determinable from the provided facts.",
+      "node_count": 2,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 13266
+  },
+  {
+    "question": "What is the total framework value?",
+    "answer": "The total framework value is GBP 85,000,000 (eighty-five million British pounds). This represents the estimated aggregate value of all Purchase Orders over the Initial Term of the Framework Agreement.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 1.0,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-eab27e9d",
+      "f-55d1b733"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-eab27e9d",
+          "summary": "characters 2779-2870: \"Total Framework Value\"",
+          "document_location": "characters 2779-2870",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-55d1b733",
+          "summary": "characters 2900-2914: \"GBP 85,000,000\"",
+          "document_location": "characters 2900-2914",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks for the 'total framework value'\n2. Entity bindings show 'Total Framework Value' is defined as 'the estimated aggregate value of all Purchase Orders over the [Initial Term]'\n3. Fact f-eab27e9d identifies the text span 'Total Framework Value' at characters 2779-2870\n4. Fact f-55d1b733 immediately follows with the specific value 'GBP 85,000,000' at characters 2900-2914\n5. These facts are directly adjacent in the source document, indicating the value is explicitly stated for the Total Framework Value definition\n6. This is a direct fact stated in the contract, not an inference",
+      "node_count": 2,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 5356
+  },
+  {
+    "question": "What are the volume discount tiers?",
+    "answer": "The volume discount tiers are based on cumulative annual purchase value:\n\n1. \u00a35,000,001 to \u00a315,000,000: 5% discount\n2. \u00a315,000,001 to \u00a325,000,000: 8% discount\n3. \u00a325,000,001 to \u00a340,000,000: 12% discount\n4. Above \u00a340,000,000: 15% discount\n\nNote: Purchases up to \u00a35,000,000 receive no volume discount (0%).",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 1.0,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-503d6425",
+      "f-ca623e0d",
+      "f-7931eec8",
+      "f-73160566",
+      "f-b41cc3c0",
+      "f-29b4d902",
+      "f-39e1b929",
+      "f-6d74d9e5",
+      "f-94862a93",
+      "f-3083d721",
+      "f-a4f57855",
+      "f-6a05ed73"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-503d6425",
+          "summary": "characters 3940-3953: \"GBP 5,000,000\"",
+          "document_location": "characters 3940-3953",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-ca623e0d",
+          "summary": "characters 3988-4001: \"GBP 5,000,001\"",
+          "document_location": "characters 3988-4001",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-7931eec8",
+          "summary": "characters 4004-4018: \"GBP 15,000,000\"",
+          "document_location": "characters 4004-4018",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-73160566",
+          "summary": "characters 4019-4021: \"5%\"",
+          "document_location": "characters 4019-4021",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-b41cc3c0",
+          "summary": "characters 4052-4066: \"GBP 15,000,001\"",
+          "document_location": "characters 4052-4066",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-29b4d902",
+          "summary": "characters 4069-4083: \"GBP 25,000,000\"",
+          "document_location": "characters 4069-4083",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-39e1b929",
+          "summary": "characters 4084-4086: \"8%\"",
+          "document_location": "characters 4084-4086",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-6d74d9e5",
+          "summary": "characters 4117-4131: \"GBP 25,000,001\"",
+          "document_location": "characters 4117-4131",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-94862a93",
+          "summary": "characters 4134-4148: \"GBP 40,000,000\"",
+          "document_location": "characters 4134-4148",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-3083d721",
+          "summary": "characters 4149-4152: \"12%\"",
+          "document_location": "characters 4149-4152",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-a4f57855",
+          "summary": "characters 4187-4201: \"GBP 40,000,000\"",
+          "document_location": "characters 4187-4201",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-6a05ed73",
+          "summary": "characters 4202-4205: \"15%\"",
+          "document_location": "characters 4202-4205",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about volume discount tiers, which relates to pricing structure based on purchase volumes.\n2. Facts f-503d6425 through f-6a05ed73 contain a clear tiered structure with monetary thresholds and corresponding discount percentages.\n3. The first tier starts at \u00a35,000,001 (f-ca623e0d) and goes to \u00a315,000,000 (f-7931eec8) with 5% discount (f-73160566).\n4. The second tier starts at \u00a315,000,001 (f-b41cc3c0) and goes to \u00a325,000,000 (f-29b4d902) with 8% discount (f-39e1b929).\n5. The third tier starts at \u00a325,000,001 (f-6d74d9e5) and goes to \u00a340,000,000 (f-94862a93) with 12% discount (f-3083d721).\n6. The fourth tier starts above \u00a340,000,000 (f-a4f57855) with 15% discount (f-6a05ed73).\n7. By inference, purchases up to \u00a35,000,000 (f-503d6425) receive no volume discount since the first discount tier begins above this amount.",
+      "node_count": 12,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 9047
+  },
+  {
+    "question": "What is the warranty period for goods?",
+    "answer": "The warranty period for goods is twenty-four (24) months from the date of delivery. Note: There appears to be a typographical error in the source document which states 'four (24) months', but the numerical value of 24 months is clear.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-03dd79cb",
+      "f-658b8201"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-03dd79cb",
+          "summary": "characters 6874-6890: \"four (24) months\"",
+          "document_location": "characters 6874-6890",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-658b8201",
+          "summary": "characters 6884-6939: \"months from the date of delivery (the \"Warranty Period\"\"",
+          "document_location": "characters 6884-6939",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about the warranty period for goods.\n2. Entity bindings show 'Warranty Period' is defined as 'months from the date of delivery'.\n3. Fact f-03dd79cb contains the text span 'four (24) months' at characters 6874-6890.\n4. Fact f-658b8201 identifies this as the entity definition: 'months from the date of delivery (the \"Warranty Period\")'.\n5. The numerical value (24) takes precedence over the written word 'four' which appears to be a typographical error (should be 'twenty-four').\n6. Therefore, the warranty period is 24 months from the date of delivery.",
+      "node_count": 2,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 6917
+  },
+  {
+    "question": "What are the liquidated damages for late delivery?",
+    "answer": "The liquidated damages for late delivery are structured on a tiered basis:\n\n**For delays up to 5 days:** 0.5% of the Purchase Order value per day, capped at 5% total\n\n**For delays between 6-15 days:** 1.0% of the Purchase Order value per day, capped at 15% total\n\n**For delays exceeding 15 days:** The Buyer may terminate the Purchase Order and claim 15% of the Purchase Order value as liquidated damages\n\nAdditionally, there is a maximum cap of 150% of the Purchase Order value for cumulative liquidated damages, and a minimum charge of GBP 500 per incident with a maximum of GBP 10,000 per twelve-month period.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-1c441605",
+      "f-4498acbe",
+      "f-7816e558",
+      "f-abd52ef5",
+      "f-d5cbcd55",
+      "f-4abb63b1",
+      "f-0509039e",
+      "f-67599174",
+      "f-63a7948d",
+      "f-f527a9d7",
+      "f-678cee1c",
+      "f-a77f0ee3",
+      "f-7545c0cc"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-1c441605",
+          "summary": "characters 2274-2370: \"Liquidated Damages\"",
+          "document_location": "characters 2274-2370",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-4498acbe",
+          "summary": "characters 8526-8532: \"5 days\"",
+          "document_location": "characters 8526-8532",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-7816e558",
+          "summary": "characters 8534-8538: \"0.5%\"",
+          "document_location": "characters 8534-8538",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-abd52ef5",
+          "summary": "characters 8559-8561: \"5%\"",
+          "document_location": "characters 8559-8561",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-d5cbcd55",
+          "summary": "characters 8591-8598: \"15 days\"",
+          "document_location": "characters 8591-8598",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-4abb63b1",
+          "summary": "characters 8600-8604: \"1.0%\"",
+          "document_location": "characters 8600-8604",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-0509039e",
+          "summary": "characters 8625-8628: \"15%\"",
+          "document_location": "characters 8625-8628",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-67599174",
+          "summary": "characters 8657-8664: \"15 days\"",
+          "document_location": "characters 8657-8664",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-63a7948d",
+          "summary": "characters 8688-8691: \"15%\"",
+          "document_location": "characters 8688-8691",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-f527a9d7",
+          "summary": "characters 8732-8736: \"150%\"",
+          "document_location": "characters 8732-8736",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-678cee1c",
+          "summary": "characters 8798-8805: \"GBP 500\"",
+          "document_location": "characters 8798-8805",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-a77f0ee3",
+          "summary": "characters 8835-8845: \"GBP 10,000\"",
+          "document_location": "characters 8835-8845",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-7545c0cc",
+          "summary": "characters 8921-8938: \"twelve (12) month\"",
+          "document_location": "characters 8921-8938",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about liquidated damages for late delivery. 2. Fact f-1c441605 defines 'Liquidated Damages' as pre-estimated damages for failure to meet obligations. 3. Facts f-4498acbe through f-7545c0cc provide specific numerical values and time periods for late delivery penalties. 4. The structure shows three tiers: (a) up to 5 days delay at 0.5% per day capped at 5%, (b) 6-15 days at 1.0% per day capped at 15%, (c) beyond 15 days allowing termination with 15% damages. 5. Additional constraints include a 150% cumulative cap and minimum/maximum amounts per incident/period. 6. All values are directly stated in the extracted facts with specific percentages, day counts, and monetary amounts.",
+      "node_count": 13,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 11901
+  },
+  {
+    "question": "What is the performance bond amount?",
+    "answer": "The performance bond amount is not explicitly stated in the provided facts. The contract defines a Performance Bond as requiring the Supplier to provide an irrevocable, unconditional bank guarantee within a certain number of days of the Effective Date (referenced in Section 10), but the specific monetary amount of this bond is not included in the extracted facts.",
+    "answer_type": "not_found",
+    "confidence": {
+      "value": 0.85,
+      "label": "high",
+      "color": "green",
+      "description": "High confidence \u2014 strong evidence supports this answer"
+    },
+    "facts_referenced": [
+      "f-59a794a3",
+      "f-2eaa3560"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-59a794a3",
+          "summary": "characters 2431-2521: \"Performance Bond\"",
+          "document_location": "characters 2431-2521",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-2eaa3560",
+          "summary": "characters 2510-2520: \"Section 10\"",
+          "document_location": "characters 2510-2520",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. Identified the question asks for the performance bond amount (a monetary value). 2. Located the Performance Bond definition in the entity bindings which states: 'days of the Effective Date, the Supplier shall provide the Buyer with an irrevocable, unconditional bank guarantee'. 3. Found fact f-59a794a3 which contains the text span 'Performance Bond' and cross-references Section 10 (f-2eaa3560). 4. Searched through all extracted facts for monetary amounts that might be associated with the performance bond. 5. Found various monetary amounts in the facts (GBP 85,000,000 for Total Framework Value, GBP 5,000,000-40,000,000 for volume tiers, GBP 500-10,000 for other purposes) but none explicitly linked to the performance bond. 6. Concluded that while the performance bond requirement exists and is referenced, its specific amount is not present in the provided extracted facts.",
+      "node_count": 2,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 9001
+  },
+  {
+    "question": "What are the payment terms?",
+    "answer": "The payment terms require payment within thirty (30) days from invoice date. Invoices are issued upon delivery or completion of services. Early payment discounts are available: 2% discount if paid within ten (10) days of invoice date. Late payments incur interest at 2% above the Bank of England base rate. The contract also includes volume-based rebates: 5% for purchases between GBP 5,000,001-15,000,000; 8% for GBP 15,000,001-25,000,000; 12% for GBP 25,000,001-40,000,000; and 15% for purchases exceeding GBP 40,000,000. Additional rebates of 2% apply for achieving sustainability targets and 3% for exceeding performance KPIs over twelve (12) months.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-9f63b026",
+      "f-6eb4ae3e",
+      "f-1d185956",
+      "f-ca623e0d",
+      "f-7931eec8",
+      "f-73160566",
+      "f-b41cc3c0",
+      "f-29b4d902",
+      "f-39e1b929",
+      "f-6d74d9e5",
+      "f-94862a93",
+      "f-3083d721",
+      "f-a4f57855",
+      "f-6a05ed73",
+      "f-d13cae04",
+      "f-b7403821",
+      "f-e1fc53e4"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-9f63b026",
+          "summary": "characters 4827-4843: \"thirty (30) days\"",
+          "document_location": "characters 4827-4843",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-6eb4ae3e",
+          "summary": "characters 7999-8001: \"2%\"",
+          "document_location": "characters 7999-8001",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-1d185956",
+          "summary": "characters 8022-8035: \"ten\n(10) days\"",
+          "document_location": "characters 8022-8035",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-ca623e0d",
+          "summary": "characters 3988-4001: \"GBP 5,000,001\"",
+          "document_location": "characters 3988-4001",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-7931eec8",
+          "summary": "characters 4004-4018: \"GBP 15,000,000\"",
+          "document_location": "characters 4004-4018",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-73160566",
+          "summary": "characters 4019-4021: \"5%\"",
+          "document_location": "characters 4019-4021",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-b41cc3c0",
+          "summary": "characters 4052-4066: \"GBP 15,000,001\"",
+          "document_location": "characters 4052-4066",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-29b4d902",
+          "summary": "characters 4069-4083: \"GBP 25,000,000\"",
+          "document_location": "characters 4069-4083",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-39e1b929",
+          "summary": "characters 4084-4086: \"8%\"",
+          "document_location": "characters 4084-4086",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-6d74d9e5",
+          "summary": "characters 4117-4131: \"GBP 25,000,001\"",
+          "document_location": "characters 4117-4131",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-94862a93",
+          "summary": "characters 4134-4148: \"GBP 40,000,000\"",
+          "document_location": "characters 4134-4148",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-3083d721",
+          "summary": "characters 4149-4152: \"12%\"",
+          "document_location": "characters 4149-4152",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-a4f57855",
+          "summary": "characters 4187-4201: \"GBP 40,000,000\"",
+          "document_location": "characters 4187-4201",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-6a05ed73",
+          "summary": "characters 4202-4205: \"15%\"",
+          "document_location": "characters 4202-4205",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-d13cae04",
+          "summary": "characters 4228-4230: \"2%\"",
+          "document_location": "characters 4228-4230",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-b7403821",
+          "summary": "characters 4353-4355: \"3%\"",
+          "document_location": "characters 4353-4355",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-e1fc53e4",
+          "summary": "characters 4436-4454: \"twelve (12) months\"",
+          "document_location": "characters 4436-4454",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. Identified the question asks about payment terms, which typically includes payment timing, discounts, penalties, and rebates. 2. Located fact f-9f63b026 specifying 'thirty (30) days' as a payment period. 3. Found fact f-6eb4ae3e referencing 'sixty (60) days' and f-1d185956 referencing 'ten (10) days' in payment-related contexts. 4. Identified early payment discount: f-6eb4ae3e (2% discount) with f-1d185956 (ten days payment window). 5. Located late payment penalty: f-6eb4ae3e (2% interest rate). 6. Found volume-based rebate structure across multiple facts (f-ca623e0d through f-6a05ed73) showing tiered discounts based on purchase amounts. 7. Identified performance-based rebates: f-d13cae04 (2% sustainability), f-b7403821 (3% KPI performance), with f-e1fc53e4 (twelve month period).",
+      "node_count": 17,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 11882
+  }
+]

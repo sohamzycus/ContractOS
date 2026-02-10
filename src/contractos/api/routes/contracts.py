@@ -353,6 +353,217 @@ async def get_bindings(
     ]
 
 
+class GraphNodeResponse(BaseModel):
+    """A node in the TrustGraph context visualization."""
+
+    id: str
+    type: str  # "contract", "clause", "fact", "binding", "cross_reference"
+    label: str
+    metadata: dict = Field(default_factory=dict)
+
+
+class GraphEdgeResponse(BaseModel):
+    """An edge in the TrustGraph context visualization."""
+
+    source: str
+    target: str
+    relationship: str  # "contains", "references", "binds_to", "cross_references"
+    label: str = ""
+
+
+class TrustGraphResponse(BaseModel):
+    """Full TrustGraph context for a document — nodes + edges."""
+
+    document_id: str
+    title: str
+    summary: dict
+    nodes: list[GraphNodeResponse]
+    edges: list[GraphEdgeResponse]
+
+
+@router.get("/{document_id}/graph", response_model=TrustGraphResponse)
+async def get_trust_graph(
+    document_id: str,
+    state: Annotated[AppState, Depends(get_state)],
+) -> TrustGraphResponse:
+    """Get the full TrustGraph context for a document.
+
+    Returns a graph structure with nodes (contract, clauses, facts, bindings,
+    cross-references) and edges (containment, references, bindings).
+    This powers the TrustGraph visualization.
+    """
+    contract = state.trust_graph.get_contract(document_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail=f"Contract {document_id} not found")
+
+    facts = state.trust_graph.get_facts_by_document(document_id)
+    clauses = state.trust_graph.get_clauses_by_document(document_id)
+    bindings = state.trust_graph.get_bindings_by_document(document_id)
+    xrefs = state.trust_graph.get_cross_references_by_document(document_id)
+
+    nodes: list[GraphNodeResponse] = []
+    edges: list[GraphEdgeResponse] = []
+
+    # Count by type for summary
+    fact_type_counts: dict[str, int] = {}
+    for f in facts:
+        t = f.fact_type.value if hasattr(f.fact_type, "value") else str(f.fact_type)
+        fact_type_counts[t] = fact_type_counts.get(t, 0) + 1
+
+    clause_type_counts: dict[str, int] = {}
+    for c in clauses:
+        t = c.clause_type.value if hasattr(c.clause_type, "value") else str(c.clause_type)
+        clause_type_counts[t] = clause_type_counts.get(t, 0) + 1
+
+    binding_type_counts: dict[str, int] = {}
+    for b in bindings:
+        t = b.binding_type.value if hasattr(b.binding_type, "value") else str(b.binding_type)
+        binding_type_counts[t] = binding_type_counts.get(t, 0) + 1
+
+    summary = {
+        "total_facts": len(facts),
+        "total_clauses": len(clauses),
+        "total_bindings": len(bindings),
+        "total_cross_references": len(xrefs),
+        "fact_types": fact_type_counts,
+        "clause_types": clause_type_counts,
+        "binding_types": binding_type_counts,
+    }
+
+    # Contract node (root)
+    nodes.append(GraphNodeResponse(
+        id=document_id,
+        type="contract",
+        label=contract.title,
+        metadata={
+            "file_format": contract.file_format,
+            "word_count": contract.word_count,
+            "parties": contract.parties,
+            "file_hash": contract.file_hash,
+        },
+    ))
+
+    # Clause nodes + edges to contract
+    for c in clauses:
+        nodes.append(GraphNodeResponse(
+            id=c.clause_id,
+            type="clause",
+            label=c.heading,
+            metadata={
+                "clause_type": c.clause_type.value if hasattr(c.clause_type, "value") else str(c.clause_type),
+                "section_number": c.section_number,
+                "contained_fact_count": len(c.contained_fact_ids),
+                "cross_reference_count": len(c.cross_reference_ids),
+            },
+        ))
+        edges.append(GraphEdgeResponse(
+            source=document_id,
+            target=c.clause_id,
+            relationship="contains",
+            label=c.clause_type.value if hasattr(c.clause_type, "value") else "",
+        ))
+
+        # Edges from clause to its contained facts
+        for fid in c.contained_fact_ids:
+            edges.append(GraphEdgeResponse(
+                source=c.clause_id,
+                target=fid,
+                relationship="contains",
+                label="clause_text",
+            ))
+
+    # Fact nodes (limit to non-clause_text for readability, include clause_text count)
+    fact_ids_in_graph = set()
+    for f in facts:
+        ft = f.fact_type.value if hasattr(f.fact_type, "value") else str(f.fact_type)
+        # Include all fact types in the graph
+        nodes.append(GraphNodeResponse(
+            id=f.fact_id,
+            type="fact",
+            label=f.value[:80] + ("..." if len(f.value) > 80 else ""),
+            metadata={
+                "fact_type": ft,
+                "entity_type": f.entity_type.value if f.entity_type and hasattr(f.entity_type, "value") else None,
+                "char_start": f.evidence.char_start,
+                "char_end": f.evidence.char_end,
+                "location_hint": f.evidence.location_hint,
+            },
+        ))
+        fact_ids_in_graph.add(f.fact_id)
+        edges.append(GraphEdgeResponse(
+            source=document_id,
+            target=f.fact_id,
+            relationship="contains",
+            label=ft,
+        ))
+
+    # Binding nodes + edges
+    for b in bindings:
+        nodes.append(GraphNodeResponse(
+            id=b.binding_id,
+            type="binding",
+            label=f"{b.term} → {b.resolves_to[:50]}",
+            metadata={
+                "binding_type": b.binding_type.value if hasattr(b.binding_type, "value") else str(b.binding_type),
+                "term": b.term,
+                "resolves_to": b.resolves_to,
+                "scope": b.scope.value if hasattr(b.scope, "value") else str(b.scope),
+            },
+        ))
+        # Edge from source fact to binding
+        if b.source_fact_id and b.source_fact_id in fact_ids_in_graph:
+            edges.append(GraphEdgeResponse(
+                source=b.source_fact_id,
+                target=b.binding_id,
+                relationship="binds_to",
+                label=b.term,
+            ))
+        # Edge from binding to document
+        edges.append(GraphEdgeResponse(
+            source=document_id,
+            target=b.binding_id,
+            relationship="defines",
+            label=b.term,
+        ))
+
+    # Cross-reference nodes + edges
+    for x in xrefs:
+        nodes.append(GraphNodeResponse(
+            id=x.reference_id,
+            type="cross_reference",
+            label=f"→ {x.target_reference}",
+            metadata={
+                "reference_type": x.reference_type.value if hasattr(x.reference_type, "value") else str(x.reference_type),
+                "effect": x.effect.value if hasattr(x.effect, "value") else str(x.effect),
+                "context": x.context[:100],
+                "resolved": x.resolved,
+            },
+        ))
+        # Edge from source clause to cross-reference
+        edges.append(GraphEdgeResponse(
+            source=x.source_clause_id,
+            target=x.reference_id,
+            relationship="cross_references",
+            label=x.effect.value if hasattr(x.effect, "value") else "",
+        ))
+        # Edge to target clause if resolved
+        if x.target_clause_id:
+            edges.append(GraphEdgeResponse(
+                source=x.reference_id,
+                target=x.target_clause_id,
+                relationship="references",
+                label=x.target_reference,
+            ))
+
+    return TrustGraphResponse(
+        document_id=document_id,
+        title=contract.title,
+        summary=summary,
+        nodes=nodes,
+        edges=edges,
+    )
+
+
 @router.get("/{document_id}/clauses/gaps", response_model=list[GapResponse])
 async def get_clause_gaps(
     document_id: str,
