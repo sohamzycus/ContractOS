@@ -9,6 +9,13 @@ Contract ──── 1:N ──── Fact
     │                    │
     │                    └── 1:N ── FactEvidence
     │
+    ├── 1:N ──── Clause
+    │               │
+    │               ├── M:1 ── ClauseType (type registry)
+    │               ├── 1:N ── Fact (contained facts)
+    │               ├── 1:N ── CrossReference (outgoing refs)
+    │               └── 1:N ── ClauseFactSlot (mandatory/optional fact slots)
+    │
     ├── 1:N ──── Binding
     │               │
     │               └── M:1 ── Fact (source_fact)
@@ -26,6 +33,8 @@ Contract ──── 1:N ──── Fact
                                   ├── 1:N ── Fact (referenced)
                                   ├── 1:N ── Inference (generated)
                                   └── 1:1 ── ProvenanceChain
+
+ClauseType ── 1:N ── MandatoryFactSpec (what facts this type expects)
 
 Workspace ── 1:N ── Contract (indexed_documents)
     │
@@ -66,6 +75,7 @@ class FactType(str, Enum):
     HEADING = "heading"
     METADATA = "metadata"
     STRUCTURAL = "structural"
+    CROSS_REFERENCE = "cross_reference"  # Reference to another section/clause/appendix
 
 class EntityType(str, Enum):
     PARTY = "party"
@@ -96,6 +106,111 @@ class Fact(BaseModel):
     extraction_method: str       # "docx_parser_v1", "pdf_parser_v1"
     extracted_at: datetime
 ```
+
+### Clause
+
+```python
+class ClauseTypeEnum(str, Enum):
+    TERMINATION = "termination"
+    PAYMENT = "payment"
+    INDEMNITY = "indemnity"
+    LIABILITY = "liability"
+    CONFIDENTIALITY = "confidentiality"
+    SLA = "sla"
+    PRICE_ESCALATION = "price_escalation"
+    PENALTY = "penalty"
+    FORCE_MAJEURE = "force_majeure"
+    ASSIGNMENT = "assignment"
+    GOVERNING_LAW = "governing_law"
+    WARRANTY = "warranty"
+    IP = "ip"
+    SCHEDULE_ADHERENCE = "schedule_adherence"
+    DEFINITIONS = "definitions"
+    GENERAL = "general"          # Catch-all for unclassified clauses
+    CUSTOM = "custom"            # Organization-defined types
+
+class Clause(BaseModel):
+    """A structured unit of legal meaning within a contract."""
+    clause_id: str               # UUID
+    document_id: str             # FK → Contract
+    clause_type: ClauseTypeEnum
+    heading: str                 # Extracted heading text (e.g., "12.1 Indemnification")
+    section_number: str | None   # Parsed section number (e.g., "12.1")
+    fact_id: str                 # FK → Fact (the clause text span fact)
+    contained_fact_ids: list[str]  # FKs → Facts extracted within this clause
+    cross_reference_ids: list[str] # FKs → CrossReference
+    classification_method: str   # "pattern_match" or "llm_classification"
+    classification_confidence: float | None  # None if pattern_match (deterministic)
+```
+
+### CrossReference
+
+```python
+class ReferenceType(str, Enum):
+    SECTION_REF = "section_ref"      # "section 3.2.1"
+    CLAUSE_REF = "clause_ref"        # "clause 3.1(a)"
+    APPENDIX_REF = "appendix_ref"    # "Appendix A"
+    SCHEDULE_REF = "schedule_ref"    # "Schedule B"
+    EXTERNAL_DOC_REF = "external_doc_ref"  # "the MSA dated..."
+
+class ReferenceEffect(str, Enum):
+    MODIFIES = "modifies"
+    OVERRIDES = "overrides"
+    CONDITIONS = "conditions"        # "subject to..."
+    INCORPORATES = "incorporates"    # "as referred in..."
+    EXEMPTS = "exempts"              # "notwithstanding..."
+    DELEGATES = "delegates"
+
+class CrossReference(BaseModel):
+    """A reference from one clause to another clause, section, or appendix."""
+    reference_id: str            # UUID
+    source_clause_id: str        # FK → Clause (where the reference appears)
+    target_reference: str        # Raw text: "section 3.2.1", "Appendix A"
+    target_clause_id: str | None # FK → Clause (resolved target, if found)
+    reference_type: ReferenceType
+    effect: ReferenceEffect
+    context: str                 # Surrounding text explaining the reference
+    resolved: bool               # Whether target_clause_id was found
+    source_fact_id: str          # FK → Fact (the cross-reference text span)
+```
+
+### ClauseType Registry
+
+```python
+class MandatoryFactSpec(BaseModel):
+    """Specification of a fact that a clause type is expected to contain."""
+    fact_name: str               # "notice_period", "termination_reasons"
+    fact_description: str        # Human-readable description
+    entity_type: EntityType      # What kind of entity to look for
+    required: bool               # True = mandatory, False = optional
+
+class ClauseTypeSpec(BaseModel):
+    """Registry entry defining what a clause type should contain."""
+    type_id: ClauseTypeEnum
+    display_name: str            # "Termination Clause"
+    mandatory_facts: list[MandatoryFactSpec]
+    optional_facts: list[MandatoryFactSpec]
+    common_cross_refs: list[ClauseTypeEnum]  # Types it commonly references
+```
+
+### ClauseFactSlot
+
+```python
+class SlotStatus(str, Enum):
+    FILLED = "filled"            # Mandatory fact was found
+    MISSING = "missing"          # Mandatory fact not found — gap
+    PARTIAL = "partial"          # Found but incomplete
+
+class ClauseFactSlot(BaseModel):
+    """Tracks whether a clause has its expected mandatory/optional facts."""
+    clause_id: str               # FK → Clause
+    fact_spec_name: str          # e.g., "notice_period"
+    status: SlotStatus
+    filled_by_fact_id: str | None  # FK → Fact (if filled)
+    required: bool               # From MandatoryFactSpec
+```
+
+---
 
 ### Binding
 
@@ -303,6 +418,56 @@ CREATE INDEX idx_facts_type ON facts(fact_type);
 CREATE INDEX idx_facts_entity_type ON facts(entity_type);
 CREATE INDEX idx_facts_value ON facts(value);
 
+CREATE TABLE clauses (
+    clause_id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL REFERENCES contracts(document_id),
+    clause_type TEXT NOT NULL,
+    heading TEXT NOT NULL,
+    section_number TEXT,
+    fact_id TEXT NOT NULL REFERENCES facts(fact_id),
+    contained_fact_ids TEXT NOT NULL DEFAULT '[]',  -- JSON array
+    cross_reference_ids TEXT NOT NULL DEFAULT '[]',  -- JSON array
+    classification_method TEXT NOT NULL,
+    classification_confidence REAL
+);
+
+CREATE INDEX idx_clauses_document ON clauses(document_id);
+CREATE INDEX idx_clauses_type ON clauses(clause_type);
+
+CREATE TABLE cross_references (
+    reference_id TEXT PRIMARY KEY,
+    source_clause_id TEXT NOT NULL REFERENCES clauses(clause_id),
+    target_reference TEXT NOT NULL,
+    target_clause_id TEXT REFERENCES clauses(clause_id),
+    reference_type TEXT NOT NULL,
+    effect TEXT NOT NULL,
+    context TEXT NOT NULL,
+    resolved INTEGER NOT NULL DEFAULT 0,
+    source_fact_id TEXT NOT NULL REFERENCES facts(fact_id)
+);
+
+CREATE INDEX idx_crossrefs_source ON cross_references(source_clause_id);
+CREATE INDEX idx_crossrefs_target ON cross_references(target_clause_id);
+
+CREATE TABLE clause_type_registry (
+    type_id TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    mandatory_facts TEXT NOT NULL,  -- JSON array of MandatoryFactSpec
+    optional_facts TEXT NOT NULL,   -- JSON array of MandatoryFactSpec
+    common_cross_refs TEXT NOT NULL DEFAULT '[]'  -- JSON array
+);
+
+CREATE TABLE clause_fact_slots (
+    clause_id TEXT NOT NULL REFERENCES clauses(clause_id),
+    fact_spec_name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('filled', 'missing', 'partial')),
+    filled_by_fact_id TEXT REFERENCES facts(fact_id),
+    required INTEGER NOT NULL,
+    PRIMARY KEY (clause_id, fact_spec_name)
+);
+
+CREATE INDEX idx_slots_status ON clause_fact_slots(status);
+
 CREATE TABLE bindings (
     binding_id TEXT PRIMARY KEY,
     document_id TEXT NOT NULL REFERENCES contracts(document_id),
@@ -376,7 +541,16 @@ CREATE INDEX idx_sessions_status ON reasoning_sessions(status);
 | From | To | Relationship | Cardinality |
 |------|-----|-------------|-------------|
 | Contract | Fact | contains | 1:N |
+| Contract | Clause | structured into | 1:N |
 | Contract | Binding | defines | 1:N |
+| Clause | ClauseType | typed as | M:1 |
+| Clause | Fact | contains facts | 1:N |
+| Clause | CrossReference | references | 1:N |
+| Clause | ClauseFactSlot | has slots | 1:N |
+| CrossReference | Clause | targets | M:1 (nullable) |
+| CrossReference | Fact | grounded by | M:1 |
+| ClauseType | MandatoryFactSpec | requires | 1:N |
+| ClauseFactSlot | Fact | filled by | M:1 (nullable) |
 | Binding | Fact | grounded by | M:1 |
 | Inference | Fact | supported by | M:N |
 | Inference | Binding | uses | M:N |

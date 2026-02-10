@@ -84,11 +84,13 @@ src/
 │   ├── config.py              # Configuration loading (YAML)
 │   ├── models/                # Pydantic data models
 │   │   ├── __init__.py
-│   │   ├── fact.py            # Fact, FactResult
+│   │   ├── fact.py            # Fact, FactResult, FactType (incl. CROSS_REFERENCE)
 │   │   ├── binding.py         # Binding, BindingResult
 │   │   ├── inference.py       # Inference, InferenceResult
 │   │   ├── opinion.py         # Opinion, OpinionResult
 │   │   ├── document.py        # Contract document metadata
+│   │   ├── clause.py          # Clause, CrossReference, ReferenceType, ReferenceEffect
+│   │   ├── clause_type.py     # ClauseTypeSpec, MandatoryFactSpec, ClauseFactSlot
 │   │   ├── provenance.py      # ProvenanceChain, ProvenanceNode
 │   │   ├── workspace.py       # Workspace, ReasoningSession
 │   │   └── query.py           # Query, QueryResult
@@ -97,8 +99,14 @@ src/
 │   │   ├── fact_extractor.py  # Document parsing + fact extraction
 │   │   ├── docx_parser.py     # Word-specific parsing
 │   │   ├── pdf_parser.py      # PDF-specific parsing
+│   │   ├── clause_classifier.py      # Clause type classification
+│   │   ├── cross_reference_extractor.py  # Cross-reference detection + resolution
+│   │   ├── mandatory_fact_extractor.py   # Mandatory fact slot filling per clause type
+│   │   ├── alias_detector.py  # Entity aliasing pattern detection
+│   │   ├── contract_patterns.py  # spaCy custom patterns for contracts
 │   │   ├── binding_resolver.py # Definition resolution
 │   │   ├── inference_engine.py # LLM-assisted inference
+│   │   ├── prompts.py         # LLM prompt templates
 │   │   └── confidence.py      # Confidence calculation
 │   ├── agents/                # Agent orchestration layer
 │   │   ├── __init__.py

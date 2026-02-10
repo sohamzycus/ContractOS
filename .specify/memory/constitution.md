@@ -1,17 +1,14 @@
 <!--
 Sync Impact Report
-  Version change: 0.0.0 → 1.0.0
-  Modified principles: N/A (initial creation)
+  Version change: 1.0.0 → 1.1.0
+  Modified principles: N/A
   Added sections:
-    - Core Principles (7 principles)
-    - Truth Model Governance
-    - Architectural Constraints
-    - Governance
+    - Core Principles: "Test-Driven Development" (8th principle)
   Removed sections: N/A
   Templates requiring updates:
-    - .specify/templates/plan-template.md — Constitution Check gates align ✅
+    - .specify/templates/plan-template.md — no changes needed ✅
     - .specify/templates/spec-template.md — no changes needed ✅
-    - .specify/templates/tasks-template.md — no changes needed ✅
+    - .specify/templates/tasks-template.md — TDD protocol already in tasks ✅
   Follow-up TODOs: none
 -->
 
@@ -92,6 +89,28 @@ Rationale: Procurement professionals work on the same contract families for
 weeks or months. Re-establishing context every session destroys productivity
 and breaks the "operating system" promise.
 
+### Test-Driven Development
+
+All ContractOS code MUST be developed using Test-Driven Development (TDD):
+Red → Green → Refactor. Tests MUST be written before implementation. No
+feature is considered complete until its unit tests, integration tests, and
+contract tests (for API endpoints) all pass.
+
+Rationale: ContractOS makes claims about legal documents. Untested code is
+untrustworthy code. TDD ensures every component is verified against its
+specification before it ships, prevents regressions, and serves as living
+documentation of system behavior.
+
+**TDD rules:**
+1. Every module MUST have corresponding unit tests that mock external
+   dependencies.
+2. Every user story MUST have integration tests that verify end-to-end
+   behavior across multiple modules.
+3. Every API endpoint MUST have contract tests that verify request/response
+   schemas match the API specification.
+4. Code coverage MUST be maintained at 90% or above.
+5. Tests MUST be deterministic — no flaky tests permitted in CI.
+
 ## Truth Model Governance
 
 The truth model defined in `spec/truth-model.md` is the kernel of ContractOS.
@@ -167,4 +186,4 @@ verifies the implementation plan does not violate any principle or constraint.
 Violations MUST be either resolved or explicitly justified in the Complexity
 Tracking section of the plan.
 
-**Version**: 1.0.0 | **Ratified**: 2025-02-09 | **Last Amended**: 2025-02-09
+**Version**: 1.1.0 | **Ratified**: 2025-02-09 | **Last Amended**: 2025-02-09

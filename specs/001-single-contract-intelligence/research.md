@@ -62,7 +62,57 @@ fast, per FR-013.
 - Duration patterns: `thirty (30) days`, `ninety (90) calendar days`
 - Renewal/termination patterns: specific clause type signatures
 
-## 4. LLM Integration
+## 4. Clause Structure Analysis
+
+### Decision: Hybrid pattern matching + LLM classification with configurable type registry
+
+Contracts are not flat text — they are structured into clauses, and each
+clause has internal structure: cross-references to other sections, mandatory
+facts (e.g., a termination clause should have a notice period), and entity
+aliasing patterns.
+
+**Clause identification approach**:
+1. **Heading-based detection** (deterministic): Parse section headings and
+   numbering patterns (§12.1, Article XII, Section 3.2.1) to identify clause
+   boundaries. This is the primary method and covers ~80% of clauses.
+2. **LLM-assisted classification** (non-deterministic): For clauses with
+   ambiguous headings or no headings, use LLM to classify the clause type
+   based on content. Confidence score attached.
+
+**Cross-reference extraction approach**:
+- Regex patterns for section references: `§\d+(\.\d+)*`, `Section \d+`,
+  `clause \d+(\.\d+)*(\([a-z]\))?`, `Appendix [A-Z]`, `Schedule [A-Z0-9]+`
+- Resolution: Match extracted references to known clause section_numbers
+  within the same document. Unresolvable references flagged but not guessed.
+- Effect classification: LLM-assisted — given the surrounding context, what
+  is the effect of this reference? (modifies, overrides, conditions, etc.)
+
+**Entity aliasing detection**:
+- Regex patterns for common alias introductions:
+  - `"(.+?),?\s+hereinafter\s+referred\s+to\s+as\s+'(.+?)'"`
+  - `"(.+?)\s+\(the\s+'(.+?)'\)"`
+  - `"(.+?),?\s+hereafter\s+'(.+?)'"`
+- These produce Binding records (same as definition resolution).
+
+**Mandatory fact extraction per clause type**:
+- The Clause Type Registry defines expected facts per type (see truth-model.md
+  §1b). After classifying a clause, the extractor searches within the clause
+  for the expected entity types.
+- Missing mandatory facts are flagged as completeness gaps (inferences, not
+  errors — the clause may intentionally omit them).
+
+**Registry configurability**:
+- Default registry ships with 14 clause types and their mandatory/optional
+  fact schemas (see truth-model.md).
+- Organizations can extend via `config/clause_types.yaml` — add custom types,
+  modify mandatory facts, add industry-specific clause types.
+
+**Open question resolved**: Should cross-reference resolution be eager or lazy?
+→ **Eager within the same document** (resolve all internal references during
+parsing). Lazy for cross-document references (deferred to Phase 2 when
+Contract Graph is available).
+
+## 5. LLM Integration
 
 ### Decision: Claude (Anthropic SDK) as default; pluggable via interface
 
@@ -90,7 +140,7 @@ class ClaudeProvider(LLMProvider):
 - Binding resolution (deterministic pattern matching)
 - Character offset computation (document parser)
 
-## 5. Storage: TrustGraph
+## 6. Storage: TrustGraph
 
 ### Decision: SQLite with well-defined schema
 
@@ -107,7 +157,7 @@ that translate directly to PostgreSQL when we scale. We do NOT use SQLite's
 limited graph features — instead, facts, bindings, and inferences are stored
 as typed rows with explicit relationship columns.
 
-## 6. API Framework
+## 7. API Framework
 
 ### Decision: FastAPI
 
@@ -115,7 +165,7 @@ as typed rows with explicit relationship columns.
 (same models used in the API and in the backend), lightweight. The Word
 Add-in communicates with this server over localhost HTTP.
 
-## 7. Word Copilot
+## 8. Word Copilot
 
 ### Decision: Office Web Add-in (taskpane) with React
 
@@ -137,7 +187,7 @@ current direction.
 - Inline suggestions
 - Redline generation
 
-## 8. Configuration
+## 9. Configuration
 
 ### Decision: YAML configuration with Pydantic validation
 
@@ -170,28 +220,63 @@ contractos:
     port: 8742
     cors_origins: ["https://localhost"]
 
+  clause_types:
+    registry: "config/clause_types.yaml"  # Configurable per organization
+    custom_types_enabled: true
+
   logging:
     level: "INFO"
     audit_log: true
 ```
 
-## 9. Testing Strategy
+## 10. Testing Strategy — TDD
 
-**Unit tests**: Each tool tested independently with fixture contracts.
-- FactExtractor: verify entity counts, offset accuracy, determinism
-- BindingResolver: verify definition capture, scope assignment
-- InferenceEngine: verify fact references, confidence range
-- TrustGraph: verify CRUD, query, type enforcement
+All development follows **Test-Driven Development (TDD)**: Red → Green →
+Refactor. Tests are written before implementation. No feature is complete
+until all its tests pass.
 
-**Integration tests**: DocumentAgent end-to-end with real contracts.
-- Parse → extract → resolve → query → verify answer + provenance
+### Test Categories
 
-**Benchmark**: COBench v0.1
+| Category | Location | Scope | Dependencies |
+|----------|----------|-------|-------------|
+| **Unit tests** | `tests/unit/` | Single module in isolation | Mock all externals (LLM, DB, file system) |
+| **Integration tests** | `tests/integration/` | Multiple modules together | Real SQLite (in-memory), real parsers, mock LLM |
+| **Contract tests** | `tests/contract/` | API endpoints vs. spec | FastAPI TestClient, mock backend |
+| **Benchmark tests** | `tests/benchmark/` | Accuracy & performance | Real contracts, real LLM (on demand) |
+
+### Test Infrastructure
+
+- **pytest** with pytest-asyncio, pytest-cov
+- **respx** for HTTP mocking (LLM API calls)
+- **factory-boy** for test data factories (Fact, Binding, Inference, etc.)
+- **Test fixtures**: Manually crafted contracts with known entities in
+  `tests/fixtures/`
+- **LLM mock**: Deterministic mock provider in `tests/mocks/llm_mock.py`
+  that returns known responses for known prompts
+- **Coverage threshold**: 90% enforced in CI
+
+### Test Counts (per tasks.md)
+
+| Phase | Unit | Integration | Contract | Total |
+|-------|------|------------|----------|-------|
+| Foundation | 14 | 0 | 1 | 15 |
+| US1: Extraction | 9 | 2 | 1 | 12 |
+| US2: Bindings | 2 | 1 | 1 | 4 |
+| US3: Q&A | 6 | 3 | 1 | 10 |
+| US4: Provenance | 2 | 1 | 1 | 4 |
+| US5: Workspace | 2 | 2 | 1 | 5 |
+| Copilot | 3 | 1 | 0 | 4 |
+| Polish | 2 | 1 | 0 | 3 |
+| **Total** | **40** | **11** | **6** | **57** |
+
+### Benchmark: COBench v0.1
+
 - 20 annotated procurement contracts
 - 100 questions with ground-truth answers
-- Measures: fact extraction precision, Q&A accuracy, confidence calibration
+- Measures: Precision@N, Recall@N, MRR, NDCG, confidence calibration
+- Not part of CI — run on demand and before releases
 
-## 10. Open Questions (Resolved)
+## 11. Open Questions (Resolved)
 
 | Question | Resolution |
 |----------|-----------|

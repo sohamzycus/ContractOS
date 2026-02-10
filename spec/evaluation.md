@@ -24,22 +24,64 @@ structural elements from documents?
 
 **How**: Deterministic, automated evaluation against annotated contracts.
 
+#### Why Recall@N and Precision@N
+
+Simple precision and recall treat extraction as a binary problem — but in
+practice, ContractOS returns **ranked lists** of facts, clauses, and entities.
+A user asking "What are the payment terms?" gets a ranked set of relevant
+facts. The quality of that ranking matters as much as completeness.
+
+- **Precision@N**: Of the top N results returned, how many are correct?
+  This measures whether the most prominent results are trustworthy.
+- **Recall@N**: Of all relevant items, how many appear in the top N results?
+  This measures whether important items are surfaced early.
+- **F1@N**: Harmonic mean of Precision@N and Recall@N at a given cutoff.
+
+These are standard information retrieval metrics (used in search engines,
+recommendation systems, and legal tech benchmarks like LegalBench).
+
+#### Extraction Metrics
+
 | Metric | Definition | Target |
 |--------|-----------|--------|
-| Precision | % of extracted facts that are correct | > 95% |
-| Recall | % of actual facts that were extracted | > 90% |
-| Span accuracy | % of facts with correct character offsets | > 98% |
-| Entity accuracy | % of entities correctly identified and typed | > 92% |
-| Table extraction | % of table cells correctly parsed | > 90% |
+| Precision@5 (entities) | Of top 5 extracted entities per type, % correct | > 95% |
+| Precision@10 (entities) | Of top 10 extracted entities per type, % correct | > 93% |
+| Recall@20 (entities) | Of all annotated entities, % found in top 20 results | > 90% |
+| Precision@N (clauses) | Of top N identified clauses, % correctly typed | > 92% |
+| Recall@N (clauses) | Of all annotated clauses, % found in top N results | > 88% |
+| Span accuracy | % of facts with correct character offsets (exact match) | > 98% |
+| Table extraction P@N | Of top N table cells extracted, % correctly parsed | > 90% |
 | Structural accuracy | % of sections/headings correctly identified | > 95% |
+| MRR (Mean Reciprocal Rank) | Average 1/rank of first correct result per query | > 0.85 |
+| MAP (Mean Average Precision) | Mean of average precision across all queries | > 0.82 |
+| NDCG@10 | Normalized Discounted Cumulative Gain at 10 | > 0.88 |
+
+#### Clause-Specific Extraction Metrics
+
+| Metric | Definition | Target |
+|--------|-----------|--------|
+| Clause type accuracy | % of clauses assigned the correct type | > 90% |
+| Mandatory fact recall@N | Of mandatory facts per clause type, % extracted in top N | > 85% |
+| Cross-reference precision | % of extracted cross-references that are valid | > 92% |
+| Cross-reference resolution | % of valid cross-references resolved to target clause | > 80% |
+| Completeness gap detection | % of missing mandatory facts correctly flagged | > 75% |
 
 **Evaluation method**:
 1. Maintain a benchmark set of 50–100 annotated procurement contracts
-2. Each contract has human-annotated ground truth: entities, clauses, tables,
-   structure
+2. Each contract has human-annotated ground truth: entities (ranked by
+   importance), clauses (with types and mandatory facts), tables, structure,
+   and cross-references
 3. Run FactExtractor on benchmark set
-4. Compute precision/recall/F1 per fact type
-5. Track over time — extraction quality must never regress
+4. Compute Precision@N, Recall@N, F1@N, MRR, MAP, NDCG per fact type
+5. Compute clause-specific metrics (type accuracy, mandatory fact coverage,
+   cross-reference resolution)
+6. Track over time — extraction quality must never regress
+
+**N values by context**:
+- Entity extraction: N = 5, 10, 20 (most contracts have <50 key entities)
+- Clause identification: N = 10, 20 (most contracts have 10–30 clauses)
+- Table cells: N = 50, 100 (large tables can have hundreds of cells)
+- Cross-references: N = 10, 20 (per clause)
 
 **Frequency**: On every change to extraction pipeline.
 
@@ -49,23 +91,31 @@ structural elements from documents?
 confident?
 
 **How**: Expert-rated evaluation. Procurement and legal professionals score
-inference quality.
+inference quality. Ranked retrieval metrics measure whether the best
+inferences surface first.
 
 | Metric | Definition | Target |
 |--------|-----------|--------|
-| Correctness | % of inferences rated "correct" by experts | > 80% |
+| Correctness@1 | Is the top-ranked inference correct? | > 85% |
+| Correctness@3 | Of top 3 inferences, % rated "correct" by experts | > 80% |
+| Precision@5 (supporting facts) | Of top 5 facts cited per inference, % actually relevant | > 90% |
+| Recall@10 (supporting facts) | Of all relevant facts, % cited in top 10 | > 85% |
 | Grounding | % of inferences with valid supporting facts | 100% (hard requirement) |
 | Confidence calibration | Correlation between stated confidence and actual correctness | > 0.85 |
 | Explanation quality | Expert rating of reasoning chain clarity (1-5) | > 3.5 |
-| False positive rate | % of incorrect inferences stated with high confidence | < 5% |
+| False positive rate@high_conf | % of incorrect inferences with confidence > 0.80 | < 5% |
+| MRR (inference ranking) | Average 1/rank of first correct inference per query | > 0.88 |
+| NDCG@5 (fact relevance) | Quality of fact ranking within provenance chains | > 0.85 |
 
 **Evaluation method**:
 1. Generate inferences on benchmark contracts
 2. Present each inference to 3 domain experts (blind — they don't see
    confidence scores)
 3. Experts rate: correct / partially correct / incorrect
-4. Compare expert ratings against system confidence
-5. Compute calibration curve
+4. Experts also rate supporting fact relevance (relevant / partially / irrelevant)
+5. Compare expert ratings against system confidence
+6. Compute calibration curve
+7. Compute Precision@N and Recall@N for supporting fact selection
 
 **Confidence calibration**:
 A well-calibrated system means:
@@ -82,13 +132,15 @@ dangerous.
 
 **What**: Did the user get what they needed? Was the answer actionable?
 
-**How**: User feedback and task completion metrics.
+**How**: User feedback, task completion metrics, and ranked answer quality.
 
 | Metric | Definition | Target |
 |--------|-----------|--------|
 | User satisfaction | % of answers rated "helpful" or "very helpful" | > 75% |
+| Answer precision@1 | % of first answers that directly address the question | > 80% |
 | Task completion | % of users who completed their task using the answer | > 70% |
 | Follow-up rate | % of answers that required clarification or correction | < 25% |
+| Provenance usefulness | % of users who found provenance chain helpful (when expanded) | > 60% |
 | Time saved | Estimated time saved vs. manual review | Track and report |
 | Adoption | % of available users actively using the system weekly | > 50% |
 
@@ -99,6 +151,37 @@ dangerous.
 4. Task-level tracking (if integrated with workflow)
 
 **Frequency**: Continuous (feedback), monthly (analysis), quarterly (interviews).
+
+---
+
+## Ranked Retrieval Metrics — Reference
+
+ContractOS uses information retrieval (IR) metrics because contract analysis
+is fundamentally a **retrieval + reasoning** problem. The system retrieves
+facts, ranks them, and reasons over the top results.
+
+| Metric | What It Measures | Formula (simplified) |
+|--------|-----------------|---------------------|
+| **Precision@N** | Of the top N results, how many are relevant? | relevant_in_top_N / N |
+| **Recall@N** | Of all relevant items, how many are in the top N? | relevant_in_top_N / total_relevant |
+| **F1@N** | Balance of Precision@N and Recall@N | 2 * (P@N * R@N) / (P@N + R@N) |
+| **MRR** | How high is the first correct result? | Average of 1/rank_of_first_correct |
+| **MAP** | Average precision across all recall levels | Mean of AP per query |
+| **NDCG@N** | Quality of ranking considering graded relevance | Accounts for position and relevance grade |
+
+**Why not just Precision and Recall?**
+
+Flat precision/recall treats all results equally — finding a party name at
+rank 1 and rank 100 are the same. But for a procurement user, the **order
+matters**. If the correct answer is buried at position 15, the system has
+failed even if recall is technically high. Precision@N and NDCG@N capture
+this: the best results must appear first.
+
+**Choosing N values:**
+
+N should reflect the user's attention budget. A procurement user reviewing
+extracted entities will look at 5–10 results. A user scanning clauses will
+review 10–20. N is set per task type to match realistic usage patterns.
 
 ---
 
@@ -232,19 +315,28 @@ change is rolled back.
 ```yaml
 regression_thresholds:
   fact_extraction:
-    precision: 0.93        # alert if drops below 93%
-    recall: 0.88
+    precision_at_5: 0.93       # alert if drops below 93%
+    recall_at_20: 0.88
     span_accuracy: 0.96
+    mrr: 0.82
+    map: 0.80
+    ndcg_at_10: 0.85
+    clause_type_accuracy: 0.88
+    mandatory_fact_recall_at_n: 0.82
+    cross_reference_precision: 0.90
   
   inference:
-    correctness: 0.78
-    grounding: 1.00        # hard requirement — never ship ungrounded inferences
+    correctness_at_1: 0.82
+    correctness_at_3: 0.78
+    grounding: 1.00            # hard requirement — never ship ungrounded inferences
     confidence_calibration: 0.80
-    false_positive_rate: 0.07
+    false_positive_rate_high_conf: 0.07
+    supporting_fact_precision_at_5: 0.88
   
   answer_quality:
     user_satisfaction: 0.70
-    follow_up_rate: 0.30   # alert if rises above 30%
+    answer_precision_at_1: 0.78
+    follow_up_rate: 0.30       # alert if rises above 30%
 ```
 
 ---

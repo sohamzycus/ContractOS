@@ -185,11 +185,24 @@ instantly, and prior sessions are listed.
   monetary amounts, product/service names, location names, durations.
 - **FR-004**: System MUST identify clause boundaries and classify clause types
   (indemnity, termination, payment, liability, confidentiality, IP, force
-  majeure, warranty, SLA, assignment, governing law).
+  majeure, warranty, SLA, assignment, governing law, penalty, price
+  escalation, schedule adherence).
+- **FR-004a**: Each classified clause MUST be assigned a type from the Clause
+  Type Registry. The registry MUST be configurable (organizations can add
+  custom clause types).
+- **FR-004b**: System MUST extract cross-references within clauses (references
+  to other sections, appendices, schedules, and external documents) and
+  resolve them to target clauses where possible.
+- **FR-004c**: System MUST track mandatory and optional facts per clause type
+  (e.g., termination clause expects notice_period, termination_reasons).
+  Missing mandatory facts MUST be flagged as completeness gaps.
 - **FR-005**: System MUST extract table data as structured facts with
   row/column metadata.
 - **FR-006**: System MUST identify definition clauses and resolve them as
   Bindings with term → resolves_to mappings scoped to the document.
+- **FR-006a**: System MUST detect entity aliasing patterns within clauses
+  (e.g., "A, hereinafter referred to as 'Buyer'") and capture them as
+  Bindings.
 - **FR-007**: System MUST persist facts and bindings in a local TrustGraph
   (SQLite) keyed by document ID.
 - **FR-008**: System MUST answer natural language questions about a single
@@ -215,6 +228,15 @@ instantly, and prior sessions are listed.
   Attributes: document_id, title, parties, effective_date, file_path, format.
 - **Fact**: An immutable, source-addressable claim extracted from document text.
   Attributes: fact_id, fact_type, value, evidence (with offsets), extraction_method.
+- **Clause**: A structured unit of legal meaning within a contract, typed by
+  a configurable Clause Type Registry. Contains facts, cross-references, and
+  mandatory fact slots. Attributes: clause_id, clause_type, heading,
+  section_number, contained_facts, cross_references.
+- **CrossReference**: A reference from one clause to another section, appendix,
+  or schedule. Attributes: reference_id, source_clause, target_reference,
+  target_clause (resolved), effect (modifies, overrides, conditions, etc.).
+- **ClauseType**: A registry entry defining what facts a clause type is
+  expected to contain (mandatory and optional). Configurable per organization.
 - **Binding**: A deterministic semantic mapping from a defined term to its
   resolution. Attributes: binding_id, term, resolves_to, source_fact_id, scope.
 - **Inference**: A probabilistic derived claim. Attributes: inference_id, claim,
@@ -228,17 +250,24 @@ instantly, and prior sessions are listed.
 
 ### Measurable Outcomes
 
-- **SC-001**: Fact extraction precision > 93% on a benchmark of 20 procurement
-  contracts (measured by entity, clause boundary, and table cell accuracy).
+- **SC-001**: Fact extraction Precision@10 > 93% and Recall@20 > 90% on a
+  benchmark of 20 procurement contracts (measured by entity, clause boundary,
+  and table cell accuracy). MRR > 0.85.
 - **SC-002**: Binding resolution captures > 90% of defined terms in contracts
-  with a Definitions section.
+  with a Definitions section, including entity aliasing patterns.
 - **SC-003**: Q&A answers are rated "correct" or "partially correct" by a
-  procurement professional for > 80% of 50 benchmark questions.
+  procurement professional for > 80% of 50 benchmark questions. Correctness@1
+  (top-ranked answer) > 85%.
 - **SC-004**: Every answer includes a provenance chain with at least one
-  source-document citation (100% — hard requirement).
+  source-document citation (100% — hard requirement). Supporting fact
+  Precision@5 > 90%.
 - **SC-005**: Response time < 5 seconds for questions on a previously parsed
   document; < 30 seconds for first parse of a 30-page document.
 - **SC-006**: Confidence calibration error < 10% (stated confidence vs. actual
   correctness correlation).
 - **SC-007**: The system correctly returns "not found" (rather than hallucinating)
   for > 90% of questions whose answers do not exist in the document.
+- **SC-008**: Clause type classification accuracy > 90%. Cross-reference
+  extraction precision > 92%. Mandatory fact Recall@N > 85% per clause type.
+- **SC-009**: Completeness gap detection (missing mandatory facts) correctly
+  flagged for > 75% of actual gaps in benchmark contracts.

@@ -103,6 +103,161 @@ Fact {
 
 ---
 
+## 1b. Clause Structure
+
+### Why Clauses Are More Than Text Spans
+
+A clause is not just a text span with a heading — it is a **structured unit of
+legal meaning** with internal components, cross-references, and type-specific
+mandatory facts.
+
+Consider this real contract text:
+
+> *"Subject to termination clause 3.1(a). If the lessee violates the building
+> by-laws referred in Appendix A, the notice period as mentioned in section
+> 3.2.1 will not be applicable and the lessee may be asked to vacate the
+> property immediately."*
+
+This single clause contains:
+
+| Component | What it is | Truth Layer |
+|-----------|-----------|-------------|
+| "termination clause 3.1(a)" | **Cross-reference** to another clause | Fact (type: cross_reference) |
+| "building by-laws referred in Appendix A" | **Cross-reference** to an appendix | Fact (type: cross_reference) |
+| "notice period as mentioned in section 3.2.1" | **Cross-reference** to another section | Fact (type: cross_reference) |
+| "lessee may be asked to vacate immediately" | **Consequence** (an obligation/right) | Fact (extractable) → Inference (what it means) |
+| The clause itself | **Clause type**: termination exception | Fact (type: clause) with clause_type tag |
+
+### Cross-References
+
+Clauses frequently reference other clauses, sections, appendices, and
+schedules. These cross-references are **facts** — they are explicitly stated
+in the text — but they create a **reference graph within the document** that
+is essential for reasoning.
+
+```
+CrossReference {
+  source_clause_id:   string    // the clause containing the reference
+  target_reference:   string    // "section 3.2.1", "Appendix A", "clause 3.1(a)"
+  target_clause_id:   string?   // resolved FK → Clause (if resolvable)
+  reference_type:     enum      // section_ref, appendix_ref, schedule_ref,
+                                // clause_ref, external_doc_ref
+  context:            string    // surrounding text explaining the reference
+  effect:             enum      // modifies, overrides, conditions, incorporates,
+                                // exempts, delegates
+}
+```
+
+Cross-references are extracted as facts and then **resolved** to link source
+and target clauses. Unresolvable references (e.g., "as per applicable law")
+are flagged but not guessed.
+
+### Entity Aliasing Within Clauses
+
+Contracts routinely introduce aliases for parties and entities:
+
+> *"This agreement is between Alpha Corp, hereinafter referred to as 'Buyer',
+> and Beta Inc, hereinafter referred to as 'Vendor'."*
+
+This is a **binding** (Alpha Corp → Buyer), but it is also a structural
+pattern: the alias is introduced within a specific clause and applies
+throughout the document. The BindingResolver must detect these patterns:
+
+- `"X, hereinafter referred to as 'Y'"`
+- `"X (the 'Y')"`
+- `"X, hereafter 'Y'"`
+- `"X shall mean Y"`
+
+These are all binding-creation patterns that produce `Binding` records.
+
+### Clause Typing and Mandatory Facts
+
+Every clause has a **type**, and each type has a **schema** of facts that it
+is expected to contain. This is critical for two reasons:
+
+1. **Completeness checking** — if a termination clause has no notice period,
+   that is a gap worth flagging
+2. **Structured extraction** — knowing the clause type tells the extractor
+   what to look for
+
+```
+ClauseType {
+  type_id:           string     // "termination", "payment", "indemnity", etc.
+  display_name:      string     // "Termination Clause"
+  mandatory_facts:   [MandatoryFact]  // facts this clause type MUST contain
+  optional_facts:    [MandatoryFact]  // facts this clause type MAY contain
+  common_cross_refs: [string]         // clause types it commonly references
+}
+
+MandatoryFact {
+  fact_name:         string     // "notice_period", "termination_reasons"
+  fact_description:  string     // human-readable description
+  entity_type:       EntityType // duration, money, party, etc.
+  required:          bool       // true = mandatory, false = optional
+}
+```
+
+### Clause Type Registry (Phase 1)
+
+| Clause Type | Mandatory Facts | Optional Facts |
+|-------------|----------------|----------------|
+| **Termination** | notice_period (duration), termination_reasons (text) | cure_period (duration), termination_fee (money), survival_clauses (cross_ref) |
+| **Payment** | payment_terms (text), payment_amount or pricing_model | late_payment_penalty (money/percent), currency, payment_method |
+| **Indemnity** | indemnifying_party (party), indemnified_party (party), covered_losses (text) | indemnity_cap (money), exclusions (text), survival_period (duration) |
+| **Liability** | liability_cap (money or formula) | exclusions (text), consequential_damages (bool) |
+| **Confidentiality** | definition_of_confidential (text), obligations (text) | duration (duration), exclusions (text), return_obligations (text) |
+| **SLA / Service Level** | service_metrics (text), measurement_method (text) | penalties (money/percent), reporting_frequency (duration), remedy (text) |
+| **Price Escalation** | escalation_trigger (text), escalation_threshold (percent/money) | escalation_cap (percent), escalation_frequency (duration), index_reference (text) |
+| **Penalty** | penalty_trigger (text), penalty_value (money/percent) | penalty_cap (money), cure_period (duration), waiver_conditions (text) |
+| **Force Majeure** | qualifying_events (text), notification_requirement (duration) | termination_right (bool), mitigation_obligation (text) |
+| **Assignment** | consent_required (bool) | permitted_assignments (text), change_of_control (text) |
+| **Governing Law** | jurisdiction (location), governing_law (text) | dispute_resolution (text), arbitration_venue (location) |
+| **Warranty** | warranty_scope (text), warranty_period (duration) | remedy (text), exclusions (text), warranty_cap (money) |
+| **IP / Intellectual Property** | ip_ownership (text) | license_scope (text), background_ip (text), foreground_ip (text) |
+| **Schedule Adherence** | milestones (text), delivery_dates (date) | penalties (money/percent), acceptance_criteria (text), delay_remedy (text) |
+
+### How Clause Structure Flows Through the Truth Model
+
+```
+1. FACT EXTRACTION
+   FactExtractor identifies clause boundaries and text
+   → Fact (type: clause, clause_type: "termination")
+
+2. CROSS-REFERENCE EXTRACTION
+   FactExtractor identifies "section 3.2.1", "Appendix A"
+   → Fact (type: cross_reference) for each reference
+   → CrossReference records linking source → target
+
+3. MANDATORY FACT EXTRACTION
+   Given clause_type = "termination", extractor looks for:
+   - notice_period → found: "30 days" → Fact (type: entity, entity_type: duration)
+   - termination_reasons → found: "material breach" → Fact (type: text_span)
+   - Missing: cure_period → flagged as absent (optional, not an error)
+
+4. BINDING RESOLUTION
+   BindingResolver processes alias patterns within clauses
+   → Binding ("Buyer" := "Alpha Corp")
+
+5. COMPLETENESS CHECK
+   Compare extracted facts against ClauseType.mandatory_facts
+   → If mandatory fact missing → flag as gap (this is an Inference, not a Fact)
+   → "Termination clause at §3.1 is missing a notice period" (confidence: 0.95)
+```
+
+### Clause Structure Rules
+
+1. Every clause MUST be assigned a `clause_type` — either by pattern matching
+   or LLM classification
+2. Cross-references within clauses MUST be extracted as facts and resolved
+   where possible
+3. Mandatory facts per clause type are **expected, not enforced** — a missing
+   mandatory fact is flagged as a gap (inference), not treated as an error
+4. The Clause Type Registry is **configurable** — organizations can add custom
+   clause types and modify mandatory fact schemas
+5. Entity aliases introduced in clauses MUST be captured as Bindings
+
+---
+
 ## 2. Bindings
 
 ### Definition
