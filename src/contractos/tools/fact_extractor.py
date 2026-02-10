@@ -16,7 +16,7 @@ from contractos.tools.contract_patterns import PatternMatch, extract_patterns
 from contractos.tools.cross_reference_extractor import extract_cross_references
 from contractos.tools.docx_parser import parse_docx
 from contractos.tools.mandatory_fact_extractor import extract_mandatory_facts
-from contractos.tools.parsers import ParsedDocument
+from contractos.tools.parsers import ParsedDocument, ParsedParagraph
 from contractos.tools.pdf_parser import parse_pdf
 
 # Pattern name → FactType mapping
@@ -181,12 +181,72 @@ def extract_from_file(
         clause.cross_reference_ids = [x.reference_id for x in xrefs]
         result.cross_references.extend(xrefs)
 
+    # Step 6b: Generate clause body text facts
+    # Each non-heading paragraph within a clause becomes a fact so the LLM
+    # has the full clause text available for Q&A.
+    for clause, clause_text in zip(clauses, clause_texts):
+        body_paragraphs = _get_clause_body_paragraphs(parsed, clause)
+        for para in body_paragraphs:
+            if not para.text.strip():
+                continue
+            body_fact = Fact(
+                fact_id=f"f-body-{uuid.uuid4().hex[:8]}",
+                fact_type=FactType.CLAUSE_TEXT,
+                value=para.text,
+                evidence=FactEvidence(
+                    document_id=document_id,
+                    text_span=para.text,
+                    char_start=para.char_start,
+                    char_end=para.char_end,
+                    location_hint=f"clause: {clause.heading}",
+                    structural_path=para.structural_path or f"body > {clause.heading}",
+                ),
+                extraction_method=extraction_method,
+                extracted_at=now,
+            )
+            result.facts.append(body_fact)
+            # Track contained facts in the clause
+            clause.contained_fact_ids.append(body_fact.fact_id)
+
     # Step 7: Mandatory fact slots
     for clause, clause_text in zip(clauses, clause_texts):
         slots = extract_mandatory_facts(clause, clause_text)
         result.clause_fact_slots.extend(slots)
 
     return result
+
+
+def _get_clause_body_paragraphs(
+    parsed: ParsedDocument, clause: Clause
+) -> list[ParsedParagraph]:
+    """Get the body paragraphs (non-heading) belonging to a clause."""
+    heading_indices: list[int] = []
+    for i, para in enumerate(parsed.paragraphs):
+        if para.heading_level is not None and para.text.strip():
+            heading_indices.append(i)
+
+    clause_heading_idx = None
+    for hi in heading_indices:
+        if parsed.paragraphs[hi].text == clause.heading:
+            clause_heading_idx = hi
+            break
+
+    if clause_heading_idx is None:
+        return []
+
+    next_heading_idx = len(parsed.paragraphs)
+    for hi in heading_indices:
+        if hi > clause_heading_idx:
+            next_heading_idx = hi
+            break
+
+    # Return only body paragraphs (skip the heading itself)
+    return [
+        parsed.paragraphs[i]
+        for i in range(clause_heading_idx + 1, next_heading_idx)
+        if parsed.paragraphs[i].text.strip()
+        and parsed.paragraphs[i].heading_level is None
+    ]
 
 
 def _get_clause_texts(parsed: ParsedDocument, clauses: list[Clause]) -> list[str]:
