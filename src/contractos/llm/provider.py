@@ -58,13 +58,21 @@ class LLMProvider(ABC):
 class AnthropicProvider(LLMProvider):
     """Anthropic Claude provider using the official SDK."""
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-20250514") -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "claude-sonnet-4-20250514",
+        base_url: str | None = None,
+    ) -> None:
         try:
             import anthropic
         except ImportError as e:
             msg = "anthropic package required: pip install anthropic"
             raise ImportError(msg) from e
-        self._client = anthropic.AsyncAnthropic(api_key=api_key)
+        kwargs: dict[str, Any] = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+        self._client = anthropic.AsyncAnthropic(**kwargs)
         self._model = model
 
     async def complete(
