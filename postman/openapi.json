@@ -1,0 +1,1681 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "ContractOS",
+        "description": "Contract Intelligence API",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health Check",
+                "description": "Return service health status.",
+                "operationId": "health_check_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/config": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Get Config",
+                "description": "Return current configuration (non-sensitive \u2014 no API keys).",
+                "operationId": "get_config_config_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConfigResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/upload": {
+            "post": {
+                "tags": [
+                    "contracts"
+                ],
+                "summary": "Upload Contract",
+                "description": "Upload a contract document (docx or pdf) for indexing.\n\nTriggers the full extraction pipeline:\n1. Parse document \u2192 paragraphs, tables, headings\n2. Extract facts (patterns, table cells, aliases)\n3. Classify clauses from headings\n4. Extract cross-references\n5. Check mandatory fact slots\n6. Resolve bindings (definitions + aliases)\n7. Store everything in TrustGraph",
+                "operationId": "upload_contract_contracts_upload_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_contract_contracts_upload_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContractResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/{document_id}": {
+            "get": {
+                "tags": [
+                    "contracts"
+                ],
+                "summary": "Get Contract",
+                "description": "Retrieve metadata for an indexed contract.",
+                "operationId": "get_contract_contracts__document_id__get",
+                "parameters": [
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContractResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/{document_id}/facts": {
+            "get": {
+                "tags": [
+                    "contracts"
+                ],
+                "summary": "Get Facts",
+                "description": "Retrieve extracted facts for a contract with optional filters.",
+                "operationId": "get_facts_contracts__document_id__facts_get",
+                "parameters": [
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    },
+                    {
+                        "name": "fact_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Fact Type"
+                        }
+                    },
+                    {
+                        "name": "entity_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Entity Type"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1000,
+                            "minimum": 1,
+                            "default": 100,
+                            "title": "Limit"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0,
+                            "title": "Offset"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FactResponse"
+                                    },
+                                    "title": "Response Get Facts Contracts  Document Id  Facts Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/{document_id}/clauses": {
+            "get": {
+                "tags": [
+                    "contracts"
+                ],
+                "summary": "Get Clauses",
+                "description": "Retrieve classified clauses for a contract.",
+                "operationId": "get_clauses_contracts__document_id__clauses_get",
+                "parameters": [
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    },
+                    {
+                        "name": "clause_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Clause Type"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ClauseResponse"
+                                    },
+                                    "title": "Response Get Clauses Contracts  Document Id  Clauses Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/{document_id}/bindings": {
+            "get": {
+                "tags": [
+                    "contracts"
+                ],
+                "summary": "Get Bindings",
+                "description": "Retrieve all bindings (definitions + aliases) for a contract.",
+                "operationId": "get_bindings_contracts__document_id__bindings_get",
+                "parameters": [
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/BindingResponse"
+                                    },
+                                    "title": "Response Get Bindings Contracts  Document Id  Bindings Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/{document_id}/graph": {
+            "get": {
+                "tags": [
+                    "contracts"
+                ],
+                "summary": "Get Trust Graph",
+                "description": "Get the full TrustGraph context for a document.\n\nReturns a graph structure with nodes (contract, clauses, facts, bindings,\ncross-references) and edges (containment, references, bindings).\nThis powers the TrustGraph visualization.",
+                "operationId": "get_trust_graph_contracts__document_id__graph_get",
+                "parameters": [
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TrustGraphResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/{document_id}/clauses/gaps": {
+            "get": {
+                "tags": [
+                    "contracts"
+                ],
+                "summary": "Get Clause Gaps",
+                "description": "Retrieve missing mandatory facts across all clauses in a contract.",
+                "operationId": "get_clause_gaps_contracts__document_id__clauses_gaps_get",
+                "parameters": [
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/GapResponse"
+                                    },
+                                    "title": "Response Get Clause Gaps Contracts  Document Id  Clauses Gaps Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/query/ask": {
+            "post": {
+                "tags": [
+                    "query"
+                ],
+                "summary": "Ask Question",
+                "description": "Ask a question about a specific contract.\n\nReturns an answer with:\n- Confidence label (speculative/low/moderate/high/very_high)\n- Full provenance chain with navigable document locations\n- Facts referenced in the answer\n- Generation time",
+                "operationId": "ask_question_query_ask_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QueryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QueryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces": {
+            "get": {
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "List Workspaces",
+                "description": "List all workspaces.",
+                "operationId": "list_workspaces_workspaces_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/WorkspaceResponse"
+                                    },
+                                    "type": "array",
+                                    "title": "Response List Workspaces Workspaces Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Create Workspace",
+                "description": "Create a new workspace.",
+                "operationId": "create_workspace_workspaces_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateWorkspaceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkspaceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspace_id}": {
+            "get": {
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Get Workspace",
+                "description": "Get workspace details including recent sessions.",
+                "operationId": "get_workspace_workspaces__workspace_id__get",
+                "parameters": [
+                    {
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Workspace Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkspaceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspace_id}/documents": {
+            "post": {
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Add Document To Workspace",
+                "description": "Add a document to a workspace.",
+                "operationId": "add_document_to_workspace_workspaces__workspace_id__documents_post",
+                "parameters": [
+                    {
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Workspace Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddDocumentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspace_id}/documents/{document_id}": {
+            "delete": {
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Remove Document From Workspace",
+                "description": "Remove a document from a workspace.",
+                "operationId": "remove_document_from_workspace_workspaces__workspace_id__documents__document_id__delete",
+                "parameters": [
+                    {
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Workspace Id"
+                        }
+                    },
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspace_id}/documents/{document_id}/check": {
+            "get": {
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Check Document Change",
+                "description": "Check if a document has changed since it was last indexed.\n\nCompares the current file hash against the stored hash. If changed,\nthe client should offer to re-parse the document.",
+                "operationId": "check_document_change_workspaces__workspace_id__documents__document_id__check_get",
+                "parameters": [
+                    {
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Workspace Id"
+                        }
+                    },
+                    {
+                        "name": "document_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Document Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentCheckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspace_id}/sessions": {
+            "get": {
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Get Workspace Sessions",
+                "description": "Get reasoning session history for a workspace.",
+                "operationId": "get_workspace_sessions_workspaces__workspace_id__sessions_get",
+                "parameters": [
+                    {
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Workspace Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SessionSummary"
+                                    },
+                                    "title": "Response Get Workspace Sessions Workspaces  Workspace Id  Sessions Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AddDocumentRequest": {
+                "properties": {
+                    "document_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Document Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "document_id"
+                ],
+                "title": "AddDocumentRequest"
+            },
+            "BindingResponse": {
+                "properties": {
+                    "binding_id": {
+                        "type": "string",
+                        "title": "Binding Id"
+                    },
+                    "binding_type": {
+                        "type": "string",
+                        "title": "Binding Type"
+                    },
+                    "term": {
+                        "type": "string",
+                        "title": "Term"
+                    },
+                    "resolves_to": {
+                        "type": "string",
+                        "title": "Resolves To"
+                    },
+                    "source_fact_id": {
+                        "type": "string",
+                        "title": "Source Fact Id"
+                    },
+                    "document_id": {
+                        "type": "string",
+                        "title": "Document Id"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "title": "Scope"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "binding_id",
+                    "binding_type",
+                    "term",
+                    "resolves_to",
+                    "source_fact_id",
+                    "document_id",
+                    "scope"
+                ],
+                "title": "BindingResponse",
+                "description": "A resolved binding."
+            },
+            "Body_upload_contract_contracts_upload_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_upload_contract_contracts_upload_post"
+            },
+            "ClauseResponse": {
+                "properties": {
+                    "clause_id": {
+                        "type": "string",
+                        "title": "Clause Id"
+                    },
+                    "clause_type": {
+                        "type": "string",
+                        "title": "Clause Type"
+                    },
+                    "heading": {
+                        "type": "string",
+                        "title": "Heading"
+                    },
+                    "section_number": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Section Number"
+                    },
+                    "cross_reference_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Cross Reference Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "clause_id",
+                    "clause_type",
+                    "heading"
+                ],
+                "title": "ClauseResponse",
+                "description": "A classified clause."
+            },
+            "ConfidenceDisplay": {
+                "properties": {
+                    "value": {
+                        "type": "number",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Value"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "color": {
+                        "type": "string",
+                        "title": "Color"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "value",
+                    "label",
+                    "color",
+                    "description"
+                ],
+                "title": "ConfidenceDisplay",
+                "description": "Human-readable confidence metadata for API responses."
+            },
+            "ConfigResponse": {
+                "properties": {
+                    "llm_provider": {
+                        "type": "string",
+                        "title": "Llm Provider"
+                    },
+                    "llm_model": {
+                        "type": "string",
+                        "title": "Llm Model"
+                    },
+                    "storage_backend": {
+                        "type": "string",
+                        "title": "Storage Backend"
+                    },
+                    "extraction_pipeline": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Extraction Pipeline"
+                    },
+                    "server_host": {
+                        "type": "string",
+                        "title": "Server Host"
+                    },
+                    "server_port": {
+                        "type": "integer",
+                        "title": "Server Port"
+                    },
+                    "version": {
+                        "type": "string",
+                        "title": "Version",
+                        "default": "0.1.0"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "llm_provider",
+                    "llm_model",
+                    "storage_backend",
+                    "extraction_pipeline",
+                    "server_host",
+                    "server_port"
+                ],
+                "title": "ConfigResponse",
+                "description": "Current configuration (non-sensitive)."
+            },
+            "ContractResponse": {
+                "properties": {
+                    "document_id": {
+                        "type": "string",
+                        "title": "Document Id"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    },
+                    "file_format": {
+                        "type": "string",
+                        "title": "File Format"
+                    },
+                    "parties": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Parties"
+                    },
+                    "page_count": {
+                        "type": "integer",
+                        "title": "Page Count"
+                    },
+                    "word_count": {
+                        "type": "integer",
+                        "title": "Word Count"
+                    },
+                    "fact_count": {
+                        "type": "integer",
+                        "title": "Fact Count",
+                        "default": 0
+                    },
+                    "clause_count": {
+                        "type": "integer",
+                        "title": "Clause Count",
+                        "default": 0
+                    },
+                    "binding_count": {
+                        "type": "integer",
+                        "title": "Binding Count",
+                        "default": 0
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "default": "indexed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "document_id",
+                    "title",
+                    "file_format",
+                    "parties",
+                    "page_count",
+                    "word_count"
+                ],
+                "title": "ContractResponse",
+                "description": "Response after uploading or retrieving a contract."
+            },
+            "CreateWorkspaceRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Name"
+                    },
+                    "settings": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Settings"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "CreateWorkspaceRequest"
+            },
+            "DocumentCheckResponse": {
+                "properties": {
+                    "document_id": {
+                        "type": "string",
+                        "title": "Document Id"
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "title": "File Path"
+                    },
+                    "changed": {
+                        "type": "boolean",
+                        "title": "Changed"
+                    },
+                    "current_hash": {
+                        "type": "string",
+                        "title": "Current Hash"
+                    },
+                    "previous_hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Previous Hash"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "document_id",
+                    "file_path",
+                    "changed",
+                    "current_hash",
+                    "message"
+                ],
+                "title": "DocumentCheckResponse"
+            },
+            "FactResponse": {
+                "properties": {
+                    "fact_id": {
+                        "type": "string",
+                        "title": "Fact Id"
+                    },
+                    "fact_type": {
+                        "type": "string",
+                        "title": "Fact Type"
+                    },
+                    "entity_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Entity Type"
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value"
+                    },
+                    "document_id": {
+                        "type": "string",
+                        "title": "Document Id"
+                    },
+                    "text_span": {
+                        "type": "string",
+                        "title": "Text Span"
+                    },
+                    "char_start": {
+                        "type": "integer",
+                        "title": "Char Start"
+                    },
+                    "char_end": {
+                        "type": "integer",
+                        "title": "Char End"
+                    },
+                    "location_hint": {
+                        "type": "string",
+                        "title": "Location Hint"
+                    },
+                    "structural_path": {
+                        "type": "string",
+                        "title": "Structural Path"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "fact_id",
+                    "fact_type",
+                    "value",
+                    "document_id",
+                    "text_span",
+                    "char_start",
+                    "char_end",
+                    "location_hint",
+                    "structural_path"
+                ],
+                "title": "FactResponse",
+                "description": "A single extracted fact."
+            },
+            "GapResponse": {
+                "properties": {
+                    "clause_id": {
+                        "type": "string",
+                        "title": "Clause Id"
+                    },
+                    "clause_type": {
+                        "type": "string",
+                        "title": "Clause Type"
+                    },
+                    "fact_spec_name": {
+                        "type": "string",
+                        "title": "Fact Spec Name"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "title": "Required"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "clause_id",
+                    "clause_type",
+                    "fact_spec_name",
+                    "required",
+                    "status"
+                ],
+                "title": "GapResponse",
+                "description": "A missing mandatory fact for a clause."
+            },
+            "GraphEdgeResponse": {
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "title": "Source"
+                    },
+                    "target": {
+                        "type": "string",
+                        "title": "Target"
+                    },
+                    "relationship": {
+                        "type": "string",
+                        "title": "Relationship"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "source",
+                    "target",
+                    "relationship"
+                ],
+                "title": "GraphEdgeResponse",
+                "description": "An edge in the TrustGraph context visualization."
+            },
+            "GraphNodeResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "metadata": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "type",
+                    "label"
+                ],
+                "title": "GraphNodeResponse",
+                "description": "A node in the TrustGraph context visualization."
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "HealthResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "service": {
+                        "type": "string",
+                        "title": "Service"
+                    },
+                    "version": {
+                        "type": "string",
+                        "title": "Version",
+                        "default": "0.1.0"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "service"
+                ],
+                "title": "HealthResponse",
+                "description": "Service health status."
+            },
+            "ProvenanceNodeResponse": {
+                "properties": {
+                    "node_type": {
+                        "type": "string",
+                        "title": "Node Type"
+                    },
+                    "reference_id": {
+                        "type": "string",
+                        "title": "Reference Id"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "title": "Summary"
+                    },
+                    "document_location": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Document Location"
+                    },
+                    "display_label": {
+                        "type": "string",
+                        "title": "Display Label"
+                    },
+                    "icon": {
+                        "type": "string",
+                        "title": "Icon"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "node_type",
+                    "reference_id",
+                    "summary",
+                    "display_label",
+                    "icon"
+                ],
+                "title": "ProvenanceNodeResponse",
+                "description": "A single provenance node in the response."
+            },
+            "ProvenanceResponse": {
+                "properties": {
+                    "nodes": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProvenanceNodeResponse"
+                        },
+                        "type": "array",
+                        "title": "Nodes"
+                    },
+                    "reasoning_summary": {
+                        "type": "string",
+                        "title": "Reasoning Summary"
+                    },
+                    "node_count": {
+                        "type": "integer",
+                        "title": "Node Count"
+                    },
+                    "has_facts": {
+                        "type": "boolean",
+                        "title": "Has Facts"
+                    },
+                    "has_inferences": {
+                        "type": "boolean",
+                        "title": "Has Inferences"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "nodes",
+                    "reasoning_summary",
+                    "node_count",
+                    "has_facts",
+                    "has_inferences"
+                ],
+                "title": "ProvenanceResponse",
+                "description": "Full provenance chain in the response."
+            },
+            "QueryRequest": {
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Question"
+                    },
+                    "document_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Document Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "question",
+                    "document_id"
+                ],
+                "title": "QueryRequest",
+                "description": "Request body for asking a question about a contract."
+            },
+            "QueryResponse": {
+                "properties": {
+                    "answer": {
+                        "type": "string",
+                        "title": "Answer"
+                    },
+                    "answer_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Answer Type"
+                    },
+                    "confidence": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ConfidenceDisplay"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "facts_referenced": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Facts Referenced"
+                    },
+                    "provenance": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ProvenanceResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "generation_time_ms": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Generation Time Ms"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "answer"
+                ],
+                "title": "QueryResponse",
+                "description": "Response to a contract question with full provenance."
+            },
+            "SessionSummary": {
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "title": "Session Id"
+                    },
+                    "query_text": {
+                        "type": "string",
+                        "title": "Query Text"
+                    },
+                    "answer": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Answer"
+                    },
+                    "answer_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Answer Type"
+                    },
+                    "confidence": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Confidence"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "started_at": {
+                        "type": "string",
+                        "title": "Started At"
+                    },
+                    "completed_at": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completed At"
+                    },
+                    "generation_time_ms": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Generation Time Ms"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "session_id",
+                    "query_text",
+                    "answer",
+                    "answer_type",
+                    "confidence",
+                    "status",
+                    "started_at",
+                    "completed_at",
+                    "generation_time_ms"
+                ],
+                "title": "SessionSummary"
+            },
+            "TrustGraphResponse": {
+                "properties": {
+                    "document_id": {
+                        "type": "string",
+                        "title": "Document Id"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    },
+                    "summary": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Summary"
+                    },
+                    "nodes": {
+                        "items": {
+                            "$ref": "#/components/schemas/GraphNodeResponse"
+                        },
+                        "type": "array",
+                        "title": "Nodes"
+                    },
+                    "edges": {
+                        "items": {
+                            "$ref": "#/components/schemas/GraphEdgeResponse"
+                        },
+                        "type": "array",
+                        "title": "Edges"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "document_id",
+                    "title",
+                    "summary",
+                    "nodes",
+                    "edges"
+                ],
+                "title": "TrustGraphResponse",
+                "description": "Full TrustGraph context for a document \u2014 nodes + edges."
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "WorkspaceResponse": {
+                "properties": {
+                    "workspace_id": {
+                        "type": "string",
+                        "title": "Workspace Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "indexed_documents": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Indexed Documents"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    },
+                    "last_accessed_at": {
+                        "type": "string",
+                        "title": "Last Accessed At"
+                    },
+                    "settings": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Settings"
+                    },
+                    "recent_sessions": {
+                        "items": {
+                            "$ref": "#/components/schemas/SessionSummary"
+                        },
+                        "type": "array",
+                        "title": "Recent Sessions"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "workspace_id",
+                    "name",
+                    "indexed_documents",
+                    "created_at",
+                    "last_accessed_at",
+                    "settings"
+                ],
+                "title": "WorkspaceResponse"
+            }
+        }
+    }
+}

@@ -156,10 +156,42 @@ contractos bindings doc-xxx
 
 ---
 
+## Demo Console (Browser-based)
+
+ContractOS includes a built-in interactive demo console — no Postman or external tools needed.
+
+### Launch
+
+```bash
+# Start the server
+ANTHROPIC_API_KEY="your-key" python -m uvicorn contractos.api.app:create_app \
+  --host 127.0.0.1 --port 8742 --factory
+
+# Open in browser
+open http://127.0.0.1:8742/demo/
+```
+
+The demo console provides:
+- **22 pre-built requests** covering the full API surface
+- **File upload** — drag & drop or click to select .docx / .pdf contracts
+- **Pre-built questions** — parties, termination, liability, confidentiality, governing law, etc.
+- **Custom questions** — type any question about the uploaded contract
+- **Auto-chaining** — upload a document and the `document_id` is automatically used by all subsequent requests
+- **Rich response display** — answers with confidence, provenance, TrustGraph summaries
+- **Live server status** — connection indicator in the header
+
+### Demo Flow
+
+1. Click **Health Check** to verify the server is running
+2. Click **Upload Contract** and select a `.docx` or `.pdf` file
+3. Explore: **Facts**, **Clauses**, **Bindings**, **Compliance Gaps**, **TrustGraph**
+4. Ask questions using the pre-built queries or type your own
+
+---
+
 ## Postman / Newman Integration Tests
 
-ContractOS ships with a comprehensive Postman collection for API integration testing,
-including LegalBench and CUAD benchmark document workflows.
+ContractOS also ships with a Postman collection for CLI-based API integration testing.
 
 ### Setup
 
@@ -181,13 +213,6 @@ npm install -g newman newman-reporter-htmlextra
 ./postman/run_integration_tests.sh --folder "0 — Health & Config"
 ./postman/run_integration_tests.sh --folder "5 — LegalBench Benchmark Queries"
 ```
-
-### Run via Postman GUI
-
-1. Import `postman/ContractOS.postman_collection.json`
-2. Import `postman/ContractOS.postman_environment.json`
-3. Start the server: `python -m uvicorn contractos.api.app:create_app --host 127.0.0.1 --port 8742 --factory`
-4. Run the collection folders in order (0 → 6)
 
 ### Collection Structure
 
