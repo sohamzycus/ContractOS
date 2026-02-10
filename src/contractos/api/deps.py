@@ -37,6 +37,8 @@ class AppState:
             from contractos.llm.provider import AnthropicProvider
 
             api_key = cfg.api_key or os.environ.get(cfg.api_key_env)
+            base_url = cfg.base_url or os.environ.get(cfg.base_url_env)
+            model = os.environ.get("ANTHROPIC_MODEL", cfg.model)
             if not api_key:
                 # Fallback to mock provider when no API key is available
                 import logging
@@ -46,7 +48,7 @@ class AppState:
                     "Set the environment variable or use provider: mock in config."
                 )
                 return MockLLMProvider()
-            return AnthropicProvider(api_key=api_key, model=cfg.model)
+            return AnthropicProvider(api_key=api_key, model=model, base_url=base_url)
         msg = f"Unknown LLM provider: {cfg.provider}"
         raise ValueError(msg)
 

@@ -14,6 +14,8 @@ class LLMConfig(BaseModel):
     model: str = "claude-sonnet-4-20250514"
     api_key: str | None = None
     api_key_env: str = "ANTHROPIC_API_KEY"
+    base_url: str | None = None
+    base_url_env: str = "ANTHROPIC_BASE_URL"
     max_tokens: int = 4096
     temperature: float = 0.1
 
