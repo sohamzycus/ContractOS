@@ -13,6 +13,7 @@ class TestFactType:
         expected = {
             "text_span", "entity", "clause", "table_cell",
             "heading", "metadata", "structural", "cross_reference",
+            "clause_text",
         }
         assert {t.value for t in FactType} == expected
 

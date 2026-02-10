@@ -19,6 +19,7 @@ class FactType(StrEnum):
     METADATA = "metadata"
     STRUCTURAL = "structural"
     CROSS_REFERENCE = "cross_reference"
+    CLAUSE_TEXT = "clause_text"
 
 
 class EntityType(StrEnum):
