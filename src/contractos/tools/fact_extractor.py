@@ -174,6 +174,10 @@ def extract_from_file(
     clause_texts = _get_clause_texts(parsed, clauses)
     for clause, clause_text in zip(clauses, clause_texts):
         xrefs = extract_cross_references(clause_text, clause.clause_id, clauses)
+        # Link cross-references to the clause's heading fact
+        for xref in xrefs:
+            if not xref.source_fact_id and clause.fact_id:
+                xref.source_fact_id = clause.fact_id
         clause.cross_reference_ids = [x.reference_id for x in xrefs]
         result.cross_references.extend(xrefs)
 

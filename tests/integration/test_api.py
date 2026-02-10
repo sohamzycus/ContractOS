@@ -1,8 +1,9 @@
-"""Integration tests for the ContractOS REST API."""
+"""Integration tests for the ContractOS REST API — full pipeline."""
 
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -10,6 +11,8 @@ from httpx import ASGITransport, AsyncClient
 from contractos.api.app import create_app
 from contractos.api.deps import init_state, shutdown_state
 from contractos.config import ContractOSConfig, LLMConfig, StorageConfig
+
+FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
@@ -31,7 +34,7 @@ async def client(test_config: ContractOSConfig):
     shutdown_state()
 
 
-# ── Health ─────────────────────────────────────────────────────────
+# ── Health + Config ────────────────────────────────────────────────
 
 
 class TestHealth:
@@ -43,34 +46,95 @@ class TestHealth:
         assert data["status"] == "ok"
         assert data["service"] == "contractos"
 
+    @pytest.mark.asyncio
+    async def test_config_returns_settings(self, client: AsyncClient) -> None:
+        resp = await client.get("/config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["llm_provider"] == "mock"
+        assert data["storage_backend"] == "sqlite"
+
+
+# ── Full Upload + Extraction Pipeline ──────────────────────────────
+
+
+class TestFullPipeline:
+    @pytest.mark.asyncio
+    async def test_upload_extract_query_pipeline(self, client: AsyncClient) -> None:
+        """End-to-end: upload docx → extract facts → query → get answer with provenance."""
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
+
+        # Step 1: Upload
+        upload_resp = await client.post(
+            "/contracts/upload",
+            files={"file": ("procurement.docx", io.BytesIO(content), "application/octet-stream")},
+        )
+        assert upload_resp.status_code == 201
+        upload_data = upload_resp.json()
+        doc_id = upload_data["document_id"]
+        assert upload_data["fact_count"] > 0
+        assert upload_data["status"] == "indexed"
+
+        # Step 2: Verify facts stored
+        facts_resp = await client.get(f"/contracts/{doc_id}/facts")
+        assert facts_resp.status_code == 200
+        facts = facts_resp.json()
+        assert len(facts) > 0
+
+        # Step 3: Verify clauses
+        clauses_resp = await client.get(f"/contracts/{doc_id}/clauses")
+        assert clauses_resp.status_code == 200
+
+        # Step 4: Verify bindings
+        bindings_resp = await client.get(f"/contracts/{doc_id}/bindings")
+        assert bindings_resp.status_code == 200
+
+        # Step 5: Verify gaps
+        gaps_resp = await client.get(f"/contracts/{doc_id}/clauses/gaps")
+        assert gaps_resp.status_code == 200
+
+        # Step 6: Query
+        query_resp = await client.post(
+            "/query/ask",
+            json={"question": "What are the payment terms?", "document_id": doc_id},
+        )
+        assert query_resp.status_code == 200
+        query_data = query_resp.json()
+        assert len(query_data["answer"]) > 0
+        assert query_data["confidence"] is not None
+        assert query_data["provenance"] is not None
+
+    @pytest.mark.asyncio
+    async def test_upload_pdf_extract_pipeline(self, client: AsyncClient) -> None:
+        """Upload PDF → extract → verify facts."""
+        pdf_path = FIXTURES_DIR / "simple_nda.pdf"
+        if not pdf_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = pdf_path.read_bytes()
+        upload_resp = await client.post(
+            "/contracts/upload",
+            files={"file": ("nda.pdf", io.BytesIO(content), "application/pdf")},
+        )
+        assert upload_resp.status_code == 201
+        data = upload_resp.json()
+        doc_id = data["document_id"]
+        assert data["fact_count"] > 0
+
+        # Verify retrieval
+        get_resp = await client.get(f"/contracts/{doc_id}")
+        assert get_resp.status_code == 200
+        assert get_resp.json()["fact_count"] > 0
+
 
 # ── Contract Upload ────────────────────────────────────────────────
 
 
 class TestContractUpload:
-    @pytest.mark.asyncio
-    async def test_upload_docx(self, client: AsyncClient) -> None:
-        content = b"fake docx content"
-        resp = await client.post(
-            "/contracts/upload",
-            files={"file": ("test_contract.docx", io.BytesIO(content), "application/octet-stream")},
-        )
-        assert resp.status_code == 201
-        data = resp.json()
-        assert data["document_id"].startswith("doc-")
-        assert data["title"] == "test_contract"
-        assert data["file_format"] == "docx"
-
-    @pytest.mark.asyncio
-    async def test_upload_pdf(self, client: AsyncClient) -> None:
-        content = b"fake pdf content"
-        resp = await client.post(
-            "/contracts/upload",
-            files={"file": ("agreement.pdf", io.BytesIO(content), "application/pdf")},
-        )
-        assert resp.status_code == 201
-        assert resp.json()["file_format"] == "pdf"
-
     @pytest.mark.asyncio
     async def test_upload_unsupported_format(self, client: AsyncClient) -> None:
         resp = await client.post(
@@ -81,55 +145,10 @@ class TestContractUpload:
         assert "Unsupported format" in resp.json()["detail"]
 
 
-# ── Contract Retrieval ─────────────────────────────────────────────
-
-
-class TestContractRetrieval:
-    @pytest.mark.asyncio
-    async def test_get_uploaded_contract(self, client: AsyncClient) -> None:
-        # Upload first
-        upload_resp = await client.post(
-            "/contracts/upload",
-            files={"file": ("test.docx", io.BytesIO(b"content"), "application/octet-stream")},
-        )
-        doc_id = upload_resp.json()["document_id"]
-
-        # Retrieve
-        resp = await client.get(f"/contracts/{doc_id}")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["document_id"] == doc_id
-        assert data["fact_count"] == 0
-
-    @pytest.mark.asyncio
-    async def test_get_nonexistent_contract(self, client: AsyncClient) -> None:
-        resp = await client.get("/contracts/no-such-doc")
-        assert resp.status_code == 404
-
-
 # ── Query ──────────────────────────────────────────────────────────
 
 
 class TestQuery:
-    @pytest.mark.asyncio
-    async def test_ask_returns_answer(self, client: AsyncClient) -> None:
-        # Upload a contract first
-        upload_resp = await client.post(
-            "/contracts/upload",
-            files={"file": ("test.docx", io.BytesIO(b"content"), "application/octet-stream")},
-        )
-        doc_id = upload_resp.json()["document_id"]
-
-        resp = await client.post(
-            "/query/ask",
-            json={"question": "What are the payment terms?", "document_id": doc_id},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data["answer"]) > 0
-        # No facts uploaded, so answer should indicate not found
-        assert data["answer_type"] == "not_found"
-
     @pytest.mark.asyncio
     async def test_ask_nonexistent_contract(self, client: AsyncClient) -> None:
         resp = await client.post(

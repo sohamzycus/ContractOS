@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 from contractos.agents.document_agent import DocumentAgent
 from contractos.api.deps import AppState, get_state
 from contractos.models.query import Query, QueryScope
+from contractos.tools.confidence import ConfidenceDisplay, confidence_label
+from contractos.tools.provenance_formatter import format_provenance_chain
 
 router = APIRouter(prefix="/query", tags=["query"])
 
@@ -22,14 +24,35 @@ class QueryRequest(BaseModel):
     document_id: str = Field(min_length=1)
 
 
+class ProvenanceNodeResponse(BaseModel):
+    """A single provenance node in the response."""
+
+    node_type: str
+    reference_id: str
+    summary: str
+    document_location: str | None = None
+    display_label: str
+    icon: str
+
+
+class ProvenanceResponse(BaseModel):
+    """Full provenance chain in the response."""
+
+    nodes: list[ProvenanceNodeResponse]
+    reasoning_summary: str
+    node_count: int
+    has_facts: bool
+    has_inferences: bool
+
+
 class QueryResponse(BaseModel):
-    """Response to a contract question."""
+    """Response to a contract question with full provenance."""
 
     answer: str
     answer_type: str | None = None
-    confidence: float | None = None
+    confidence: ConfidenceDisplay | None = None
     facts_referenced: list[str] = Field(default_factory=list)
-    reasoning_chain: str | None = None
+    provenance: ProvenanceResponse | None = None
     generation_time_ms: int | None = None
 
 
@@ -38,7 +61,14 @@ async def ask_question(
     request: QueryRequest,
     state: Annotated[AppState, Depends(get_state)],
 ) -> QueryResponse:
-    """Ask a question about a specific contract."""
+    """Ask a question about a specific contract.
+
+    Returns an answer with:
+    - Confidence label (speculative/low/moderate/high/very_high)
+    - Full provenance chain with navigable document locations
+    - Facts referenced in the answer
+    - Generation time
+    """
     contract = state.trust_graph.get_contract(request.document_id)
     if contract is None:
         raise HTTPException(
@@ -59,11 +89,23 @@ async def ask_question(
     agent = DocumentAgent(state.trust_graph, state.llm)
     result = await agent.answer(query)
 
+    # Format provenance for display
+    provenance_data = None
+    if result.provenance:
+        formatted = format_provenance_chain(result.provenance)
+        provenance_data = ProvenanceResponse(
+            nodes=[ProvenanceNodeResponse(**n) for n in formatted["nodes"]],
+            reasoning_summary=formatted["reasoning_summary"],
+            node_count=formatted["node_count"],
+            has_facts=formatted["has_facts"],
+            has_inferences=formatted["has_inferences"],
+        )
+
     return QueryResponse(
         answer=result.answer,
         answer_type=result.answer_type,
-        confidence=result.confidence,
+        confidence=confidence_label(result.confidence),
         facts_referenced=result.facts_referenced,
-        reasoning_chain=result.provenance.reasoning_summary if result.provenance else None,
+        provenance=provenance_data,
         generation_time_ms=result.generation_time_ms,
     )

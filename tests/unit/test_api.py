@@ -1,8 +1,9 @@
-"""Unit tests for the ContractOS API shell — health, contracts, query endpoints."""
+"""Unit tests for the ContractOS API — health, config, contracts, query endpoints."""
 
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -10,6 +11,8 @@ from httpx import ASGITransport, AsyncClient
 from contractos.api.app import create_app
 from contractos.api.deps import init_state, shutdown_state
 from contractos.config import ContractOSConfig, LLMConfig, StorageConfig
+
+FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
@@ -24,7 +27,6 @@ def test_config() -> ContractOSConfig:
 @pytest.fixture
 async def client(test_config: ContractOSConfig):
     """Async test client with the app fully initialised."""
-    # Manually init state so it's available before the first request
     init_state(test_config)
     app = create_app(test_config)
     transport = ASGITransport(app=app)
@@ -44,6 +46,30 @@ class TestHealthEndpoint:
         data = resp.json()
         assert data["status"] == "ok"
         assert data["service"] == "contractos"
+        assert data["version"] == "0.1.0"
+
+
+# ── Config ─────────────────────────────────────────────────────────
+
+
+class TestConfigEndpoint:
+    @pytest.mark.asyncio
+    async def test_config_returns_provider(self, client: AsyncClient) -> None:
+        resp = await client.get("/config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["llm_provider"] == "mock"
+        assert "llm_model" in data
+        assert data["storage_backend"] == "sqlite"
+        assert data["version"] == "0.1.0"
+
+    @pytest.mark.asyncio
+    async def test_config_no_api_key_exposed(self, client: AsyncClient) -> None:
+        resp = await client.get("/config")
+        data = resp.json()
+        # Ensure no sensitive fields leak
+        assert "api_key" not in data
+        assert "ANTHROPIC_API_KEY" not in str(data)
 
 
 # ── Contract Upload ────────────────────────────────────────────────
@@ -51,28 +77,41 @@ class TestHealthEndpoint:
 
 class TestContractUpload:
     @pytest.mark.asyncio
-    async def test_upload_docx(self, client: AsyncClient) -> None:
-        content = b"PK\x03\x04fake docx content"
+    async def test_upload_docx_with_extraction(self, client: AsyncClient) -> None:
+        """Upload a real docx fixture and verify extraction runs."""
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
         resp = await client.post(
             "/contracts/upload",
-            files={"file": ("test_contract.docx", io.BytesIO(content), "application/octet-stream")},
+            files={"file": ("simple_procurement.docx", io.BytesIO(content), "application/octet-stream")},
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["document_id"].startswith("doc-")
-        assert data["title"] == "test_contract"
+        assert data["title"] == "simple_procurement"
         assert data["file_format"] == "docx"
+        assert data["fact_count"] > 0, "Extraction should produce facts"
+        assert data["status"] == "indexed"
 
     @pytest.mark.asyncio
-    async def test_upload_pdf(self, client: AsyncClient) -> None:
-        content = b"%PDF-1.4 fake pdf content"
+    async def test_upload_pdf_with_extraction(self, client: AsyncClient) -> None:
+        """Upload a real pdf fixture and verify extraction runs."""
+        pdf_path = FIXTURES_DIR / "simple_nda.pdf"
+        if not pdf_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = pdf_path.read_bytes()
         resp = await client.post(
             "/contracts/upload",
-            files={"file": ("agreement.pdf", io.BytesIO(content), "application/pdf")},
+            files={"file": ("simple_nda.pdf", io.BytesIO(content), "application/pdf")},
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["file_format"] == "pdf"
+        assert data["fact_count"] > 0, "Extraction should produce facts"
 
     @pytest.mark.asyncio
     async def test_upload_unsupported_format_rejected(self, client: AsyncClient) -> None:
@@ -90,21 +129,24 @@ class TestContractUpload:
 class TestContractRetrieval:
     @pytest.mark.asyncio
     async def test_get_uploaded_contract(self, client: AsyncClient) -> None:
-        # Upload first
-        content = b"PK\x03\x04fake docx"
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
         upload_resp = await client.post(
             "/contracts/upload",
             files={"file": ("msa.docx", io.BytesIO(content), "application/octet-stream")},
         )
         doc_id = upload_resp.json()["document_id"]
 
-        # Retrieve
         resp = await client.get(f"/contracts/{doc_id}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["document_id"] == doc_id
-        assert data["title"] == "msa"
-        assert data["fact_count"] == 0
+        assert data["fact_count"] > 0
+        assert data["clause_count"] >= 0
+        assert data["binding_count"] >= 0
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_contract_404(self, client: AsyncClient) -> None:
@@ -112,14 +154,121 @@ class TestContractRetrieval:
         assert resp.status_code == 404
 
 
-# ── Query Endpoint (Phase 2 Stub) ─────────────────────────────────
+# ── Facts Endpoint ─────────────────────────────────────────────────
+
+
+class TestFactsEndpoint:
+    @pytest.mark.asyncio
+    async def test_get_facts_for_document(self, client: AsyncClient) -> None:
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
+        upload_resp = await client.post(
+            "/contracts/upload",
+            files={"file": ("test.docx", io.BytesIO(content), "application/octet-stream")},
+        )
+        doc_id = upload_resp.json()["document_id"]
+
+        resp = await client.get(f"/contracts/{doc_id}/facts")
+        assert resp.status_code == 200
+        facts = resp.json()
+        assert len(facts) > 0
+        assert "fact_id" in facts[0]
+        assert "value" in facts[0]
+        assert "location_hint" in facts[0]
+
+    @pytest.mark.asyncio
+    async def test_get_facts_nonexistent_404(self, client: AsyncClient) -> None:
+        resp = await client.get("/contracts/no-such/facts")
+        assert resp.status_code == 404
+
+
+# ── Clauses Endpoint ───────────────────────────────────────────────
+
+
+class TestClausesEndpoint:
+    @pytest.mark.asyncio
+    async def test_get_clauses_for_document(self, client: AsyncClient) -> None:
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
+        upload_resp = await client.post(
+            "/contracts/upload",
+            files={"file": ("test.docx", io.BytesIO(content), "application/octet-stream")},
+        )
+        doc_id = upload_resp.json()["document_id"]
+
+        resp = await client.get(f"/contracts/{doc_id}/clauses")
+        assert resp.status_code == 200
+        clauses = resp.json()
+        assert isinstance(clauses, list)
+        if clauses:
+            assert "clause_id" in clauses[0]
+            assert "clause_type" in clauses[0]
+            assert "heading" in clauses[0]
+
+
+# ── Bindings Endpoint ──────────────────────────────────────────────
+
+
+class TestBindingsEndpoint:
+    @pytest.mark.asyncio
+    async def test_get_bindings_for_document(self, client: AsyncClient) -> None:
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
+        upload_resp = await client.post(
+            "/contracts/upload",
+            files={"file": ("test.docx", io.BytesIO(content), "application/octet-stream")},
+        )
+        doc_id = upload_resp.json()["document_id"]
+
+        resp = await client.get(f"/contracts/{doc_id}/bindings")
+        assert resp.status_code == 200
+        bindings = resp.json()
+        assert isinstance(bindings, list)
+
+
+# ── Clause Gaps Endpoint ───────────────────────────────────────────
+
+
+class TestClauseGapsEndpoint:
+    @pytest.mark.asyncio
+    async def test_get_gaps_for_document(self, client: AsyncClient) -> None:
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
+        upload_resp = await client.post(
+            "/contracts/upload",
+            files={"file": ("test.docx", io.BytesIO(content), "application/octet-stream")},
+        )
+        doc_id = upload_resp.json()["document_id"]
+
+        resp = await client.get(f"/contracts/{doc_id}/clauses/gaps")
+        assert resp.status_code == 200
+        gaps = resp.json()
+        assert isinstance(gaps, list)
+
+
+# ── Query Endpoint ─────────────────────────────────────────────────
 
 
 class TestQueryEndpoint:
     @pytest.mark.asyncio
-    async def test_ask_returns_answer(self, client: AsyncClient) -> None:
-        # Upload a contract first
-        content = b"PK\x03\x04fake"
+    async def test_ask_returns_answer_with_provenance(self, client: AsyncClient) -> None:
+        docx_path = FIXTURES_DIR / "simple_procurement.docx"
+        if not docx_path.exists():
+            pytest.skip("Test fixture not found")
+
+        content = docx_path.read_bytes()
         upload_resp = await client.post(
             "/contracts/upload",
             files={"file": ("test.docx", io.BytesIO(content), "application/octet-stream")},
@@ -133,8 +282,13 @@ class TestQueryEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["answer"]) > 0
-        # No facts uploaded, so answer should indicate not found
-        assert data["answer_type"] == "not_found"
+        # Should have confidence display
+        assert data["confidence"] is not None
+        assert "label" in data["confidence"]
+        assert "color" in data["confidence"]
+        # Should have provenance
+        assert data["provenance"] is not None
+        assert data["provenance"]["node_count"] >= 1
 
     @pytest.mark.asyncio
     async def test_ask_nonexistent_contract_404(self, client: AsyncClient) -> None:
