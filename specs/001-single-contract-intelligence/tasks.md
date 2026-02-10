@@ -245,35 +245,40 @@
 
 ---
 
-## Phase 7: User Story 5 — Workspace Persistence (P2)
+## Phase 7: User Story 5 — Workspace Persistence (P2) ✅ COMPLETE
 
 **Goal**: Documents and sessions persist across restarts. Previously parsed documents load instantly.
+**Commit**: `30c26d7` — feat: implement Phase 7 — workspace persistence, session history, change detection
+**Tests**: 43 new tests (421 total passing)
 
-**Independent Test**: Parse a document, restart server, verify facts load from TrustGraph without re-parsing.
+### Unit Tests — ✅ Written and Passing
 
-### Unit Tests (write FIRST)
+- [x] T102 [P] [US5] Document change detection tests (11 tests) in `tests/unit/test_change_detection.py` — SHA-256 hashing, determinism, change detection, edge cases
+- [x] T103 [P] [US5] Workspace document association tests (8 tests) in `tests/unit/test_workspace_documents.py` — add/remove documents, cross-workspace isolation, idempotency
 
-- [ ] T102 [P] [US5] Write unit test for document change detection in `tests/unit/test_change_detection.py` — compute file hash; modify file; verify hash mismatch detected; verify same file produces same hash
-- [ ] T103 [P] [US5] Write unit test for workspace document association in `tests/unit/test_workspace_documents.py` — add document to workspace; remove document; list documents; verify document appears in only associated workspaces
+### Integration Tests — ✅ Written and Passing
 
-### Integration Tests (write FIRST)
+- [x] T104 [P] [US5] Workspace persistence integration test (3 tests) in `tests/integration/test_workspace_persistence.py` — full cycle: index → workspace → session → restart → verify persistence; multi-document; change detection
+- [x] T105 [P] [US5] Session history integration test (8 tests) in `tests/integration/test_session_history.py` — 5 sessions, reverse chronological order, completeness, generation times
 
-- [ ] T104 [P] [US5] Write integration test for workspace persistence in `tests/integration/test_workspace_persistence.py` — index document → create workspace → add document → create reasoning session → "restart" (close and recreate TrustGraph/WorkspaceStore from same SQLite file) → verify all data persists: facts, bindings, clauses, workspace, sessions
-- [ ] T105 [P] [US5] Write integration test for session history in `tests/integration/test_session_history.py` — create 5 reasoning sessions → retrieve workspace → verify sessions listed in reverse chronological order with query text and answer summary
+### Contract Tests — ✅ Written and Passing
 
-### Contract Tests (write FIRST)
+- [x] T106 [P] [US5] Workspace API contract tests (13 tests) in `tests/contract/test_workspace_api.py` — POST/GET /workspaces, document association, session history, 404 error cases
 
-- [ ] T106 [P] [US5] Write contract tests for workspace API in `tests/contract/test_workspace_api.py` — `POST /workspaces` creates workspace; `GET /workspaces/{id}` returns workspace with indexed_documents and recent_sessions; verify document-workspace association endpoints; error cases: workspace not found (404)
+### Implementation — ✅ Complete
 
-### Implementation
+- [x] T107 [US5] Workspace endpoints in `src/contractos/api/routes/workspace.py` — POST /workspaces, GET /workspaces/{id}, GET /workspaces
+- [x] T108 [US5] Document-workspace association — POST/DELETE /workspaces/{id}/documents, remove_document_from_workspace in WorkspaceStore
+- [x] T109 [US5] Session history — GET /workspaces/{id}/sessions, recent_sessions in workspace response
+- [x] T110 [US5] Document change detection — GET /workspaces/{id}/documents/{doc_id}/check, compute_file_hash, detect_change in `src/contractos/tools/change_detection.py`
+- [x] T111 [US5] Session retrieval by workspace — GET /workspaces/{id} includes recent_sessions (last 20)
 
-- [ ] T107 [US5] Implement workspace endpoints — `POST /workspaces`, `GET /workspaces/{id}` in `src/contractos/api/routes/workspace.py`
-- [ ] T108 [US5] Implement document-workspace association — add/remove documents to workspace, list workspace contents
-- [ ] T109 [US5] Implement reasoning session history — store completed sessions, list recent sessions per workspace
-- [ ] T110 [US5] Implement document change detection — compare file_hash on open; if changed, offer re-parse
-- [ ] T111 [US5] Implement session retrieval by workspace — `GET /workspaces/{id}` includes recent_sessions per copilot-api.md
+### Additional Implementation
 
-**Checkpoint**: All US5 tests pass. Workspace persistence works. Restarting the server retains all indexed data and session history.
+- [x] T139 [US1] Clause body text extraction — new CLAUSE_TEXT fact type captures full paragraph text within clauses
+- [x] T140 Complex real-world procurement fixtures — `complex_it_outsourcing.docx` ($47.5M, 18 sections) and `complex_procurement_framework.pdf` (GBP 85M, 15 sections)
+
+**Checkpoint**: ✅ All US5 tests pass. Workspace persistence works. Restarting the server retains all indexed data and session history. 421 tests passing.
 
 ---
 
