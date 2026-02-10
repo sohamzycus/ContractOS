@@ -1,0 +1,28 @@
+# ContractOS Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2026-02-09
+
+## Active Technologies
+
+[EXTRACTED FROM ALL PLAN.MD FILES]
+
+## Project Structure
+
+```text
+[ACTUAL STRUCTURE FROM PLANS]
+```
+
+## Commands
+
+cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] pytest [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] ruff check .
+
+## Code Style
+
+[LANGUAGE-SPECIFIC, ONLY FOR LANGUAGES IN USE]
+
+## Recent Changes
+
+[LAST 3 FEATURES AND WHAT THEY ADDED]
+
+ 
+ 
