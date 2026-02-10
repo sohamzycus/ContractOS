@@ -1,1331 +1,1031 @@
 {
-  "info": {
-    "_postman_id": "contractos-api-v1",
-    "name": "ContractOS API — Full Integration Suite",
-    "description": "Complete API collection for ContractOS contract intelligence platform.\n\nIncludes:\n- Health & Config checks\n- Contract upload, retrieval, facts, clauses, bindings, gaps, graph\n- Q&A with provenance\n- Workspace CRUD, document association, session history, change detection\n- LegalBench / CUAD benchmark document workflows\n\n## How to Run\n\n1. Start the server: `python -m uvicorn contractos.api.app:create_app --host 127.0.0.1 --port 8742 --factory`\n2. Import this collection + environment into Postman\n3. Run the \"Full Integration Workflow\" folder in order\n\nOr use Newman CLI:\n```bash\nnewman run postman/ContractOS.postman_collection.json \\\n  -e postman/ContractOS.postman_environment.json \\\n  --reporters cli,json --reporter-json-export postman/results.json\n```",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    { "key": "base_url", "value": "http://127.0.0.1:8742" }
-  ],
-  "item": [
-    {
-      "name": "0 — Health & Config",
-      "item": [
-        {
-          "name": "Health Check",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Service is ok', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.status).to.eql('ok');",
-                  "  pm.expect(body.service).to.eql('contractos');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
-          }
-        },
-        {
-          "name": "Get Config",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Config has required fields', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('llm_provider');",
-                  "  pm.expect(body).to.have.property('llm_model');",
-                  "  pm.expect(body).to.have.property('storage_backend');",
-                  "  pm.expect(body).to.have.property('extraction_pipeline');",
-                  "  pm.expect(body.extraction_pipeline).to.be.an('array');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/config", "host": ["{{base_url}}"], "path": ["config"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "1 — Contract Upload & Indexing",
-      "item": [
-        {
-          "name": "Upload DOCX (Simple Procurement)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Contract indexed successfully', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.document_id).to.match(/^doc-/);",
-                  "  pm.expect(body.file_format).to.eql('docx');",
-                  "  pm.expect(body.status).to.eql('indexed');",
-                  "  pm.expect(body.fact_count).to.be.above(0);",
-                  "  pm.expect(body.clause_count).to.be.above(0);",
-                  "  pm.expect(body.word_count).to.be.above(0);",
-                  "  // Save document_id for downstream requests",
-                  "  pm.environment.set('document_id', body.document_id);",
-                  "  pm.environment.set('docx_document_id', body.document_id);",
-                  "  console.log('Indexed DOCX:', body.document_id, '| Facts:', body.fact_count, '| Clauses:', body.clause_count);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "{{docx_fixture}}"
-                }
-              ]
-            },
-            "url": { "raw": "{{base_url}}/contracts/upload", "host": ["{{base_url}}"], "path": ["contracts", "upload"] }
-          }
-        },
-        {
-          "name": "Upload PDF (Simple NDA)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('PDF indexed', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.file_format).to.eql('pdf');",
-                  "  pm.expect(body.status).to.eql('indexed');",
-                  "  pm.environment.set('pdf_document_id', body.document_id);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "{{pdf_fixture}}"
-                }
-              ]
-            },
-            "url": { "raw": "{{base_url}}/contracts/upload", "host": ["{{base_url}}"], "path": ["contracts", "upload"] }
-          }
-        },
-        {
-          "name": "Upload Complex DOCX (IT Outsourcing $47.5M)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Complex DOCX indexed with rich extraction', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.status).to.eql('indexed');",
-                  "  pm.expect(body.fact_count).to.be.above(50);",
-                  "  pm.expect(body.clause_count).to.be.above(5);",
-                  "  pm.environment.set('complex_docx_id', body.document_id);",
-                  "  console.log('Complex DOCX:', body.fact_count, 'facts,', body.clause_count, 'clauses,', body.binding_count, 'bindings');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                { "key": "file", "type": "file", "src": "{{complex_docx_fixture}}" }
-              ]
-            },
-            "url": { "raw": "{{base_url}}/contracts/upload", "host": ["{{base_url}}"], "path": ["contracts", "upload"] }
-          }
-        },
-        {
-          "name": "Upload Complex PDF (Procurement Framework £85M)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Complex PDF indexed', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.status).to.eql('indexed');",
-                  "  pm.environment.set('complex_pdf_id', body.document_id);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                { "key": "file", "type": "file", "src": "{{complex_pdf_fixture}}" }
-              ]
-            },
-            "url": { "raw": "{{base_url}}/contracts/upload", "host": ["{{base_url}}"], "path": ["contracts", "upload"] }
-          }
-        },
-        {
-          "name": "Upload LegalBench NDA",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('LegalBench NDA indexed', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.status).to.eql('indexed');",
-                  "  pm.environment.set('legalbench_nda_id', body.document_id);",
-                  "  console.log('LegalBench NDA:', body.fact_count, 'facts,', body.clause_count, 'clauses');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                { "key": "file", "type": "file", "src": "{{legalbench_nda_fixture}}" }
-              ]
-            },
-            "url": { "raw": "{{base_url}}/contracts/upload", "host": ["{{base_url}}"], "path": ["contracts", "upload"] }
-          }
-        },
-        {
-          "name": "Upload CUAD License Agreement",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('CUAD License Agreement indexed', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.status).to.eql('indexed');",
-                  "  pm.environment.set('cuad_license_id', body.document_id);",
-                  "  console.log('CUAD License:', body.fact_count, 'facts,', body.clause_count, 'clauses');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                { "key": "file", "type": "file", "src": "{{cuad_license_fixture}}" }
-              ]
-            },
-            "url": { "raw": "{{base_url}}/contracts/upload", "host": ["{{base_url}}"], "path": ["contracts", "upload"] }
-          }
-        },
-        {
-          "name": "Upload Unsupported Format → 400",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 400 for unsupported format', () => pm.response.to.have.status(400));",
-                  "pm.test('Error message mentions format', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.detail).to.include('Unsupported format');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "// This test sends a .txt file to verify rejection"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "README.md",
-                  "description": "Intentionally wrong format"
-                }
-              ]
-            },
-            "url": { "raw": "{{base_url}}/contracts/upload", "host": ["{{base_url}}"], "path": ["contracts", "upload"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "2 — Contract Retrieval & Exploration",
-      "item": [
-        {
-          "name": "Get Contract Metadata",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Contract metadata is complete', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.document_id).to.eql(pm.environment.get('document_id'));",
-                  "  pm.expect(body).to.have.property('title');",
-                  "  pm.expect(body).to.have.property('file_format');",
-                  "  pm.expect(body).to.have.property('parties');",
-                  "  pm.expect(body).to.have.property('fact_count');",
-                  "  pm.expect(body).to.have.property('clause_count');",
-                  "  pm.expect(body).to.have.property('binding_count');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/{{document_id}}", "host": ["{{base_url}}"], "path": ["contracts", "{{document_id}}"] }
-          }
-        },
-        {
-          "name": "Get Contract → 404",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 404 for nonexistent doc', () => pm.response.to.have.status(404));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/doc-nonexistent", "host": ["{{base_url}}"], "path": ["contracts", "doc-nonexistent"] }
-          }
-        },
-        {
-          "name": "Get Facts (all)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Facts returned as array', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.be.an('array');",
-                  "  pm.expect(body.length).to.be.above(0);",
-                  "  // Validate fact structure",
-                  "  const f = body[0];",
-                  "  pm.expect(f).to.have.property('fact_id');",
-                  "  pm.expect(f).to.have.property('fact_type');",
-                  "  pm.expect(f).to.have.property('value');",
-                  "  pm.expect(f).to.have.property('text_span');",
-                  "  pm.expect(f).to.have.property('char_start');",
-                  "  pm.expect(f).to.have.property('char_end');",
-                  "  pm.expect(f).to.have.property('location_hint');",
-                  "  console.log('Total facts:', body.length);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/{{document_id}}/facts", "host": ["{{base_url}}"], "path": ["contracts", "{{document_id}}", "facts"] }
-          }
-        },
-        {
-          "name": "Get Facts (filtered by type: entity)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('All returned facts are entity type', () => {",
-                  "  const body = pm.response.json();",
-                  "  body.forEach(f => pm.expect(f.fact_type).to.eql('entity'));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/contracts/{{document_id}}/facts?fact_type=entity",
-              "host": ["{{base_url}}"],
-              "path": ["contracts", "{{document_id}}", "facts"],
-              "query": [{ "key": "fact_type", "value": "entity" }]
-            }
-          }
-        },
-        {
-          "name": "Get Facts (paginated: limit=5, offset=0)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Pagination returns at most 5 facts', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.length).to.be.at.most(5);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/contracts/{{document_id}}/facts?limit=5&offset=0",
-              "host": ["{{base_url}}"],
-              "path": ["contracts", "{{document_id}}", "facts"],
-              "query": [
-                { "key": "limit", "value": "5" },
-                { "key": "offset", "value": "0" }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Clauses",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Clauses returned with types', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.be.an('array');",
-                  "  pm.expect(body.length).to.be.above(0);",
-                  "  const c = body[0];",
-                  "  pm.expect(c).to.have.property('clause_id');",
-                  "  pm.expect(c).to.have.property('clause_type');",
-                  "  pm.expect(c).to.have.property('heading');",
-                  "  console.log('Clause types:', [...new Set(body.map(c => c.clause_type))].join(', '));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/{{document_id}}/clauses", "host": ["{{base_url}}"], "path": ["contracts", "{{document_id}}", "clauses"] }
-          }
-        },
-        {
-          "name": "Get Clauses (filtered: termination)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Only termination clauses returned', () => {",
-                  "  const body = pm.response.json();",
-                  "  body.forEach(c => pm.expect(c.clause_type).to.eql('termination'));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/contracts/{{document_id}}/clauses?clause_type=termination",
-              "host": ["{{base_url}}"],
-              "path": ["contracts", "{{document_id}}", "clauses"],
-              "query": [{ "key": "clause_type", "value": "termination" }]
-            }
-          }
-        },
-        {
-          "name": "Get Bindings",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Bindings have required fields', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.be.an('array');",
-                  "  if (body.length > 0) {",
-                  "    const b = body[0];",
-                  "    pm.expect(b).to.have.property('binding_id');",
-                  "    pm.expect(b).to.have.property('binding_type');",
-                  "    pm.expect(b).to.have.property('term');",
-                  "    pm.expect(b).to.have.property('resolves_to');",
-                  "  }",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/{{document_id}}/bindings", "host": ["{{base_url}}"], "path": ["contracts", "{{document_id}}", "bindings"] }
-          }
-        },
-        {
-          "name": "Get Clause Gaps (Missing Mandatory Facts)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Gaps response is array', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.be.an('array');",
-                  "  if (body.length > 0) {",
-                  "    const g = body[0];",
-                  "    pm.expect(g).to.have.property('clause_id');",
-                  "    pm.expect(g).to.have.property('clause_type');",
-                  "    pm.expect(g).to.have.property('fact_spec_name');",
-                  "    pm.expect(g).to.have.property('required');",
-                  "    pm.expect(g).to.have.property('status');",
-                  "  }",
-                  "  console.log('Missing mandatory facts:', body.length);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/{{document_id}}/clauses/gaps", "host": ["{{base_url}}"], "path": ["contracts", "{{document_id}}", "clauses", "gaps"] }
-          }
-        },
-        {
-          "name": "Get TrustGraph Visualization",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Graph has nodes and edges', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('document_id');",
-                  "  pm.expect(body).to.have.property('title');",
-                  "  pm.expect(body).to.have.property('summary');",
-                  "  pm.expect(body).to.have.property('nodes');",
-                  "  pm.expect(body).to.have.property('edges');",
-                  "  pm.expect(body.nodes).to.be.an('array');",
-                  "  pm.expect(body.edges).to.be.an('array');",
-                  "  pm.expect(body.nodes.length).to.be.above(0);",
-                  "  pm.expect(body.edges.length).to.be.above(0);",
-                  "  // Verify node types",
-                  "  const nodeTypes = [...new Set(body.nodes.map(n => n.type))];",
-                  "  pm.expect(nodeTypes).to.include('contract');",
-                  "  pm.expect(nodeTypes).to.include('fact');",
-                  "  console.log('Graph:', body.nodes.length, 'nodes,', body.edges.length, 'edges');",
-                  "  console.log('Summary:', JSON.stringify(body.summary));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/{{document_id}}/graph", "host": ["{{base_url}}"], "path": ["contracts", "{{document_id}}", "graph"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "3 — Q&A with Provenance",
-      "item": [
-        {
-          "name": "Ask: Who are the parties?",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Answer has provenance', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('answer');",
-                  "  pm.expect(body.answer.length).to.be.above(0);",
-                  "  pm.expect(body).to.have.property('confidence');",
-                  "  if (body.confidence) {",
-                  "    pm.expect(body.confidence).to.have.property('label');",
-                  "    pm.expect(body.confidence).to.have.property('score');",
-                  "  }",
-                  "  if (body.provenance) {",
-                  "    pm.expect(body.provenance).to.have.property('nodes');",
-                  "    pm.expect(body.provenance).to.have.property('reasoning_summary');",
-                  "  }",
-                  "  console.log('Answer:', body.answer.substring(0, 200));",
-                  "  console.log('Confidence:', body.confidence ? body.confidence.label : 'N/A');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"Who are the parties to this contract?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "Ask: What is the contract value?",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Answer returned', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.answer.length).to.be.above(0);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What is the total contract value or price?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "Ask: Termination conditions?",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Answer discusses termination', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.answer.length).to.be.above(0);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What are the termination conditions and notice period?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "Ask: Governing law?",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What is the governing law and jurisdiction?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "Ask: Nonexistent doc → 404",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"Who are the parties?\",\n  \"document_id\": \"doc-nonexistent\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "4 — Workspace Management",
-      "item": [
-        {
-          "name": "Create Workspace",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Workspace created', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.workspace_id).to.match(/^w-/);",
-                  "  pm.expect(body.name).to.eql('Procurement Review');",
-                  "  pm.expect(body.indexed_documents).to.be.an('array').that.is.empty;",
-                  "  pm.environment.set('workspace_id', body.workspace_id);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Procurement Review\",\n  \"settings\": {\n    \"default_llm\": \"claude-sonnet\",\n    \"confidence_threshold\": 0.7\n  }\n}"
-            },
-            "url": { "raw": "{{base_url}}/workspaces", "host": ["{{base_url}}"], "path": ["workspaces"] }
-          }
-        },
-        {
-          "name": "List Workspaces",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('At least one workspace', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.be.an('array');",
-                  "  pm.expect(body.length).to.be.above(0);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/workspaces", "host": ["{{base_url}}"], "path": ["workspaces"] }
-          }
-        },
-        {
-          "name": "Get Workspace",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Workspace details correct', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.workspace_id).to.eql(pm.environment.get('workspace_id'));",
-                  "  pm.expect(body.name).to.eql('Procurement Review');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/workspaces/{{workspace_id}}", "host": ["{{base_url}}"], "path": ["workspaces", "{{workspace_id}}"] }
-          }
-        },
-        {
-          "name": "Add Document to Workspace",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/workspaces/{{workspace_id}}/documents", "host": ["{{base_url}}"], "path": ["workspaces", "{{workspace_id}}", "documents"] }
-          }
-        },
-        {
-          "name": "Verify Document in Workspace",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Document is associated', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.indexed_documents).to.include(pm.environment.get('document_id'));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/workspaces/{{workspace_id}}", "host": ["{{base_url}}"], "path": ["workspaces", "{{workspace_id}}"] }
-          }
-        },
-        {
-          "name": "Remove Document from Workspace",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": { "raw": "{{base_url}}/workspaces/{{workspace_id}}/documents/{{document_id}}", "host": ["{{base_url}}"], "path": ["workspaces", "{{workspace_id}}", "documents", "{{document_id}}"] }
-          }
-        },
-        {
-          "name": "Re-add Document (for session tests)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/workspaces/{{workspace_id}}/documents", "host": ["{{base_url}}"], "path": ["workspaces", "{{workspace_id}}", "documents"] }
-          }
-        },
-        {
-          "name": "Get Session History",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Sessions is array', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.be.an('array');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/workspaces/{{workspace_id}}/sessions", "host": ["{{base_url}}"], "path": ["workspaces", "{{workspace_id}}", "sessions"] }
-          }
-        },
-        {
-          "name": "Get Workspace → 404",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/workspaces/w-nonexistent", "host": ["{{base_url}}"], "path": ["workspaces", "w-nonexistent"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "5 — LegalBench Benchmark Queries",
-      "description": "Queries modeled after LegalBench benchmark categories:\n- contract_nli (Natural Language Inference)\n- cuad (Contract Understanding Atticus Dataset)\n- consumer_contracts_qa\n- definition_classification\n\nThese test ContractOS's ability to handle real legal reasoning tasks.",
-      "item": [
-        {
-          "name": "[CUAD] Termination for Convenience",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Answer addresses termination', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.answer.length).to.be.above(10);",
-                  "  console.log('[CUAD termination_for_convenience]', body.answer.substring(0, 200));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"Can either party terminate this agreement for convenience without cause? If so, what is the required notice period?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[CUAD] Cap on Liability",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Answer addresses liability', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.answer.length).to.be.above(10);",
-                  "  console.log('[CUAD cap_on_liability]', body.answer.substring(0, 200));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"Is there a cap on liability? What is the maximum liability amount or formula?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[CUAD] Governing Law",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "console.log('[CUAD governing_law]', pm.response.json().answer.substring(0, 200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What is the governing law of this agreement? Which jurisdiction applies?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[CUAD] Insurance Requirements",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "console.log('[CUAD insurance]', pm.response.json().answer.substring(0, 200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"Are there any insurance requirements in this contract? What types and minimum amounts?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Contract NLI] Confidentiality Scope",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "console.log('[NLI confidentiality]', pm.response.json().answer.substring(0, 200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"Does this contract contain confidentiality obligations? What information is considered confidential and what are the exceptions?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Contract NLI] Survival of Obligations",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "console.log('[NLI survival]', pm.response.json().answer.substring(0, 200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"Which obligations survive termination or expiration of this agreement?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Contract QA] Effective Date & Duration",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "console.log('[QA effective_date]', pm.response.json().answer.substring(0, 200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What is the effective date and duration of this contract? When does it expire?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Definition] Entity Alias Resolution",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "console.log('[Definition alias]', pm.response.json().answer.substring(0, 200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"List all defined terms and their definitions in this contract. Who is referred to as 'Buyer', 'Seller', 'Service Provider', or similar aliases?\",\n  \"document_id\": \"{{document_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "6 — Complex Document Deep Dive",
-      "description": "Advanced queries against the complex IT Outsourcing and Procurement Framework documents — testing multi-section reasoning, cross-reference resolution, and inference chains.",
-      "item": [
-        {
-          "name": "[Complex DOCX] SLA Penalties",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "console.log('[Complex] SLA:', pm.response.json().answer.substring(0, 300));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What are the SLA targets and what penalties apply if they are not met?\",\n  \"document_id\": \"{{complex_docx_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Complex DOCX] Data Protection Obligations",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What data protection and GDPR obligations does the service provider have? What happens in case of a data breach?\",\n  \"document_id\": \"{{complex_docx_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Complex DOCX] Price Escalation",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What is the price escalation mechanism? What is the maximum annual increase allowed?\",\n  \"document_id\": \"{{complex_docx_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Complex DOCX] TrustGraph",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Rich graph for complex doc', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.nodes.length).to.be.above(100);",
-                  "  pm.expect(body.edges.length).to.be.above(100);",
-                  "  console.log('Complex DOCX graph:', body.nodes.length, 'nodes,', body.edges.length, 'edges');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{base_url}}/contracts/{{complex_docx_id}}/graph", "host": ["{{base_url}}"], "path": ["contracts", "{{complex_docx_id}}", "graph"] }
-          }
-        },
-        {
-          "name": "[Complex PDF] Volume Discounts",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What are the volume discount tiers and percentages?\",\n  \"document_id\": \"{{complex_pdf_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        },
-        {
-          "name": "[Complex PDF] Liquidated Damages",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What are the liquidated damages provisions? What triggers them and what are the amounts?\",\n  \"document_id\": \"{{complex_pdf_id}}\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/query/ask", "host": ["{{base_url}}"], "path": ["query", "ask"] }
-          }
-        }
-      ]
-    }
-  ]
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "ContractOS — Demo & Integration Suite",
+		"description": "# ContractOS API Demo\n\nInteractive demo collection for the ContractOS contract intelligence platform.\n\n## Quick Start\n\n1. Start the server:\n```\npython -m uvicorn contractos.api.app:create_app --host 127.0.0.1 --port 8742 --factory\n```\n\n2. Run **Step 1: Health Check** to verify the server is running\n3. Run **Step 2: Upload** to load a contract document\n4. Run **Step 3+** to explore facts, clauses, and ask questions\n\n## Demo Flow\n\n```\nHealth Check → Upload Document → Explore Extraction → Ask Questions → TrustGraph\n```\n\nThe `document_id` is automatically chained between requests.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Demo Flow — Start Here",
+			"item": [
+				{
+					"name": "Step 1 — Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Server is running', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    pm.expect(body.status).to.eql('ok');",
+									"    pm.expect(body.service).to.eql('contractos');",
+									"    console.log('✅ ContractOS server is running — version ' + body.version);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Verify the ContractOS server is running before starting the demo."
+					},
+					"response": []
+				},
+				{
+					"name": "Step 2 — Upload Contract (DOCX)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Contract uploaded and indexed', function () {",
+									"    pm.response.to.have.status(201);",
+									"    var body = pm.response.json();",
+									"    pm.expect(body.document_id).to.match(/^doc-/);",
+									"    pm.expect(body.status).to.eql('indexed');",
+									"    ",
+									"    // Save document_id for all subsequent requests",
+									"    pm.collectionVariables.set('document_id', body.document_id);",
+									"    ",
+									"    console.log('📄 Document indexed: ' + body.document_id);",
+									"    console.log('   Title: ' + body.title);",
+									"    console.log('   Format: ' + body.file_format);",
+									"    console.log('   Facts extracted: ' + body.fact_count);",
+									"    console.log('   Clauses classified: ' + body.clause_count);",
+									"    console.log('   Bindings resolved: ' + body.binding_count);",
+									"    console.log('   Word count: ' + body.word_count);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"description": "Select a .docx or .pdf contract file from your computer",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/contracts/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contracts",
+								"upload"
+							]
+						},
+						"description": "Upload a contract document (.docx or .pdf) for indexing.\n\n**How to use:**\n1. Click on the **Body** tab below\n2. Click **Select Files** next to the `file` field\n3. Choose a .docx or .pdf file from your computer\n4. Click **Send**\n\nThe extraction pipeline will:\n- Parse the document structure\n- Extract facts (entities, dates, amounts, durations)\n- Classify clauses (payment, termination, confidentiality, etc.)\n- Resolve bindings (\"Buyer\" = \"Alpha Corp\")\n- Detect cross-references between sections\n\nThe `document_id` is automatically saved for subsequent requests."
+					},
+					"response": []
+				},
+				{
+					"name": "Step 3 — View Contract Metadata",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Contract metadata retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('📋 Contract: ' + body.title);",
+									"    console.log('   Parties: ' + JSON.stringify(body.parties));",
+									"    console.log('   Facts: ' + body.fact_count + ' | Clauses: ' + body.clause_count + ' | Bindings: ' + body.binding_count);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/contracts/{{document_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contracts",
+								"{{document_id}}"
+							]
+						},
+						"description": "Retrieve metadata for the uploaded contract including parties, fact count, clause count, and binding count."
+					},
+					"response": []
+				},
+				{
+					"name": "Step 4 — View Extracted Facts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Facts retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var facts = pm.response.json();",
+									"    console.log('🔍 Found ' + facts.length + ' facts');",
+									"    facts.slice(0, 5).forEach(function(f) {",
+									"        console.log('   [' + f.fact_type + '] ' + f.value.substring(0, 80));",
+									"    });",
+									"    if (facts.length > 5) console.log('   ... and ' + (facts.length - 5) + ' more');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/contracts/{{document_id}}/facts?limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contracts",
+								"{{document_id}}",
+								"facts"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Max facts to return (1-1000)"
+								},
+								{
+									"key": "fact_type",
+									"value": "entity",
+									"description": "Filter: entity, text_span, clause_text, table_cell, heading, cross_reference",
+									"disabled": true
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Pagination offset",
+									"disabled": true
+								}
+							]
+						},
+						"description": "View extracted facts from the contract.\n\n**Fact types:**\n- `entity` — parties, dates, amounts, locations\n- `text_span` — monetary values, percentages, durations\n- `clause_text` — full paragraph text within clauses\n- `table_cell` — data from tables\n- `heading` — section headings\n- `cross_reference` — references to other sections\n\nEnable the `fact_type` query parameter to filter."
+					},
+					"response": []
+				},
+				{
+					"name": "Step 5 — View Classified Clauses",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Clauses retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var clauses = pm.response.json();",
+									"    console.log('📑 Found ' + clauses.length + ' clauses:');",
+									"    clauses.forEach(function(c) {",
+									"        console.log('   [' + c.clause_type + '] ' + c.heading);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/contracts/{{document_id}}/clauses",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contracts",
+								"{{document_id}}",
+								"clauses"
+							],
+							"query": [
+								{
+									"key": "clause_type",
+									"value": "termination",
+									"description": "Filter: payment, termination, confidentiality, liability, warranty, governing_law, etc.",
+									"disabled": true
+								}
+							]
+						},
+						"description": "View classified clauses from the contract.\n\n**Clause types:** payment, termination, confidentiality, liability, warranty, indemnification, insurance, governing_law, dispute_resolution, ip_rights, non_compete, scope, general, definitions"
+					},
+					"response": []
+				},
+				{
+					"name": "Step 6 — View Resolved Bindings",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bindings retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var bindings = pm.response.json();",
+									"    console.log('🔗 Found ' + bindings.length + ' bindings:');",
+									"    bindings.forEach(function(b) {",
+									"        console.log('   [' + b.binding_type + '] \"' + b.term + '\" → \"' + b.resolves_to.substring(0, 60) + '\"');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/contracts/{{document_id}}/bindings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contracts",
+								"{{document_id}}",
+								"bindings"
+							]
+						},
+						"description": "View resolved bindings — definitions and aliases.\n\nExamples:\n- `definition`: \"Agreement\" → \"This Master Services Agreement\"\n- `alias`: \"Buyer\" → \"Alpha Corp\"\n- `definition`: \"Territory\" → \"European Economic Area\""
+					},
+					"response": []
+				},
+				{
+					"name": "Step 7 — Check Compliance Gaps",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Gaps retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var gaps = pm.response.json();",
+									"    if (gaps.length === 0) {",
+									"        console.log('✅ No compliance gaps — all mandatory facts present');",
+									"    } else {",
+									"        console.log('⚠️ Found ' + gaps.length + ' missing mandatory facts:');",
+									"        gaps.forEach(function(g) {",
+									"            console.log('   [' + g.clause_type + '] Missing: ' + g.fact_spec_name + (g.required ? ' (REQUIRED)' : ' (optional)'));",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/contracts/{{document_id}}/clauses/gaps",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contracts",
+								"{{document_id}}",
+								"clauses",
+								"gaps"
+							]
+						},
+						"description": "Check for missing mandatory facts across all clauses.\n\nFor example, a termination clause should have:\n- notice_period\n- termination_conditions\n\nA payment clause should have:\n- payment_amount\n- payment_schedule"
+					},
+					"response": []
+				},
+				{
+					"name": "Step 8 — View TrustGraph",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('TrustGraph retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var graph = pm.response.json();",
+									"    console.log('🕸️ TrustGraph for: ' + graph.title);",
+									"    console.log('   Nodes: ' + graph.nodes.length);",
+									"    console.log('   Edges: ' + graph.edges.length);",
+									"    console.log('   Summary:');",
+									"    console.log('     Facts: ' + graph.summary.total_facts);",
+									"    console.log('     Clauses: ' + graph.summary.total_clauses);",
+									"    console.log('     Bindings: ' + graph.summary.total_bindings);",
+									"    console.log('     Cross-refs: ' + graph.summary.total_cross_references);",
+									"    if (graph.summary.fact_types) {",
+									"        console.log('   Fact types: ' + JSON.stringify(graph.summary.fact_types));",
+									"    }",
+									"    if (graph.summary.clause_types) {",
+									"        console.log('   Clause types: ' + JSON.stringify(graph.summary.clause_types));",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/contracts/{{document_id}}/graph",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"contracts",
+								"{{document_id}}",
+								"graph"
+							]
+						},
+						"description": "Get the full TrustGraph context — all nodes (contract, clauses, facts, bindings, cross-references) and edges (containment, references, bindings).\n\nThis powers the knowledge graph visualization."
+					},
+					"response": []
+				}
+			],
+			"description": "**Start here!** Follow steps 1-8 in order to see the full ContractOS pipeline.\n\n1. Health check\n2. Upload a contract (.docx or .pdf)\n3. Explore extracted metadata\n4. View facts, clauses, bindings\n5. Check compliance gaps\n6. Visualize the TrustGraph"
+		},
+		{
+			"name": "Ask Questions (Q&A)",
+			"item": [
+				{
+					"name": "Ask — Who are the parties?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer.substring(0, 500));",
+									"    if (body.confidence) {",
+									"        console.log('📊 Confidence: ' + body.confidence.label + ' (' + body.confidence.score + ')');",
+									"    }",
+									"    if (body.provenance) {",
+									"        console.log('📍 Provenance: ' + body.provenance.node_count + ' nodes');",
+									"        console.log('   ' + body.provenance.reasoning_summary);",
+									"    }",
+									"    if (body.generation_time_ms) {",
+									"        console.log('⏱️ Generated in ' + body.generation_time_ms + 'ms');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"Who are the parties to this contract?\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						},
+						"description": "Ask a question about the uploaded contract.\n\nThe response includes:\n- **answer** — grounded, explainable answer\n- **confidence** — label (speculative/low/moderate/high/very_high) + score\n- **provenance** — full chain of evidence\n- **facts_referenced** — fact IDs used in the answer"
+					},
+					"response": []
+				},
+				{
+					"name": "Ask — What is the contract value?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer.substring(0, 500));",
+									"    if (body.confidence) console.log('📊 Confidence: ' + body.confidence.label);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"What is the total contract value or price?\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Ask — Termination conditions?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer.substring(0, 500));",
+									"    if (body.confidence) console.log('📊 Confidence: ' + body.confidence.label);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"What are the termination conditions and notice period?\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Ask — Governing law?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer.substring(0, 500));",
+									"    if (body.confidence) console.log('📊 Confidence: ' + body.confidence.label);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"What is the governing law and jurisdiction?\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Ask — Liability cap?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer.substring(0, 500));",
+									"    if (body.confidence) console.log('📊 Confidence: ' + body.confidence.label);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"Is there a cap on liability? What is the maximum liability amount?\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Ask — Confidentiality obligations?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer.substring(0, 500));",
+									"    if (body.confidence) console.log('📊 Confidence: ' + body.confidence.label);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"What are the confidentiality obligations? What information is considered confidential?\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Ask — Insurance requirements?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer.substring(0, 500));",
+									"    if (body.confidence) console.log('📊 Confidence: ' + body.confidence.label);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"Are there any insurance requirements? What types and minimum amounts?\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Ask — Custom Question ✏️",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Answer received', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var body = pm.response.json();",
+									"    console.log('💬 Answer: ' + body.answer);",
+									"    if (body.confidence) {",
+									"        console.log('📊 Confidence: ' + body.confidence.label + ' (' + body.confidence.score + ')');",
+									"    }",
+									"    if (body.provenance) {",
+									"        console.log('📍 Provenance: ' + body.provenance.node_count + ' evidence nodes');",
+									"        console.log('   Has facts: ' + body.provenance.has_facts);",
+									"        console.log('   Has inferences: ' + body.provenance.has_inferences);",
+									"        console.log('   Summary: ' + body.provenance.reasoning_summary);",
+									"    }",
+									"    if (body.facts_referenced && body.facts_referenced.length > 0) {",
+									"        console.log('📎 Facts referenced: ' + body.facts_referenced.join(', '));",
+									"    }",
+									"    if (body.generation_time_ms) {",
+									"        console.log('⏱️ Generated in ' + body.generation_time_ms + 'ms');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"Type your question here\",\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/query/ask",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"query",
+								"ask"
+							]
+						},
+						"description": "**Ask any question about the uploaded contract!**\n\nEdit the `question` field in the Body tab to ask your own question.\n\nExample questions:\n- \"What are the payment terms?\"\n- \"Who is responsible for maintenance?\"\n- \"What happens if the supplier fails to deliver?\"\n- \"What are the SLA targets?\"\n- \"Does this contract cover IT equipment at India offices?\"\n- \"What obligations survive termination?\"\n- \"What are the data protection requirements?\""
+					},
+					"response": []
+				}
+			],
+			"description": "Ask questions about the uploaded contract. Each question returns:\n- A grounded answer\n- Confidence score (speculative → very_high)\n- Full provenance chain\n- Referenced fact IDs\n\n**Edit the question in the Body tab** to ask anything!\n\n**Note:** For real LLM answers, set `ANTHROPIC_API_KEY` before starting the server. Without it, the mock LLM provides basic answers."
+		},
+		{
+			"name": "Workspace Management",
+			"item": [
+				{
+					"name": "Create Workspace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Workspace created', function () {",
+									"    pm.response.to.have.status(201);",
+									"    var body = pm.response.json();",
+									"    pm.collectionVariables.set('workspace_id', body.workspace_id);",
+									"    console.log('📁 Workspace created: ' + body.workspace_id + ' (' + body.name + ')');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Procurement Review\",\n    \"settings\": {\n        \"default_llm\": \"claude-sonnet\",\n        \"confidence_threshold\": 0.7\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/workspaces",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"workspaces"
+							]
+						},
+						"description": "Create a new workspace to organize contracts and reasoning sessions."
+					},
+					"response": []
+				},
+				{
+					"name": "List Workspaces",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Workspaces listed', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var workspaces = pm.response.json();",
+									"    console.log('📁 ' + workspaces.length + ' workspace(s)');",
+									"    workspaces.forEach(function(ws) {",
+									"        console.log('   ' + ws.workspace_id + ': ' + ws.name + ' (' + ws.indexed_documents.length + ' docs)');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/workspaces",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"workspaces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Document to Workspace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Document added', function () {",
+									"    pm.response.to.have.status(204);",
+									"    console.log('✅ Document added to workspace');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"document_id\": \"{{document_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/workspaces/{{workspace_id}}/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"workspaces",
+								"{{workspace_id}}",
+								"documents"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Workspace Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Workspace retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var ws = pm.response.json();",
+									"    console.log('📁 ' + ws.name);",
+									"    console.log('   Documents: ' + ws.indexed_documents.length);",
+									"    console.log('   Sessions: ' + ws.recent_sessions.length);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/workspaces/{{workspace_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"workspaces",
+								"{{workspace_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Session History",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Sessions retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var sessions = pm.response.json();",
+									"    console.log('📜 ' + sessions.length + ' session(s)');",
+									"    sessions.forEach(function(s) {",
+									"        console.log('   Q: ' + s.query_text.substring(0, 60));",
+									"        console.log('   A: ' + (s.answer ? s.answer.substring(0, 60) : 'N/A'));",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/workspaces/{{workspace_id}}/sessions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"workspaces",
+								"{{workspace_id}}",
+								"sessions"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Manage workspaces — organize contracts into projects, track reasoning sessions."
+		},
+		{
+			"name": "Server Config",
+			"item": [
+				{
+					"name": "Get Server Configuration",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Config retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var cfg = pm.response.json();",
+									"    console.log('⚙️ Configuration:');",
+									"    console.log('   LLM Provider: ' + cfg.llm_provider);",
+									"    console.log('   LLM Model: ' + cfg.llm_model);",
+									"    console.log('   Storage: ' + cfg.storage_backend);",
+									"    console.log('   Pipeline: ' + cfg.extraction_pipeline.join(' → '));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"config"
+							]
+						},
+						"description": "View current server configuration (non-sensitive — no API keys shown)."
+					},
+					"response": []
+				}
+			],
+			"description": "Server configuration and diagnostics."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8742",
+			"type": "string"
+		},
+		{
+			"key": "document_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "workspace_id",
+			"value": "",
+			"type": "string"
+		}
+	]
 }
