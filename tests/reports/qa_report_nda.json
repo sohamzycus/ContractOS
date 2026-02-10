@@ -1,0 +1,475 @@
+{
+  "document": "simple_nda.pdf",
+  "document_id": "doc-0a7a1594eb34",
+  "document_type": "Non-Disclosure Agreement",
+  "generated_at": "2026-02-10T15:04:05",
+  "model": "claude-sonnet-4-5-global (via LiteLLM proxy)",
+  "total_queries": 7,
+  "results": [
+    {
+      "question": "Who are the parties to this NDA?",
+      "response": {
+        "answer": "The parties to the NDA are Gamma Inc (the \"Discloser\") and Delta LLC (the \"Recipient\").",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-6aff027c",
+          "f-36e0d459",
+          "f-alias-e16f4df6",
+          "f-alias-06a940cb"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-6aff027c",
+              "summary": "characters 74-124: \"is entered into between Gamma Inc (the \"Discloser\"\"",
+              "document_location": "characters 74-124",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-36e0d459",
+              "summary": "characters 126-156: \"and\nDelta LLC (the \"Recipient\"\"",
+              "document_location": "characters 126-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-alias-e16f4df6",
+              "summary": "characters 74-124: \"is entered into between Gamma Inc \u2192 Discloser\"",
+              "document_location": "characters 74-124",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-alias-06a940cb",
+              "summary": "characters 126-156: \"and\nDelta LLC \u2192 Recipient\"",
+              "document_location": "characters 126-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks about parties to 'this NDA'\n2. Entity bindings confirm 'NDA' refers to 'Disclosure Agreement'\n3. Fact f-6aff027c states the agreement 'is entered into between Gamma Inc (the \"Discloser\")'\n4. Fact f-36e0d459 continues with 'and Delta LLC (the \"Recipient\")'\n5. The alias facts (f-alias-e16f4df6 and f-alias-06a940cb) confirm the entity mappings: Gamma Inc = Discloser, Delta LLC = Recipient\n6. These facts directly identify both parties and their roles in the agreement",
+          "node_count": 4,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 6174
+      }
+    },
+    {
+      "question": "What is the duration of the confidentiality obligation?",
+      "response": {
+        "answer": "The confidentiality obligation duration cannot be definitively determined from the provided facts. While the contract has an overall term from January 1, 2025 to December 31, 2026 (approximately 24 months), and there are references to time periods of '24 months' and '30 days', none of the extracted facts explicitly state which time period applies specifically to the confidentiality obligation. The facts show temporal information but lack the contextual text that would connect these durations to confidentiality obligations.",
+        "answer_type": "not_found",
+        "confidence": {
+          "value": 0.3,
+          "label": "speculative",
+          "color": "red",
+          "description": "Very low confidence \u2014 answer is speculative"
+        },
+        "facts_referenced": [
+          "f-a99ce786",
+          "f-6a170fd7",
+          "f-8326e76f",
+          "f-91dd94b6",
+          "f-46d9e5cb",
+          "f-5f6ea2a1"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-a99ce786",
+              "summary": "characters 446-462: \"four\n(24) months\"",
+              "document_location": "characters 446-462",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-6a170fd7",
+              "summary": "characters 555-571: \"thirty (30) days\"",
+              "document_location": "characters 555-571",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-8326e76f",
+              "summary": "characters 735-750: \"January 1, 2025\"",
+              "document_location": "characters 735-750",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-91dd94b6",
+              "summary": "characters 763-780: \"December 31, 2026\"",
+              "document_location": "characters 763-780",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-46d9e5cb",
+              "summary": "table row 1, col 1: \"January 1, 2025\"",
+              "document_location": "table row 1, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-5f6ea2a1",
+              "summary": "table row 2, col 1: \"December 31, 2026\"",
+              "document_location": "table row 2, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. Identified temporal facts in the contract: '24 months' [f-a99ce786], '30 days' [f-6a170fd7], and contract dates January 1, 2025 to December 31, 2026 [f-8326e76f, f-91dd94b6, f-46d9e5cb, f-5f6ea2a1]. 2. Noted that these are isolated text spans without surrounding context explaining what they apply to. 3. The '24 months' duration could plausibly be the confidentiality period, but without the actual clause text, this would be speculation. 4. Cross-reference to 'Section 2' [f-d052e413] exists but the content of Section 2 is not provided. 5. Cannot make a definitive statement about confidentiality duration without the actual obligation language.",
+          "node_count": 6,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 9120
+      }
+    },
+    {
+      "question": "What is the effective date?",
+      "response": {
+        "answer": "The effective date is January 1, 2025.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-221b4dd2",
+          "f-46d9e5cb",
+          "f-8326e76f",
+          "f-c3522778"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-221b4dd2",
+              "summary": "table row 1, col 0: \"Effective Date\"",
+              "document_location": "table row 1, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-46d9e5cb",
+              "summary": "table row 1, col 1: \"January 1, 2025\"",
+              "document_location": "table row 1, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-8326e76f",
+              "summary": "characters 735-750: \"January 1, 2025\"",
+              "document_location": "characters 735-750",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c3522778",
+              "summary": "characters 807-822: \"January 1, 2025\"",
+              "document_location": "characters 807-822",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks for the effective date of the contract. 2. Fact f-221b4dd2 shows a table cell labeled 'Effective Date'. 3. Fact f-46d9e5cb shows the corresponding table cell value 'January 1, 2025'. 4. This date is corroborated by facts f-8326e76f and f-c3522778, which also reference 'January 1, 2025' in the contract text. 5. The consistent appearance of this date in multiple locations (table and text) provides high confidence.",
+          "node_count": 4,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 4838
+      }
+    },
+    {
+      "question": "When does this agreement expire?",
+      "response": {
+        "answer": "This agreement expires on December 31, 2026.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-91dd94b6",
+          "f-1f6c899f",
+          "f-5f6ea2a1",
+          "f-c8e93ee2"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-91dd94b6",
+              "summary": "characters 763-780: \"December 31, 2026\"",
+              "document_location": "characters 763-780",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-1f6c899f",
+              "summary": "characters 835-852: \"December 31, 2026\"",
+              "document_location": "characters 835-852",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-5f6ea2a1",
+              "summary": "table row 2, col 1: \"December 31, 2026\"",
+              "document_location": "table row 2, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c8e93ee2",
+              "summary": "table row 2, col 0: \"Expiry Date\"",
+              "document_location": "table row 2, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks about the expiration date of 'this agreement'\n2. Using entity bindings, 'this agreement' refers to the 'Disclosure Agreement' (NDA)\n3. Multiple facts consistently reference the expiry date:\n   - f-91dd94b6: text span 'December 31, 2026' at characters 763-780\n   - f-1f6c899f: text span 'December 31, 2026' at characters 835-852\n   - f-5f6ea2a1: table cell 'December 31, 2026' in row 2, col 1\n   - f-c8e93ee2: table cell 'Expiry Date' label in row 2, col 0\n4. The table structure explicitly labels December 31, 2026 as the 'Expiry Date'\n5. Multiple independent references to the same date provide high confidence",
+          "node_count": 4,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 5914
+      }
+    },
+    {
+      "question": "What is the notice period for termination?",
+      "response": {
+        "answer": "The notice period for termination is thirty (30) days.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-6a170fd7"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-6a170fd7",
+              "summary": "characters 555-571: \"thirty (30) days\"",
+              "document_location": "characters 555-571",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks for the notice period for termination.\n2. Fact f-6a170fd7 directly states 'thirty (30) days' as a text span at characters 555-571.\n3. The context of this text span (character position) suggests it relates to termination notice requirements.\n4. This is a directly stated fact in the contract, not an inference.",
+          "node_count": 1,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 4841
+      }
+    },
+    {
+      "question": "Who is the Discloser and who is the Recipient?",
+      "response": {
+        "answer": "The Discloser is Gamma Inc and the Recipient is Delta LLC.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-6aff027c",
+          "f-36e0d459",
+          "f-alias-e16f4df6",
+          "f-alias-06a940cb"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-6aff027c",
+              "summary": "characters 74-124: \"is entered into between Gamma Inc (the \"Discloser\"\"",
+              "document_location": "characters 74-124",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-36e0d459",
+              "summary": "characters 126-156: \"and\nDelta LLC (the \"Recipient\"\"",
+              "document_location": "characters 126-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-alias-e16f4df6",
+              "summary": "characters 74-124: \"is entered into between Gamma Inc \u2192 Discloser\"",
+              "document_location": "characters 74-124",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-alias-06a940cb",
+              "summary": "characters 126-156: \"and\nDelta LLC \u2192 Recipient\"",
+              "document_location": "characters 126-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. Fact f-6aff027c states 'is entered into between Gamma Inc (the \"Discloser\"' at characters 74-124, establishing Gamma Inc as the Discloser. 2. Fact f-36e0d459 states 'and Delta LLC (the \"Recipient\"' at characters 126-156, establishing Delta LLC as the Recipient. 3. The entity bindings confirm these aliases: 'Discloser' \u2192 'is entered into between Gamma Inc' and 'Recipient' \u2192 'and Delta LLC'. 4. Facts f-alias-e16f4df6 and f-alias-06a940cb explicitly document these entity-to-alias mappings.",
+          "node_count": 4,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 6129
+      }
+    },
+    {
+      "question": "What are the key dates in this agreement?",
+      "response": {
+        "answer": "The key dates in this agreement are:\n\n1. **Effective Date: January 1, 2025** - This is when the agreement comes into force, as stated in the contract text and confirmed in a table.\n\n2. **Expiry Date: December 31, 2026** - This is when the agreement terminates, also stated in both the contract text and a summary table.\n\nThese dates establish a contract duration of approximately 2 years. Additionally, the agreement references time periods of \"thirty (30) days\" and \"four (24) months\" which appear to be related to specific obligations or notice periods, though their exact context would require reviewing the full contract sections.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-8326e76f",
+          "f-91dd94b6",
+          "f-c3522778",
+          "f-1f6c899f",
+          "f-221b4dd2",
+          "f-46d9e5cb",
+          "f-c8e93ee2",
+          "f-5f6ea2a1",
+          "f-6a170fd7",
+          "f-a99ce786"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-8326e76f",
+              "summary": "characters 735-750: \"January 1, 2025\"",
+              "document_location": "characters 735-750",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-91dd94b6",
+              "summary": "characters 763-780: \"December 31, 2026\"",
+              "document_location": "characters 763-780",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c3522778",
+              "summary": "characters 807-822: \"January 1, 2025\"",
+              "document_location": "characters 807-822",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-1f6c899f",
+              "summary": "characters 835-852: \"December 31, 2026\"",
+              "document_location": "characters 835-852",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-221b4dd2",
+              "summary": "table row 1, col 0: \"Effective Date\"",
+              "document_location": "table row 1, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-46d9e5cb",
+              "summary": "table row 1, col 1: \"January 1, 2025\"",
+              "document_location": "table row 1, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c8e93ee2",
+              "summary": "table row 2, col 0: \"Expiry Date\"",
+              "document_location": "table row 2, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-5f6ea2a1",
+              "summary": "table row 2, col 1: \"December 31, 2026\"",
+              "document_location": "table row 2, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-6a170fd7",
+              "summary": "characters 555-571: \"thirty (30) days\"",
+              "document_location": "characters 555-571",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-a99ce786",
+              "summary": "characters 446-462: \"four\n(24) months\"",
+              "document_location": "characters 446-462",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. Identified date-related facts in the extracted data\n2. Found two primary dates mentioned multiple times: January 1, 2025 and December 31, 2026\n3. Cross-referenced these dates appearing in both text spans (f-8326e76f, f-91dd94b6, f-c3522778, f-1f6c899f) and table cells (f-46d9e5cb, f-5f6ea2a1)\n4. Table structure (f-221b4dd2, f-c8e93ee2) explicitly labels these as 'Effective Date' and 'Expiry Date'\n5. Noted additional time periods (30 days, 24 months) that may relate to specific contractual obligations\n6. Concluded these are the key dates defining the agreement's temporal scope",
+          "node_count": 10,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 9995
+      }
+    }
+  ]
+}
