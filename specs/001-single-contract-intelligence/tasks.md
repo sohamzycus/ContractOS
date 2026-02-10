@@ -277,8 +277,12 @@
 
 - [x] T139 [US1] Clause body text extraction — new CLAUSE_TEXT fact type captures full paragraph text within clauses
 - [x] T140 Complex real-world procurement fixtures — `complex_it_outsourcing.docx` ($47.5M, 18 sections) and `complex_procurement_framework.pdf` (GBP 85M, 15 sections)
+- [x] T141 Postman collection — full API integration test suite (47 requests, 6 folders) with Newman runner
+- [x] T142 LegalBench/CUAD benchmark fixtures — `legalbench_nda.docx` (bilateral NDA, 11 sections) and `cuad_license_agreement.docx` (software license, 13 sections + exhibits)
+- [x] T143 LegalBench integration tests — 32 extraction tests + 14 API contract tests covering contract_nli, CUAD categories
+- [x] T144 Bug fix: `get_facts_by_document` and `get_clauses_by_document` now accept string filters (API compatibility)
 
-**Checkpoint**: ✅ All US5 tests pass. Workspace persistence works. Restarting the server retains all indexed data and session history. 421 tests passing.
+**Checkpoint**: ✅ All US5 tests pass. Workspace persistence works. Postman collection ready. LegalBench/CUAD benchmarks integrated. 467 tests passing.
 
 ---
 
