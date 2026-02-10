@@ -239,6 +239,21 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py -v
 
 ---
 
+## Q&A Test Reports (Live LLM)
+
+Full Q&A test reports with real LLM responses are checked in at [`tests/reports/`](tests/reports/):
+
+| Report | Document | Queries | Fact-grounded | Not-found | Avg Confidence |
+|--------|----------|:-------:|:-------------:|:---------:|:--------------:|
+| [MSA Report](tests/reports/QA_TEST_REPORT.md#report-1-master-services-agreement-simple_procurementdocx) | `simple_procurement.docx` | 10 | 7 | 3 | 0.86 |
+| [NDA Report](tests/reports/QA_TEST_REPORT.md#report-2-non-disclosure-agreement-simple_ndapdf) | `simple_nda.pdf` | 7 | 5 | 2 | 0.90 |
+
+Raw JSON responses: [`qa_report_procurement_msa.json`](tests/reports/qa_report_procurement_msa.json), [`qa_report_nda.json`](tests/reports/qa_report_nda.json)
+
+See the [full Q&A Test Report](tests/reports/QA_TEST_REPORT.md) for every question, answer, confidence label, provenance chain, and analysis.
+
+---
+
 ## Extraction Reports (Test Fixtures)
 
 ### DOCX: `simple_procurement.docx` — Master Services Agreement

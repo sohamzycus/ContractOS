@@ -1,0 +1,601 @@
+{
+  "document": "simple_procurement.docx",
+  "document_id": "doc-abbfdb9d7162",
+  "document_type": "Master Services Agreement",
+  "generated_at": "2026-02-10T15:02:58",
+  "model": "claude-sonnet-4-5-global (via LiteLLM proxy)",
+  "total_queries": 10,
+  "results": [
+    {
+      "question": "Who are the parties to this agreement?",
+      "response": {
+        "answer": "The parties to this agreement are Alpha Corp (referred to as \"Buyer\") and Beta Services Ltd (referred to as \"Vendor\").",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-9754d9d0",
+          "f-5715610a",
+          "f-alias-9d7c6779",
+          "f-alias-6e66e042"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-9754d9d0",
+              "summary": "characters 86-156: \"is entered into between Alpha Corp, hereinafter referred to as \"Buyer\"\"",
+              "document_location": "characters 86-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-5715610a",
+              "summary": "characters 158-216: \"and Beta Services Ltd, hereinafter referred to as \"Vendor\"\"",
+              "document_location": "characters 158-216",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-alias-9d7c6779",
+              "summary": "characters 86-156: \"is entered into between Alpha Corp \u2192 Buyer\"",
+              "document_location": "characters 86-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-alias-6e66e042",
+              "summary": "characters 158-216: \"and Beta Services Ltd \u2192 Vendor\"",
+              "document_location": "characters 158-216",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks for the parties to the agreement. 2. Fact f-9754d9d0 explicitly states 'is entered into between Alpha Corp, hereinafter referred to as \"Buyer\"'. 3. Fact f-5715610a explicitly states 'and Beta Services Ltd, hereinafter referred to as \"Vendor\"'. 4. The entity bindings confirm these aliases: 'Buyer' \u2192 'is entered into between Alpha Corp' and 'Vendor' \u2192 'and Beta Services Ltd'. 5. These facts directly identify the two contracting parties and their designated roles in the agreement.",
+          "node_count": 4,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 8853
+      }
+    },
+    {
+      "question": "What are the payment terms?",
+      "response": {
+        "answer": "The payment terms specify that Buyer shall pay Vendor a total amount of $150,000.00. Payment is due within sixty (60) days from the Effective Date (January 1, 2025), which means payment must be made by March 2, 2025. The payment terms are detailed in Section 3.2.1 of the Agreement.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 0.95,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-ba502bc2",
+          "f-18113b9a",
+          "f-f8a44103",
+          "f-64967c42",
+          "f-8df00a7c"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-ba502bc2",
+              "summary": "heading: 3. Payment Terms: \"3. Payment Terms\"",
+              "document_location": "heading: 3. Payment Terms",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-18113b9a",
+              "summary": "characters 561-572: \"$150,000.00\"",
+              "document_location": "characters 561-572",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-f8a44103",
+              "summary": "characters 766-781: \"sixty (60) days\"",
+              "document_location": "characters 766-781",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-64967c42",
+              "summary": "characters 862-875: \"Section 3.2.1\"",
+              "document_location": "characters 862-875",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-8df00a7c",
+              "summary": "characters 246-261: \"January 1, 2025\"",
+              "document_location": "characters 246-261",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. Located the Payment Terms section (f-ba502bc2: heading '3. Payment Terms')\n2. Identified the payment amount: $150,000.00 (f-18113b9a)\n3. Identified the payment timeline: sixty (60) days (f-f8a44103)\n4. Cross-referenced Section 3.2.1 for detailed terms (f-64967c42)\n5. Used the Effective Date (f-8df00a7c: January 1, 2025) to calculate the payment due date\n6. Applied entity bindings: 'Buyer' = Alpha Corp, 'Vendor' = Beta Services Ltd",
+          "node_count": 5,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 9096
+      }
+    },
+    {
+      "question": "What is the effective date of this contract?",
+      "response": {
+        "answer": "The effective date of this contract is January 1, 2025.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-350a74c8",
+          "f-8df00a7c"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-350a74c8",
+              "summary": "characters 218-262: \"Effective Date\"",
+              "document_location": "characters 218-262",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-8df00a7c",
+              "summary": "characters 246-261: \"January 1, 2025\"",
+              "document_location": "characters 246-261",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks for the effective date of the contract. 2. The entity bindings show 'Effective Date' is defined as 'January 1, 2025'. 3. Fact f-350a74c8 identifies the text span 'Effective Date' at characters 218-262. 4. Fact f-8df00a7c identifies the text span 'January 1, 2025' at characters 246-261, which overlaps with the Effective Date definition location. 5. These facts directly establish that the Effective Date is January 1, 2025.",
+          "node_count": 2,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 7358
+      }
+    },
+    {
+      "question": "What is the service period?",
+      "response": {
+        "answer": "The service period is thirty (30) days from the Effective Date, which is January 1, 2025. Therefore, the service period runs from January 1, 2025 to January 30, 2025.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-e7522e45",
+          "f-c05bb762",
+          "f-8df00a7c"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-e7522e45",
+              "summary": "characters 263-346: \"Service Period\"",
+              "document_location": "characters 263-346",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c05bb762",
+              "summary": "characters 305-321: \"thirty (30) days\"",
+              "document_location": "characters 305-321",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-8df00a7c",
+              "summary": "characters 246-261: \"January 1, 2025\"",
+              "document_location": "characters 246-261",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks about 'service period'\n2. Entity bindings show 'Service Period' is defined as 'the period of thirty (30) days from the Effective Date'\n3. Fact f-e7522e45 contains the text span for 'Service Period' definition\n4. Fact f-c05bb762 specifies the duration as 'thirty (30) days'\n5. The Effective Date is defined in the entity bindings as 'January 1, 2025'\n6. Fact f-8df00a7c confirms the Effective Date as 'January 1, 2025'\n7. Therefore, the service period is 30 days starting from January 1, 2025",
+          "node_count": 3,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 6702
+      }
+    },
+    {
+      "question": "What are the termination conditions?",
+      "response": {
+        "answer": "The contract does not contain specific termination conditions in the provided facts. While there is a section titled '4. Termination' (indicated by heading structure), the actual termination provisions and conditions are not included in the extracted facts. The contract does reference a Service Period of thirty (30) days from the Effective Date (January 1, 2025), which may relate to the contract duration, but explicit termination conditions, rights, or procedures are not present in the available information.",
+        "answer_type": "not_found",
+        "confidence": {
+          "value": 0.85,
+          "label": "high",
+          "color": "green",
+          "description": "High confidence \u2014 strong evidence supports this answer"
+        },
+        "facts_referenced": [
+          "f-5c84a605",
+          "f-e7522e45",
+          "f-c05bb762",
+          "f-8df00a7c"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-5c84a605",
+              "summary": "heading: 4. Termination: \"4. Termination\"",
+              "document_location": "heading: 4. Termination",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-e7522e45",
+              "summary": "characters 263-346: \"Service Period\"",
+              "document_location": "characters 263-346",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c05bb762",
+              "summary": "characters 305-321: \"thirty (30) days\"",
+              "document_location": "characters 305-321",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-8df00a7c",
+              "summary": "characters 246-261: \"January 1, 2025\"",
+              "document_location": "characters 246-261",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. Identified the question asks for termination conditions\n2. Located heading 'f-5c84a605' indicating a '4. Termination' section exists in the contract structure\n3. Searched all extracted facts for content related to termination rights, notice periods, breach conditions, or termination procedures\n4. Found no facts containing actual termination condition text despite the section heading existing\n5. Noted 'f-e7522e45' and 'f-c05bb762' define a Service Period of 30 days, which may be relevant to contract duration but does not constitute a termination condition\n6. Concluded that while the contract has a termination section, its specific provisions were not captured in the fact extraction",
+          "node_count": 4,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 11458
+      }
+    },
+    {
+      "question": "What confidentiality obligations exist?",
+      "response": {
+        "answer": "I cannot identify specific confidentiality obligations from the provided facts. While a 'Confidentiality' section exists in the contract (Section 5), the actual content and obligations of that section were not extracted in the facts provided. Only the section heading was captured.",
+        "answer_type": "not_found",
+        "confidence": {
+          "value": 0.1,
+          "label": "speculative",
+          "color": "red",
+          "description": "Very low confidence \u2014 answer is speculative"
+        },
+        "facts_referenced": [
+          "f-947f374f"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-947f374f",
+              "summary": "heading: 5. Confidentiality: \"5. Confidentiality\"",
+              "document_location": "heading: 5. Confidentiality",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. Searched for facts related to 'confidentiality' in the extracted facts list\n2. Found fact [f-947f374f] which identifies a heading '5. Confidentiality'\n3. This confirms a confidentiality section exists in the contract structure\n4. However, no facts were extracted containing the actual confidentiality obligations, requirements, or terms\n5. The extracted facts include definitions, payment terms, equipment lists, and locations, but no confidentiality clause content\n6. Cannot answer the question about what obligations exist without the actual text of Section 5",
+          "node_count": 1,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 7856
+      }
+    },
+    {
+      "question": "What products are covered under this agreement?",
+      "response": {
+        "answer": "The agreement covers three products: (1) Dell Inspiron 15 (IT Equipment, quantity 50), (2) HP LaserJet Pro (Office Equipment, quantity 25), and (3) Cisco Router 4000 (Network Equipment, quantity 10). These products are specified in Schedule A of the agreement.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-366d4609",
+          "f-dbb3bc31",
+          "f-3012dcc4",
+          "f-e0f27683",
+          "f-486fdba5",
+          "f-52833d28",
+          "f-722d328c",
+          "f-40909200",
+          "f-e2a9f8e5",
+          "f-c5890e91"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-366d4609",
+              "summary": "heading: Schedule A: Products: \"Schedule A: Products\"",
+              "document_location": "heading: Schedule A: Products",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-dbb3bc31",
+              "summary": "table row 1, col 0: \"Dell Inspiron 15\"",
+              "document_location": "table row 1, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-3012dcc4",
+              "summary": "table row 1, col 1: \"IT Equipment\"",
+              "document_location": "table row 1, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-e0f27683",
+              "summary": "table row 1, col 2: \"50\"",
+              "document_location": "table row 1, col 2",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-486fdba5",
+              "summary": "table row 2, col 0: \"HP LaserJet Pro\"",
+              "document_location": "table row 2, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-52833d28",
+              "summary": "table row 2, col 1: \"Office Equipment\"",
+              "document_location": "table row 2, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-722d328c",
+              "summary": "table row 2, col 2: \"25\"",
+              "document_location": "table row 2, col 2",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-40909200",
+              "summary": "table row 3, col 0: \"Cisco Router 4000\"",
+              "document_location": "table row 3, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-e2a9f8e5",
+              "summary": "table row 3, col 1: \"Network Equipment\"",
+              "document_location": "table row 3, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c5890e91",
+              "summary": "table row 3, col 2: \"10\"",
+              "document_location": "table row 3, col 2",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks about products covered under the agreement. 2. Fact f-366d4609 identifies 'Schedule A: Products' as a heading, indicating a dedicated section for products. 3. Facts f-dbb3bc31, f-486fdba5, and f-40909200 identify three product names in table cells (row 1 col 0, row 2 col 0, row 3 col 0 respectively). 4. Facts f-3012dcc4, f-52833d28, and f-e2a9f8e5 provide product categories in the adjacent column. 5. Facts f-e0f27683, f-722d328c, and f-c5890e91 provide quantities for each product. 6. These table cells are located under Schedule A, forming a complete product list with names, categories, and quantities.",
+          "node_count": 10,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 7765
+      }
+    },
+    {
+      "question": "What locations are covered?",
+      "response": {
+        "answer": "The covered locations are Bangalore, Pune, and Mumbai, all in India. These locations are specified in Schedule B of the Agreement.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-5481640c",
+          "f-2bc5a85b",
+          "f-02974a3c",
+          "f-bbca023a",
+          "f-c3e97d3b",
+          "f-ef5c0b36",
+          "f-09063dca"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-5481640c",
+              "summary": "table row 1, col 0: \"Bangalore\"",
+              "document_location": "table row 1, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-2bc5a85b",
+              "summary": "table row 1, col 1: \"India\"",
+              "document_location": "table row 1, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-02974a3c",
+              "summary": "table row 2, col 0: \"Pune\"",
+              "document_location": "table row 2, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-bbca023a",
+              "summary": "table row 2, col 1: \"India\"",
+              "document_location": "table row 2, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-c3e97d3b",
+              "summary": "table row 3, col 0: \"Mumbai\"",
+              "document_location": "table row 3, col 0",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-ef5c0b36",
+              "summary": "table row 3, col 1: \"India\"",
+              "document_location": "table row 3, col 1",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-09063dca",
+              "summary": "heading: Schedule B: Locations: \"Schedule B: Locations\"",
+              "document_location": "heading: Schedule B: Locations",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks about covered locations in the contract.\n2. Fact f-09063dca identifies a section titled 'Schedule B: Locations', indicating this schedule contains location information.\n3. Facts f-5481640c, f-02974a3c, and f-c3e97d3b are table cells containing city names: 'Bangalore', 'Pune', and 'Mumbai' respectively.\n4. Facts f-2bc5a85b, f-bbca023a, and f-ef5c0b36 are corresponding table cells containing the country 'India' for each city.\n5. These table cells appear in Schedule B, which is the designated location schedule per the heading.\n6. Therefore, the three covered locations are Bangalore, Pune, and Mumbai, all located in India.",
+          "node_count": 7,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 6720
+      }
+    },
+    {
+      "question": "Who is the Buyer?",
+      "response": {
+        "answer": "The Buyer is Alpha Corp.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 1.0,
+          "label": "very_high",
+          "color": "blue",
+          "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+        },
+        "facts_referenced": [
+          "f-9754d9d0",
+          "f-alias-9d7c6779"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-9754d9d0",
+              "summary": "characters 86-156: \"is entered into between Alpha Corp, hereinafter referred to as \"Buyer\"\"",
+              "document_location": "characters 86-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            },
+            {
+              "node_type": "fact",
+              "reference_id": "f-alias-9d7c6779",
+              "summary": "characters 86-156: \"is entered into between Alpha Corp \u2192 Buyer\"",
+              "document_location": "characters 86-156",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. The question asks for the identity of the 'Buyer' entity. 2. Fact f-9754d9d0 directly states: 'is entered into between Alpha Corp, hereinafter referred to as \"Buyer\"'. 3. The entity binding confirms 'Buyer' \u2192 'is entered into between Alpha Corp'. 4. The alias fact f-alias-9d7c6779 explicitly maps 'is entered into between Alpha Corp \u2192 Buyer'. 5. Therefore, Alpha Corp is definitively identified as the Buyer in this contract.",
+          "node_count": 2,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 5004
+      }
+    },
+    {
+      "question": "What is the total contract value?",
+      "response": {
+        "answer": "$150,000.00 is the only monetary value explicitly stated in the contract. This appears in the Payment Terms section, but the context does not specify whether this represents the total contract value, a payment installment, or another financial obligation.",
+        "answer_type": "fact",
+        "confidence": {
+          "value": 0.6,
+          "label": "moderate",
+          "color": "yellow",
+          "description": "Moderate confidence \u2014 reasonable evidence supports this answer"
+        },
+        "facts_referenced": [
+          "f-18113b9a"
+        ],
+        "provenance": {
+          "nodes": [
+            {
+              "node_type": "fact",
+              "reference_id": "f-18113b9a",
+              "summary": "characters 561-572: \"$150,000.00\"",
+              "document_location": "characters 561-572",
+              "display_label": "Fact",
+              "icon": "\ud83d\udcc4"
+            }
+          ],
+          "reasoning_summary": "1. Searched all extracted facts for monetary values\n2. Found single monetary amount: $150,000.00 (fact f-18113b9a) at character position 561-572\n3. This amount appears in proximity to 'Payment Terms' heading (f-ba502bc2)\n4. No other monetary values, totals, or pricing information found in facts\n5. Cross-references to Schedule A (products) and Schedule B (locations) exist, but no pricing details from those schedules are provided\n6. Cannot definitively confirm this is the 'total contract value' vs. a milestone payment, deposit, or other amount without additional context",
+          "node_count": 1,
+          "has_facts": true,
+          "has_inferences": false
+        },
+        "generation_time_ms": 8971
+      }
+    }
+  ]
+}
