@@ -112,7 +112,7 @@ class TestContractRetrieval:
 
 class TestQuery:
     @pytest.mark.asyncio
-    async def test_ask_stub_returns_placeholder(self, client: AsyncClient) -> None:
+    async def test_ask_returns_answer(self, client: AsyncClient) -> None:
         # Upload a contract first
         upload_resp = await client.post(
             "/contracts/upload",
@@ -126,7 +126,9 @@ class TestQuery:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert "not yet implemented" in data["answer"].lower()
+        assert len(data["answer"]) > 0
+        # No facts uploaded, so answer should indicate not found
+        assert data["answer_type"] == "not_found"
 
     @pytest.mark.asyncio
     async def test_ask_nonexistent_contract(self, client: AsyncClient) -> None:

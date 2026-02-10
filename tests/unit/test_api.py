@@ -117,7 +117,7 @@ class TestContractRetrieval:
 
 class TestQueryEndpoint:
     @pytest.mark.asyncio
-    async def test_ask_returns_stub(self, client: AsyncClient) -> None:
+    async def test_ask_returns_answer(self, client: AsyncClient) -> None:
         # Upload a contract first
         content = b"PK\x03\x04fake"
         upload_resp = await client.post(
@@ -132,8 +132,9 @@ class TestQueryEndpoint:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert "not yet implemented" in data["answer"]
-        assert data["confidence"] is None
+        assert len(data["answer"]) > 0
+        # No facts uploaded, so answer should indicate not found
+        assert data["answer_type"] == "not_found"
 
     @pytest.mark.asyncio
     async def test_ask_nonexistent_contract_404(self, client: AsyncClient) -> None:
