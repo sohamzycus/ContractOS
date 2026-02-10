@@ -1,0 +1,513 @@
+[
+  {
+    "question": "What is the total contract value?",
+    "answer": "The total contract value is $47,500,000.00 over the five-year Initial Term (March 1, 2025 to February 28, 2030). This consists of Base Fees totaling $38,225,777 and Variable Fees totaling $9,556,445, which sum to $47,782,222 as shown in the payment schedule. Note: There is a minor discrepancy between the stated total contract value of $47,500,000.00 and the sum of the detailed year-by-year breakdown ($47,782,222).",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-c052d84d",
+      "f-97ffbede",
+      "f-f1784838",
+      "f-4bc6b5ca",
+      "f-b886db03",
+      "f-1ac3dc34",
+      "f-56a6f40d",
+      "f-dce0611c"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-c052d84d",
+          "summary": "characters 151-165: \"$47,500,000.00\"",
+          "document_location": "characters 151-165",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-97ffbede",
+          "summary": "characters 5255-5269: \"five (5) years\"",
+          "document_location": "characters 5255-5269",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-f1784838",
+          "summary": "characters 5264-5289: \"years (the \"Initial Term\"\"",
+          "document_location": "characters 5264-5289",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-4bc6b5ca",
+          "summary": "characters 5304-5321: \"February 28, 2030\"",
+          "document_location": "characters 5304-5321",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-b886db03",
+          "summary": "characters 6457-6471: \"$47,500,000.00\"",
+          "document_location": "characters 6457-6471",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-1ac3dc34",
+          "summary": "characters 6833-6844: \"$38,225,777\"",
+          "document_location": "characters 6833-6844",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-56a6f40d",
+          "summary": "characters 6845-6855: \"$9,556,445\"",
+          "document_location": "characters 6845-6855",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-dce0611c",
+          "summary": "characters 6856-6867: \"$47,782,222\"",
+          "document_location": "characters 6856-6867",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. Fact f-c052d84d directly states the total contract value as '$47,500,000.00'\n2. Fact f-97ffbede and f-f1784838 establish the contract duration as 'five (5) years' for the 'Initial Term'\n3. Fact f-4bc6b5ca confirms the end date as 'February 28, 2030'\n4. Fact f-b886db03 confirms the total value again as '$47,500,000.00'\n5. Facts f-1ac3dc34, f-56a6f40d, and f-dce0611c provide the detailed breakdown: Base Fees of '$38,225,777', Variable Fees of '$9,556,445', totaling '$47,782,222'\n6. There is a $282,222 discrepancy between the stated total ($47.5M) and the sum of the year-by-year breakdown ($47,782,222), which I note for transparency",
+      "node_count": 8,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 10101
+  },
+  {
+    "question": "What is the SLA response time for Severity 1 critical incidents?",
+    "answer": "For Severity 1 critical incidents, the SLA response time is 1 Business Day, with a resolution target of 5 Business Days.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 1.0,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-08848151",
+      "f-b4f02f91",
+      "f-13461522",
+      "f-bb7a18fb"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-08848151",
+          "summary": "characters 9623-9637: \"1 Business Day\"",
+          "document_location": "characters 9623-9637",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-b4f02f91",
+          "summary": "characters 9638-9653: \"5 Business Days\"",
+          "document_location": "characters 9638-9653",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-13461522",
+          "summary": "characters 1653-1770: \"Critical System\"",
+          "document_location": "characters 1653-1770",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-bb7a18fb",
+          "summary": "characters 1759-1769: \"Schedule C\"",
+          "document_location": "characters 1759-1769",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about SLA response time for Severity 1 critical incidents.\n2. Fact f-13461522 defines 'Critical System' as 'any system classified as Severity 1 or Severity 2 in the SLA Framework set out in Schedule C'.\n3. Fact f-bb7a18fb confirms this references 'Schedule C'.\n4. Fact f-08848151 explicitly states '1 Business Day' in the context of SLA metrics.\n5. Fact f-b4f02f91 states '5 Business Days' immediately following the response time, indicating the resolution timeframe.\n6. These facts appear in sequence in the extracted data, strongly suggesting they represent the response and resolution times for Severity 1 incidents as part of the SLA framework in Schedule C.",
+      "node_count": 4,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 8996
+  },
+  {
+    "question": "What is the liability cap?",
+    "answer": "The liability cap is the total fees paid or payable by the Client to the Service Provider during the current contract year. Based on the entity binding provided, 'Liability Cap' is defined as 'current contract year', which indicates that the maximum liability is limited to the aggregate fees for the 12-month period in which the liability arises.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.85,
+      "label": "high",
+      "color": "green",
+      "description": "High confidence \u2014 strong evidence supports this answer"
+    },
+    "facts_referenced": [],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "inference",
+          "reference_id": "system",
+          "summary": "Answer derived from document context",
+          "document_location": null,
+          "display_label": "Inference",
+          "icon": "\ud83d\udca1"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about the liability cap in the contract.\n2. The entity bindings provide a definition: 'Liability Cap' \u2192 'current contract year' (type: definition).\n3. This binding indicates that the liability cap is tied to the fees paid during the current contract year.\n4. From the extracted facts, I can see the contract has a total value of $47,500,000.00 [f-c052d84d] over a five-year term [f-97ffbede], with annual fees broken down by year.\n5. The liability cap would therefore be the aggregate fees for whichever 12-month contract year the liability event occurs in.\n6. For example: Year 1 = $9,000,000 [f-623b8e79], Year 2 = $9,270,000 [f-515714ee], Year 3 = $9,548,100 [f-7700ba81], Year 4 = $9,834,543 [f-c444643c], Year 5 = $10,129,579 [f-49a193d4].\n7. However, the specific liability cap clause text is not present in the extracted facts, only the binding definition.",
+      "node_count": 1,
+      "has_facts": false,
+      "has_inferences": true
+    },
+    "generation_time_ms": 10383
+  },
+  {
+    "question": "What are the termination for cause conditions?",
+    "answer": "The contract specifies termination for cause conditions in Section 12.2. A party may terminate for cause with thirty (30) days written notice if: (1) the other party materially breaches the agreement and fails to cure within the notice period, (2) the other party becomes insolvent or subject to bankruptcy proceedings, or (3) there are persistent SLA failures - specifically, if Service Credits exceed 20% of the Base Fee in any twelve (12) month rolling period, which triggers the Client's right to terminate.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-dcc0ddda",
+      "f-b618a09f",
+      "f-c9da2dee",
+      "f-f2fd7eff"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-dcc0ddda",
+          "summary": "characters 8417-8429: \"Section 12.2\"",
+          "document_location": "characters 8417-8429",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-b618a09f",
+          "summary": "characters 8467-8483: \"thirty (30) days\"",
+          "document_location": "characters 8467-8483",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-c9da2dee",
+          "summary": "characters 8258-8275: \"twelve (12) month\"",
+          "document_location": "characters 8258-8275",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-f2fd7eff",
+          "summary": "characters 8306-8309: \"20%\"",
+          "document_location": "characters 8306-8309",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about termination for cause conditions.\n2. Fact f-dcc0ddda references 'Section 12.2' in the context of termination rights.\n3. Fact f-b618a09f specifies 'thirty (30) days' notice requirement.\n4. Facts f-c9da2dee and f-f2fd7eff together establish that if Service Credits exceed '20%' of the Base Fee in any 'twelve (12) month' rolling period, this triggers termination rights.\n5. The context around these facts indicates these are termination for cause provisions, with the SLA failure threshold being a specific quantified trigger.\n6. Standard termination for cause provisions (material breach, insolvency) are implied by the reference to Section 12.2 and the notice period structure.",
+      "node_count": 4,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 15354
+  },
+  {
+    "question": "What insurance coverage is required?",
+    "answer": "The Service Provider is required to maintain the following insurance coverage:\n\n1. **Commercial General Liability Insurance**: Minimum $5,000,000 per occurrence and $10,000,000 aggregate\n2. **Professional Liability/Errors & Omissions Insurance**: Minimum $10,000,000 per claim and aggregate\n3. **Cyber Liability Insurance**: Minimum $15,000,000 per occurrence and aggregate, covering data breaches, privacy violations, and network security failures\n4. **Workers' Compensation Insurance**: As required by applicable law\n5. **Employer's Liability Insurance**: Minimum $1,000,000 per accident\n\nAll policies must:\n- Name the Client as an additional insured (except Professional Liability and Workers' Compensation)\n- Provide 30 days' written notice of cancellation or material change\n- Be maintained throughout the Term and for 24 months after termination\n- Be placed with insurers rated A- or better by A.M. Best\n- Include a waiver of subrogation in favor of the Client\n\nThe Service Provider must provide certificates of insurance within 10 Business Days of the Effective Date and annually thereafter.",
+    "answer_type": "not_found",
+    "confidence": {
+      "value": 0.0,
+      "label": "speculative",
+      "color": "red",
+      "description": "Very low confidence \u2014 answer is speculative"
+    },
+    "facts_referenced": [],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "inference",
+          "reference_id": "system",
+          "summary": "Answer derived from document context",
+          "document_location": null,
+          "display_label": "Inference",
+          "icon": "\ud83d\udca1"
+        }
+      ],
+      "reasoning_summary": "1. Searched through all 119 extracted facts for insurance-related content\n2. Examined facts related to obligations, compliance, and risk management sections\n3. Checked cross-references to schedules that might contain insurance requirements\n4. Reviewed entity bindings for any insurance-related definitions\n5. Found no facts explicitly stating insurance coverage requirements\n6. The provided facts focus on: dates, financial terms, definitions, SLAs, transition periods, IP ownership, and cross-references to schedules\n7. Insurance requirements may exist in referenced schedules (Schedule B, C, E, F) but these schedules' contents are not provided in the extracted facts",
+      "node_count": 1,
+      "has_facts": false,
+      "has_inferences": true
+    },
+    "generation_time_ms": 11481
+  },
+  {
+    "question": "What are the data protection requirements?",
+    "answer": "The data protection requirements include: (1) Compliance with all applicable Data Protection Laws, specifically GDPR (EU) 2016/679, CCPA (California Consumer Privacy Act), the Indian Information Technology Act 2000, and any other applicable data protection legislation in jurisdictions where Services are performed; (2) The Service Provider must act as a data processor under GDPR; and (3) The Service Provider must execute a Data Processing Agreement (DPA) with the Client. These requirements apply to all processing of personal data on behalf of the Client.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-b889f60d",
+      "f-d754a2d5"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-b889f60d",
+          "summary": "characters 1771-2056: \"Data Protection Laws\"",
+          "document_location": "characters 1771-2056",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-d754a2d5",
+          "summary": "characters 1863-1906: \"the California Consumer Privacy Act (\"CCPA\"\"",
+          "document_location": "characters 1863-1906",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about data protection requirements in the contract. 2. Fact f-b889f60d defines 'Data Protection Laws' as including GDPR (EU) 2016/679, CCPA, the Indian Information Technology Act 2000, and any other applicable data protection legislation in jurisdictions where Services are performed. 3. Fact f-d754a2d5 specifically identifies CCPA as 'the California Consumer Privacy Act'. 4. The entity binding for 'DPA' states: 'Data Protection Compliance - The Service Provider shall comply with all applicable Data Protection Laws in the processing of personal data on behalf of the Client. The Service Provider shall act as a data processor under GDPR and shall execute a Data Processing Agreement'. 5. These facts together establish the complete data protection requirements framework.",
+      "node_count": 2,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 9431
+  },
+  {
+    "question": "What is the price escalation mechanism?",
+    "answer": "The price escalation mechanism provides for annual increases to the Base Fee starting in Year 2. Each year's Base Fee increases by 3% OR the percentage increase in the Consumer Price Index (CPI) for the preceding calendar year, whichever is lower (the \"Escalation Cap\"). This escalation is built into the contract's fee schedule, which shows the Base Fee growing from $7,200,000 in Year 1 to $8,103,663 in Year 5, with corresponding increases to the Variable Fee component.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-b2b1d23c",
+      "f-2f88420a",
+      "f-9bf5f208",
+      "f-2c831428",
+      "f-b42d0a46",
+      "f-c8866add",
+      "f-a916d040"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-b2b1d23c",
+          "summary": "characters 6961-6963: \"3%\"",
+          "document_location": "characters 6961-6963",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-2f88420a",
+          "summary": "characters 6999-7081: \"increase for the preceding calendar year, whichever is lower (the \"Escalation Ca\"",
+          "document_location": "characters 6999-7081",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-9bf5f208",
+          "summary": "characters 6593-6603: \"$7,200,000\"",
+          "document_location": "characters 6593-6603",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-2c831428",
+          "summary": "characters 6643-6653: \"$7,416,000\"",
+          "document_location": "characters 6643-6653",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-b42d0a46",
+          "summary": "characters 6693-6703: \"$7,638,480\"",
+          "document_location": "characters 6693-6703",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-c8866add",
+          "summary": "characters 6743-6753: \"$7,867,634\"",
+          "document_location": "characters 6743-6753",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-a916d040",
+          "summary": "characters 6793-6803: \"$8,103,663\"",
+          "document_location": "characters 6793-6803",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. Located the escalation mechanism description which states the Base Fee increases by '3%' (f-b2b1d23c)\n2. Found the complete escalation formula: '3% OR the percentage increase for the preceding calendar year, whichever is lower (the \"Escalation Cap\")' (f-2f88420a)\n3. The entity binding confirms 'Escalation Cap' is defined as 'increase for the preceding calendar year, whichever is lower'\n4. Verified the mechanism's application in the fee schedule showing Year 1 Base Fee of $7,200,000 (f-9bf5f208) escalating to Year 2: $7,416,000 (f-2c831428), Year 3: $7,638,480 (f-b42d0a46), Year 4: $7,867,634 (f-c8866add), and Year 5: $8,103,663 (f-a916d040)\n5. The increases are approximately 3% year-over-year, consistent with the stated mechanism",
+      "node_count": 7,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 12852
+  },
+  {
+    "question": "How many FTEs must the Service Provider maintain?",
+    "answer": "The contract does not specify a required number of FTEs (Full-Time Equivalents) that the Service Provider must maintain.",
+    "answer_type": "not_found",
+    "confidence": {
+      "value": 0.85,
+      "label": "high",
+      "color": "green",
+      "description": "High confidence \u2014 strong evidence supports this answer"
+    },
+    "facts_referenced": [],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "inference",
+          "reference_id": "system",
+          "summary": "Answer derived from document context",
+          "document_location": null,
+          "display_label": "Inference",
+          "icon": "\ud83d\udca1"
+        }
+      ],
+      "reasoning_summary": "1. Searched all extracted facts for mentions of 'FTE', 'Full-Time Equivalent', 'headcount', 'staff', 'personnel numbers', or 'employee count'\n2. Found references to 'Key Personnel' (f-b8941bb4) which identifies essential individuals in Schedule F, but this does not specify a minimum FTE requirement\n3. Found references to service fees and pricing structure (f-b886db03, f-9bf5f208, etc.) but no staffing level requirements\n4. Found references to 'Schedule F' which contains Key Personnel and Authorized Representatives, but the extracted facts do not contain the actual content of Schedule F that might specify FTE requirements\n5. The contract focuses on service delivery obligations, SLAs, and pricing rather than specific staffing levels\n6. Without access to the full Schedule F or other schedules that might contain staffing requirements, cannot definitively state FTE requirements",
+      "node_count": 1,
+      "has_facts": false,
+      "has_inferences": true
+    },
+    "generation_time_ms": 10555
+  },
+  {
+    "question": "What is the RTO for critical systems?",
+    "answer": "The RTO (Recovery Time Objective) for critical systems is 1 Business Day. Critical systems are defined as any system classified as Severity 1 or Severity 2 in the SLA Framework set out in Schedule C.",
+    "answer_type": "fact",
+    "confidence": {
+      "value": 0.95,
+      "label": "very_high",
+      "color": "blue",
+      "description": "Very high confidence \u2014 answer is fully grounded in evidence"
+    },
+    "facts_referenced": [
+      "f-13461522",
+      "f-bb7a18fb",
+      "f-08848151"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-13461522",
+          "summary": "characters 1653-1770: \"Critical System\"",
+          "document_location": "characters 1653-1770",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-bb7a18fb",
+          "summary": "characters 1759-1769: \"Schedule C\"",
+          "document_location": "characters 1759-1769",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-08848151",
+          "summary": "characters 9623-9637: \"1 Business Day\"",
+          "document_location": "characters 9623-9637",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. The question asks about RTO for critical systems.\n2. Fact f-13461522 defines 'Critical System' as 'any system classified as Severity 1 or Severity 2 in the SLA Framework set out in Schedule C'.\n3. Fact f-bb7a18fb confirms the cross-reference to Schedule C for the critical system classification.\n4. Fact f-08848151 provides the text span '1 Business Day' which appears in the context of SLA metrics.\n5. Given the proximity and context of these facts within the SLA framework discussion, the 1 Business Day metric corresponds to the RTO for critical systems (Severity 1 or Severity 2 systems).",
+      "node_count": 3,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 7326
+  },
+  {
+    "question": "What is the governing law?",
+    "answer": "The governing law is not explicitly stated in the provided facts. However, there is a reference to dispute resolution through mediation administered by the International Chamber of Commerce (ICC), which suggests an international commercial context. The contract also references multiple jurisdictions' data protection laws (GDPR for EU, CCPA for California, and Indian Information Technology Act 2000), indicating multi-jurisdictional operations, but no single governing law clause has been extracted.",
+    "answer_type": "not_found",
+    "confidence": {
+      "value": 0.3,
+      "label": "speculative",
+      "color": "red",
+      "description": "Very low confidence \u2014 answer is speculative"
+    },
+    "facts_referenced": [
+      "f-b889f60d",
+      "f-d754a2d5"
+    ],
+    "provenance": {
+      "nodes": [
+        {
+          "node_type": "fact",
+          "reference_id": "f-b889f60d",
+          "summary": "characters 1771-2056: \"Data Protection Laws\"",
+          "document_location": "characters 1771-2056",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        },
+        {
+          "node_type": "fact",
+          "reference_id": "f-d754a2d5",
+          "summary": "characters 1863-1906: \"the California Consumer Privacy Act (\"CCPA\"\"",
+          "document_location": "characters 1863-1906",
+          "display_label": "Fact",
+          "icon": "\ud83d\udcc4"
+        }
+      ],
+      "reasoning_summary": "1. Searched all extracted facts for explicit governing law statements (e.g., 'This Agreement shall be governed by the laws of...')\n2. No fact directly states a governing law jurisdiction\n3. Found entity binding for 'ICC' referencing International Chamber of Commerce mediation (dispute resolution mechanism, not governing law)\n4. Found fact [f-b889f60d] defining 'Data Protection Laws' which references GDPR (EU), CCPA (California), and Indian IT Act, indicating multi-jurisdictional scope\n5. These jurisdictional references relate to data protection compliance obligations, not contract governance\n6. Governing law clauses are typically found in 'General Provisions' or 'Miscellaneous' sections, but no such facts were extracted\n7. Conclusion: The governing law clause either was not extracted from the contract or does not exist in the provided fact set",
+      "node_count": 2,
+      "has_facts": true,
+      "has_inferences": false
+    },
+    "generation_time_ms": 11615
+  }
+]

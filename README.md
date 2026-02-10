@@ -93,7 +93,15 @@ curl -X POST http://127.0.0.1:8742/query/ask \
 | `GET` | `/contracts/{id}/clauses` | List classified clauses |
 | `GET` | `/contracts/{id}/bindings` | List resolved bindings (definitions + aliases) |
 | `GET` | `/contracts/{id}/clauses/gaps` | List missing mandatory facts |
+| `GET` | `/contracts/{id}/graph` | **TrustGraph context** — full node/edge graph |
 | `POST` | `/query/ask` | Ask a question about a contract |
+| `POST` | `/workspaces` | Create a workspace |
+| `GET` | `/workspaces` | List all workspaces |
+| `GET` | `/workspaces/{id}` | Get workspace with recent sessions |
+| `POST` | `/workspaces/{id}/documents` | Add document to workspace |
+| `DELETE` | `/workspaces/{id}/documents/{doc_id}` | Remove document from workspace |
+| `GET` | `/workspaces/{id}/sessions` | Session history for workspace |
+| `GET` | `/workspaces/{id}/documents/{doc_id}/check` | Document change detection |
 
 ### Example: Full Pipeline
 
@@ -153,7 +161,7 @@ contractos bindings doc-xxx
 ### Run the Full Suite
 
 ```bash
-# All 359 tests
+# All 421 tests
 python -m pytest tests/
 
 # Verbose output
@@ -166,11 +174,14 @@ python -m pytest tests/ --cov=src/contractos --cov-report=term-missing
 ### Run Specific Test Categories
 
 ```bash
-# Unit tests only (352 tests)
+# Unit tests only (389 tests)
 python -m pytest tests/unit/
 
-# Integration tests only (7 tests)
+# Integration tests only (19 tests)
 python -m pytest tests/integration/
+
+# Contract tests (13 tests)
+python -m pytest tests/contract/
 
 # Specific module
 python -m pytest tests/unit/test_fact_extractor.py -v
@@ -184,10 +195,11 @@ python -m pytest tests/unit/test_api.py -v
 # Data models (75 tests)
 python -m pytest tests/unit/test_models_*.py -v
 
-# Storage layer (56 tests)
-python -m pytest tests/unit/test_trust_graph.py tests/unit/test_workspace_store.py -v
+# Storage layer (56 + 17 + 8 = 81 tests)
+python -m pytest tests/unit/test_trust_graph.py tests/unit/test_workspace_store.py \
+  tests/unit/test_workspace_documents.py -v
 
-# Extraction tools (124 tests)
+# Extraction tools (143 tests — includes complex fixture tests)
 python -m pytest tests/unit/test_docx_parser.py tests/unit/test_pdf_parser.py \
   tests/unit/test_contract_patterns.py tests/unit/test_fact_extractor.py \
   tests/unit/test_clause_classifier.py tests/unit/test_cross_reference_extractor.py \
@@ -196,35 +208,43 @@ python -m pytest tests/unit/test_docx_parser.py tests/unit/test_pdf_parser.py \
 # Q&A pipeline (26 tests)
 python -m pytest tests/unit/test_binding_resolver.py tests/unit/test_document_agent.py -v
 
-# API endpoints (23 tests)
-python -m pytest tests/unit/test_api.py tests/integration/test_api.py -v
+# Workspace persistence (32 tests)
+python -m pytest tests/unit/test_change_detection.py tests/unit/test_workspace_documents.py \
+  tests/integration/test_workspace_persistence.py tests/integration/test_session_history.py \
+  tests/contract/test_workspace_api.py -v
+
+# API endpoints (36 tests)
+python -m pytest tests/unit/test_api.py tests/integration/test_api.py \
+  tests/contract/test_workspace_api.py -v
 ```
 
 ---
 
 ## Test Report
 
-**359 tests, all passing** (Python 3.14.2, pytest 9.0.2)
+**421 tests, all passing** (Python 3.14.2, pytest 9.0.2)
 
 ### Test Breakdown by Module
 
 | Module | Tests | Category |
 |--------|------:|----------|
+| `test_fact_extractor.py` | 40 | Tools — extraction orchestrator + complex fixtures |
 | `test_trust_graph.py` | 39 | Storage — TrustGraph CRUD |
 | `test_clause_classifier.py` | 29 | Tools — clause type classification |
 | `test_contract_patterns.py` | 25 | Tools — regex pattern extraction |
-| `test_fact_extractor.py` | 21 | Tools — extraction orchestrator |
 | `test_workspace_store.py` | 17 | Storage — workspace persistence |
 | `test_models_fact.py` | 16 | Models — Fact, FactEvidence, FactType |
 | `test_docx_parser.py` | 16 | Tools — Word document parser |
 | `test_api.py` (unit) | 16 | API — all endpoints |
 | `test_confidence.py` | 15 | Tools — confidence labels |
 | `test_models_clause.py` | 14 | Models — Clause, CrossReference |
+| `test_workspace_api.py` (contract) | 13 | Contract — workspace API endpoints |
 | `test_binding_resolver.py` | 13 | Tools — binding resolution |
 | `test_cross_reference_extractor.py` | 13 | Tools — cross-reference detection |
 | `test_document_agent.py` | 13 | Agents — Q&A pipeline |
 | `test_pdf_parser.py` | 13 | Tools — PDF document parser |
 | `test_llm_provider.py` | 12 | LLM — provider abstraction |
+| `test_change_detection.py` | 11 | Tools — file hash + change detection |
 | `test_models_query.py` | 11 | Models — Query, QueryResult |
 | `test_alias_detector.py` | 10 | Tools — entity alias detection |
 | `test_mandatory_fact_extractor.py` | 10 | Tools — mandatory fact slots |
@@ -232,10 +252,13 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py -v
 | `test_models_provenance.py` | 9 | Models — ProvenanceChain |
 | `test_models_inference.py` | 8 | Models — Inference |
 | `test_provenance_formatting.py` | 8 | Tools — provenance display |
+| `test_workspace_documents.py` | 8 | Storage — workspace-document association |
+| `test_session_history.py` (integration) | 8 | Integration — session history ordering |
 | `test_models_binding.py` | 7 | Models — Binding |
 | `test_config.py` | 7 | Config — YAML loading |
 | `test_api.py` (integration) | 7 | API — full pipeline |
-| **Total** | **359** | |
+| `test_workspace_persistence.py` (integration) | 3 | Integration — persistence across restart |
+| **Total** | **421** | |
 
 ---
 
@@ -243,12 +266,22 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py -v
 
 Full Q&A test reports with real LLM responses are checked in at [`tests/reports/`](tests/reports/):
 
+### Simple Fixtures
+
 | Report | Document | Queries | Fact-grounded | Not-found | Avg Confidence |
 |--------|----------|:-------:|:-------------:|:---------:|:--------------:|
 | [MSA Report](tests/reports/QA_TEST_REPORT.md#report-1-master-services-agreement-simple_procurementdocx) | `simple_procurement.docx` | 10 | 7 | 3 | 0.86 |
 | [NDA Report](tests/reports/QA_TEST_REPORT.md#report-2-non-disclosure-agreement-simple_ndapdf) | `simple_nda.pdf` | 7 | 5 | 2 | 0.90 |
 
-Raw JSON responses: [`qa_report_procurement_msa.json`](tests/reports/qa_report_procurement_msa.json), [`qa_report_nda.json`](tests/reports/qa_report_nda.json)
+### Complex Fixtures (Real-World Simulation)
+
+| Report | Document | Queries | Fact-grounded | Not-found | Avg Confidence |
+|--------|----------|:-------:|:-------------:|:---------:|:--------------:|
+| [IT Outsourcing](tests/reports/QA_TEST_REPORT.md#report-3-it-outsourcing-agreement-complex_it_outsourcingdocx) | `complex_it_outsourcing.docx` | 10 | 7 | 3 | 0.86 |
+| [Procurement Framework](tests/reports/QA_TEST_REPORT.md#report-4-procurement-framework-agreement-complex_procurement_frameworkpdf) | `complex_procurement_framework.pdf` | 7 | 6 | 1 | 0.91 |
+| **Total** | **4 documents** | **34** | **25 (74%)** | **9 (26%)** | **0.88** |
+
+Raw JSON: [`qa_report_procurement_msa.json`](tests/reports/qa_report_procurement_msa.json), [`qa_report_nda.json`](tests/reports/qa_report_nda.json), [`qa_report_complex_it_outsourcing.json`](tests/reports/qa_report_complex_it_outsourcing.json), [`qa_report_complex_procurement_framework.json`](tests/reports/qa_report_complex_procurement_framework.json)
 
 See the [full Q&A Test Report](tests/reports/QA_TEST_REPORT.md) for every question, answer, confidence label, provenance chain, and analysis.
 
@@ -256,113 +289,118 @@ See the [full Q&A Test Report](tests/reports/QA_TEST_REPORT.md) for every questi
 
 ## Extraction Reports (Test Fixtures)
 
-### DOCX: `simple_procurement.docx` — Master Services Agreement
-
-A procurement MSA between Alpha Corp (Buyer) and Beta Services Ltd (Vendor).
+### Simple: `simple_procurement.docx` — Master Services Agreement
 
 | Metric | Value |
 |--------|------:|
 | Word count | 224 |
-| Paragraphs | 17 |
-| Tables | 2 |
-| **Facts extracted** | **41** |
+| **Facts extracted** | **50** |
 | Clauses classified | 8 |
 | Bindings resolved | 5 |
 | Cross-references | 6 |
-| Mandatory fact slots | 11 |
 
-**Facts by type:**
+**Facts by type:** `table_cell` 15, `text_span` 14, `clause_text` 9, `entity` 6, `cross_reference` 6
 
-| Type | Count |
-|------|------:|
-| `table_cell` | 15 |
-| `text_span` | 14 |
-| `entity` | 6 |
-| `cross_reference` | 6 |
-
-**Clauses identified:**
-
-| Type | Heading | Cross-refs |
-|------|---------|:----------:|
-| general | Master Services Agreement | 0 |
-| general | 1. Definitions | 0 |
-| scope | 2. Scope of Services | 2 |
-| payment | 3. Payment Terms | 0 |
-| termination | 4. Termination | 1 |
-| confidentiality | 5. Confidentiality | 1 |
-| general | Schedule A: Products | 1 |
-| general | Schedule B: Locations | 1 |
-
-**Bindings resolved:**
-
-| Term | Resolves To | Type |
-|------|-------------|------|
-| Agreement | Master Services Agreement | definition |
-| Buyer | Alpha Corp | alias |
-| Vendor | Beta Services Ltd | alias |
-| Effective Date | January 1, 2025 | definition |
-| Service Period | thirty (30) days from the Effective Date | definition |
-
-**Mandatory fact slot analysis:**
-
-| Clause | Fact Spec | Status | Required |
-|--------|-----------|--------|----------|
-| 3. Payment Terms | payment_amount | partial | yes |
-| 3. Payment Terms | payment_schedule | partial | yes |
-| 3. Payment Terms | currency | partial | no |
-| 3. Payment Terms | late_payment_penalty | missing | no |
-| 4. Termination | notice_period | partial | yes |
-| 4. Termination | termination_reasons | partial | yes |
-| 4. Termination | cure_period | partial | no |
-| 4. Termination | survival_clauses | missing | no |
-| 5. Confidentiality | confidentiality_duration | partial | yes |
-| 5. Confidentiality | confidential_information_definition | partial | yes |
-| 5. Confidentiality | exclusions | missing | no |
-
-### PDF: `simple_nda.pdf` — Non-Disclosure Agreement
-
-An NDA between Gamma Inc (Discloser) and Delta LLC (Recipient).
+### Simple: `simple_nda.pdf` — Non-Disclosure Agreement
 
 | Metric | Value |
 |--------|------:|
 | Word count | 123 |
-| Paragraphs | 13 |
-| Tables | 1 |
 | **Facts extracted** | **17** |
 | Clauses classified | 0 |
 | Bindings resolved | 3 |
-| Cross-references | 0 |
-| Mandatory fact slots | 0 |
+
+**Facts by type:** `entity` 6, `text_span` 6, `table_cell` 4, `cross_reference` 1
+
+### Complex: `complex_it_outsourcing.docx` — $47.5M IT Outsourcing Agreement
+
+A production-grade 18-section IT outsourcing contract between Meridian Global Holdings (Client) and TechServe Solutions (Service Provider/Vendor).
+
+| Metric | Value |
+|--------|------:|
+| Word count | 4,119 |
+| **Facts extracted** | **607** |
+| Clauses classified | 65 |
+| Bindings resolved | 31 |
+| Cross-references | 44 |
+| Mandatory fact slots | 44 |
 
 **Facts by type:**
 
-| Type | Count |
-|------|------:|
-| `entity` | 6 |
-| `text_span` | 6 |
-| `table_cell` | 4 |
-| `cross_reference` | 1 |
+| Type | Count | Description |
+|------|------:|-------------|
+| `table_cell` | 256 | SLA tables, pricing, locations, insurance, compliance, assets, applications |
+| `text_span` | 172 | Dates, amounts, durations, percentages, definitions |
+| `clause_text` | 98 | Full clause body paragraphs (termination conditions, liability caps, etc.) |
+| `cross_reference` | 45 | Section refs, schedule refs, appendix refs |
+| `entity` | 36 | Party aliases, defined terms |
 
-**Bindings resolved:**
+**Clause types identified:**
+
+| Type | Count | Examples |
+|------|------:|---------|
+| general | 39 | Title, definitions, key definitions, schedules |
+| termination | 4 | For convenience, for cause, assistance, consequences |
+| payment | 3 | Contract value, price escalation, quarterly reconciliation |
+| compliance | 3 | Regulatory, SOC 2, ISO 27001 |
+| dispute_resolution | 3 | Escalation, mediation, arbitration |
+| confidentiality | 2 | Obligations, data breach notification |
+| indemnification | 2 | Service provider indemnification, consequential damages |
+| notice | 2 | Notices, amendments |
+| scope | 1 | Infrastructure + application services |
+| ip_rights | 1 | Client IP, Service Provider IP, Joint IP |
+| insurance | 1 | 5 coverage types with limits |
+| liability | 1 | 200% annual Base Fee cap |
+| force_majeure | 1 | 90-day threshold |
+| governing_law | 1 | State of New York |
+| assignment | 1 | Affiliate/M&A exception |
+
+**Key bindings resolved:**
 
 | Term | Resolves To | Type |
 |------|-------------|------|
-| NDA | Disclosure Agreement | definition |
-| Discloser | Gamma Inc | alias |
-| Recipient | Delta LLC | alias |
+| Agreement | IT Outsourcing Services Agreement | definition |
+| CCPA | California Consumer Privacy Act | definition |
+| Liability Cap | current contract year | definition |
+| Escalation Cap | CPI increase, whichever is lower | definition |
+| Monthly Credit Cap | 15% of monthly Base Fee | definition |
+| Client IP | IP owned by Client prior to Effective Date | definition |
+| Joint IP | IP developed jointly by the Parties | definition |
+| DPA | Data Processing Agreement | definition |
 
-**Sample extracted facts:**
+**TrustGraph visualization:** `GET /contracts/{id}/graph` returns 748 nodes, 894 edges
 
-| Fact ID | Type | Value | Location |
-|---------|------|-------|----------|
-| f-... | entity | `Disclosure Agreement ("NDA"` | chars 45–72 |
-| f-... | entity | `Gamma Inc (the "Discloser"` | chars 74–124 |
-| f-... | entity | `Delta LLC (the "Recipient"` | chars 126–156 |
-| f-... | text_span | `four (24) months` | chars 446–462 |
-| f-... | text_span | `thirty (30) days` | chars 555–571 |
-| f-... | cross_reference | `Section 2` | chars 678–687 |
-| f-... | text_span | `January 1, 2025` | chars 735–750 |
-| f-... | text_span | `December 31, 2026` | chars 763–780 |
+### Complex: `complex_procurement_framework.pdf` — GBP 85M Procurement Framework
+
+A multi-category procurement framework between Pinnacle Manufacturing Group (Buyer) and GlobalSource Industrial Supply (Supplier), covering 14 delivery points across 10 countries.
+
+| Metric | Value |
+|--------|------:|
+| Word count | 3,128 |
+| **Facts extracted** | **376** |
+| Clauses classified | 0 (PDF heading detection limitation) |
+| Bindings resolved | 16 |
+
+**Facts by type:**
+
+| Type | Count | Description |
+|------|------:|-------------|
+| `text_span` | 174 | Dates, amounts, durations, percentages |
+| `table_cell` | 166 | Volume discounts, delivery points, categories, KPIs, liquidated damages |
+| `cross_reference` | 22 | Section/annex references |
+| `entity` | 14 | Party aliases, defined terms |
+
+**Key bindings resolved:**
+
+| Term | Resolves To | Type |
+|------|-------------|------|
+| Framework Agreement | This Procurement Framework Agreement | definition |
+| Performance Bond | irrevocable, unconditional bank guarantee | definition |
+| Liquidated Damages | pre-estimated damages for failure to meet obligations | definition |
+| Warranty Period | 24 months from date of delivery | definition |
+| Confidential Information | all information marked as confidential... | definition |
+| ESG | environmental, social, and governance | definition |
+| KPI | performance metrics set out in Annex 5 | definition |
 
 ---
 
@@ -370,13 +408,34 @@ An NDA between Gamma Inc (Discloser) and Delta LLC (Recipient).
 
 ```
 Interaction    →  Word/PDF Copilot · CLI · API
-Workspace      →  Persistent context · Auto-discovery · Session memory
+Workspace      →  Persistent context · Session history · Change detection
 Agents         →  DocumentAgent (Q&A with provenance)
 Tools          →  FactExtractor · BindingResolver · ClauseClassifier
                   CrossReferenceExtractor · MandatoryFactExtractor
                   AliasDetector · ContractPatterns · Confidence
+                  ChangeDetection · ProvenanceFormatter
 Fabric         →  TrustGraph (SQLite) · WorkspaceStore
 LLM            →  Anthropic Claude · Mock (testing)
+```
+
+### TrustGraph
+
+The TrustGraph is the core knowledge store. For any indexed document, `GET /contracts/{id}/graph` returns the full context graph:
+
+```
+Contract (root)
+├── Clauses (65 for complex DOCX)
+│   ├── Clause body text facts (CLAUSE_TEXT)
+│   └── Cross-references → other clauses
+├── Facts (607 for complex DOCX)
+│   ├── text_span — dates, amounts, durations
+│   ├── table_cell — schedule data, SLA tables
+│   ├── clause_text — full paragraph text
+│   ├── entity — party names, defined terms
+│   └── cross_reference — section/appendix refs
+└── Bindings (31 for complex DOCX)
+    ├── definitions — "Liability Cap" → "current contract year"
+    └── aliases — "Client" → "Meridian Global Holdings"
 ```
 
 ### Project Structure
@@ -388,6 +447,10 @@ src/contractos/
 │   ├── app.py           # App factory
 │   ├── deps.py          # Dependency injection
 │   └── routes/          # Endpoint handlers
+│       ├── contracts.py # Upload, facts, clauses, bindings, graph
+│       ├── health.py    # Health + config
+│       ├── query.py     # Q&A with provenance
+│       └── workspace.py # Workspace CRUD, sessions, change detection
 ├── cli.py               # CLI interface
 ├── config.py            # Configuration loading
 ├── fabric/              # Storage layer
@@ -397,15 +460,16 @@ src/contractos/
 ├── llm/                 # LLM provider abstraction
 │   └── provider.py      # Anthropic + Mock providers
 ├── models/              # Pydantic data models
-│   ├── fact.py          # Fact, FactEvidence, FactType
+│   ├── fact.py          # Fact, FactEvidence, FactType (incl. CLAUSE_TEXT)
 │   ├── binding.py       # Binding, BindingType
 │   ├── clause.py        # Clause, ClauseTypeEnum, CrossReference
 │   ├── inference.py     # Inference, InferenceType
 │   ├── provenance.py    # ProvenanceChain, ProvenanceNode
 │   ├── query.py         # Query, QueryResult
-│   └── ...
+│   ├── workspace.py     # Workspace, ReasoningSession
+│   └── document.py      # Contract metadata
 └── tools/               # Extraction and analysis tools
-    ├── fact_extractor.py       # Orchestrator
+    ├── fact_extractor.py       # Orchestrator (incl. clause body text)
     ├── docx_parser.py          # Word document parser
     ├── pdf_parser.py           # PDF document parser
     ├── contract_patterns.py    # Regex patterns
@@ -414,6 +478,7 @@ src/contractos/
     ├── mandatory_fact_extractor.py
     ├── alias_detector.py       # Entity alias detection
     ├── binding_resolver.py     # Definition resolution
+    ├── change_detection.py     # File hash + change detection
     ├── confidence.py           # Confidence labels
     └── provenance_formatter.py # Provenance display
 ```
@@ -451,7 +516,7 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 
 ## Status
 
-**Phase 6 complete** — Full extraction pipeline, Q&A with provenance, 9 API endpoints, 359 tests passing.
+**Phase 7 complete** — Full extraction pipeline, Q&A with provenance, workspace persistence, TrustGraph visualization, 17 API endpoints, 421 tests passing.
 
 | Phase | Status | Tests |
 |-------|--------|------:|
@@ -461,6 +526,6 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 | Phase 4: Binding Resolution | Done | 13 |
 | Phase 5: Q&A Pipeline (DocumentAgent) | Done | 13 |
 | Phase 6: Pipeline Wiring, Provenance Display, CLI | Done | 28 |
-| Phase 7: Workspace Persistence | Planned | — |
+| Phase 7: Workspace Persistence, Change Detection, Complex Fixtures | Done | 62 |
 | Phase 8: Word Copilot Add-in | Planned | — |
 | Phase 9: Polish & Benchmarks | Planned | — |

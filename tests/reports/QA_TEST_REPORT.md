@@ -2,12 +2,14 @@
 
 **Generated**: 2026-02-10  
 **Model**: `claude-sonnet-4-5-global` (via LiteLLM proxy)  
-**Total Queries**: 17 (10 MSA + 7 NDA)  
-**Raw JSON**: [`qa_report_procurement_msa.json`](qa_report_procurement_msa.json), [`qa_report_nda.json`](qa_report_nda.json)
+**Total Queries**: 34 (10 simple MSA + 7 simple NDA + 10 complex ITO + 7 complex PFA)  
+**Raw JSON**: [`qa_report_procurement_msa.json`](qa_report_procurement_msa.json), [`qa_report_nda.json`](qa_report_nda.json), [`qa_report_complex_it_outsourcing.json`](qa_report_complex_it_outsourcing.json), [`qa_report_complex_procurement_framework.json`](qa_report_complex_procurement_framework.json)
 
 ---
 
 ## Summary
+
+### Simple Fixtures (Phase 6)
 
 | Metric | MSA (DOCX) | NDA (PDF) | Total |
 |--------|:----------:|:---------:|:-----:|
@@ -21,6 +23,30 @@
 | Not-found (speculative) | 1 | 1 | 2 |
 | Avg generation time | 7.98s | 6.72s | 7.44s |
 | Avg facts referenced | 3.7 | 4.6 | 4.1 |
+
+### Complex Fixtures (Phase 7)
+
+| Metric | IT Outsourcing (DOCX) | Procurement Framework (PDF) | Total |
+|--------|:---------------------:|:---------------------------:|:-----:|
+| Queries | 10 | 7 | 17 |
+| Fact-grounded answers | 7 | 6 | 13 |
+| Not-found (honest) | 3 | 1 | 4 |
+| Very high confidence (0.95-1.0) | 6 | 5 | 11 |
+| High confidence (0.85) | 2 | 1 | 3 |
+| Moderate confidence (0.6) | 0 | 1 | 1 |
+| Speculative (0.0-0.3) | 2 | 0 | 2 |
+| Avg generation time | 10.81s | 9.62s | 10.30s |
+| Avg facts referenced | 3.0 | 7.1 | 4.7 |
+
+### Overall (All 34 Queries)
+
+| Metric | Value |
+|--------|:-----:|
+| Total queries | 34 |
+| Fact-grounded answers | 25 (74%) |
+| Not-found (honest) | 9 (26%) |
+| Very high confidence | 22 (65%) |
+| Avg generation time | 8.87s |
 
 ---
 
@@ -288,7 +314,231 @@
 
 ---
 
+---
+
+## Report 3: IT Outsourcing Agreement (`complex_it_outsourcing.docx`)
+
+**Document**: $47.5M IT Outsourcing Agreement between Meridian Global Holdings (Client) and TechServe Solutions (Service Provider)  
+**Extraction**: 607 facts, 65 clauses, 31 bindings, 44 cross-references
+
+### Q1: "What is the total contract value?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | $47,500,000.00 over the five-year Initial Term (March 2025 – February 2030). Base Fees: $38,225,777 + Variable: $9,556,445 = $47,782,222. Notes minor discrepancy between stated total and year-by-year sum. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 8 facts |
+| **Generation Time** | 10,101 ms |
+
+---
+
+### Q2: "What is the SLA response time for Severity 1 critical incidents?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | 1 Business Day response, 5 Business Days resolution. Critical Systems defined as Severity 1/2 per Schedule C. |
+| **Answer Type** | `fact` |
+| **Confidence** | **1.0** — very_high (blue) |
+| **Facts Referenced** | 4 facts |
+| **Generation Time** | 8,996 ms |
+
+---
+
+### Q3: "What is the liability cap?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Tied to fees for the current contract year. Binding: "Liability Cap" → "current contract year". Year 1 annual fees ~$9M. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.85** — high (green) |
+| **Facts Referenced** | 0 facts (binding-derived) |
+| **Generation Time** | 10,383 ms |
+
+---
+
+### Q4: "What are the termination for cause conditions?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Section 12.2: (1) material breach uncured for 30 days; (2) insolvency/bankruptcy; (3) Severity 1 SLA failures for 3 consecutive months; (4) Service Credits exceeding 20% annual Base Fee in 12 months; (5) data breach from gross negligence. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 4 facts |
+| **Generation Time** | 15,354 ms |
+
+> **Note**: Clause body text extraction enables the model to read the full termination conditions — this was previously a "not found" gap.
+
+---
+
+### Q5: "What insurance coverage is required?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Lists 5 coverage types with minimums (CGL $5M, E&O $25M, Cyber $20M, Workers' Comp statutory, Employer's Liability $5M). |
+| **Answer Type** | `not_found` |
+| **Confidence** | **0.0** — speculative (red) |
+| **Facts Referenced** | 0 facts |
+| **Generation Time** | 11,481 ms |
+
+> **Note**: Despite providing a detailed answer, the model marks this as "not_found" because the insurance table data wasn't matched to the question context. The data IS in the TrustGraph as table_cell facts.
+
+---
+
+### Q6: "What are the data protection requirements?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Compliance with GDPR, CCPA, Indian IT Act 2000. Service Provider acts as data processor. Requires AES-256 encryption at rest, TLS 1.3 in transit. 24-hour breach notification. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 2 facts |
+| **Generation Time** | 9,431 ms |
+
+---
+
+### Q7: "What is the price escalation mechanism?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Annual escalation of 3% or CPI (whichever lower), starting Year 2. Applied to prior year's Base Fee. 60-day advance notice required. Year-by-year breakdown provided. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 7 facts |
+| **Generation Time** | 12,852 ms |
+
+---
+
+### Q8: "How many FTEs must the Service Provider maintain?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Not found in extracted facts. |
+| **Answer Type** | `not_found` |
+| **Confidence** | **0.85** — high (green) |
+| **Facts Referenced** | 0 facts |
+| **Generation Time** | 10,555 ms |
+
+> **Note**: The FTE count (350) is in the clause body text but the model couldn't locate it among 607 facts. Context window limitation.
+
+---
+
+### Q9: "What is the RTO for critical systems?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | RTO for critical systems is referenced via the Critical System definition (Severity 1/2 per Schedule C SLA Framework). |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 3 facts |
+| **Generation Time** | 7,326 ms |
+
+---
+
+### Q10: "What is the governing law?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Not explicitly found. References to ICC mediation and arbitration in New York suggest US jurisdiction. |
+| **Answer Type** | `not_found` |
+| **Confidence** | **0.3** — speculative (red) |
+| **Facts Referenced** | 2 facts |
+| **Generation Time** | 11,615 ms |
+
+---
+
+## Report 4: Procurement Framework Agreement (`complex_procurement_framework.pdf`)
+
+**Document**: GBP 85M Procurement Framework between Pinnacle Manufacturing Group (Buyer) and GlobalSource Industrial Supply (Supplier)  
+**Extraction**: 376 facts, 0 clauses (PDF headings not detected), 16 bindings
+
+### Q1: "Who are the parties to this agreement?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | References "Authorized Buyer" binding to Pinnacle and subsidiaries. Full party names not directly in extracted facts. |
+| **Answer Type** | `inference` |
+| **Confidence** | **0.6** — moderate (yellow) |
+| **Facts Referenced** | 2 facts |
+| **Generation Time** | 13,266 ms |
+
+---
+
+### Q2: "What is the total framework value?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | GBP 85,000,000 (Eighty-Five Million British Pounds) — estimated aggregate of all Purchase Orders over the Term. |
+| **Answer Type** | `fact` |
+| **Confidence** | **1.0** — very_high (blue) |
+| **Facts Referenced** | 2 facts |
+| **Generation Time** | 5,356 ms |
+
+---
+
+### Q3: "What are the volume discount tiers?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | 5 tiers: Up to £5M (0%), £5M-£15M (5%), £15M-£25M (8%), £25M-£40M (12%), Above £40M (15% + 2% annual rebate). Quarterly/monthly rebate frequency. |
+| **Answer Type** | `fact` |
+| **Confidence** | **1.0** — very_high (blue) |
+| **Facts Referenced** | 12 facts |
+| **Generation Time** | 9,047 ms |
+
+---
+
+### Q4: "What is the warranty period for goods?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | 24 months from date of delivery. Supplier must repair/replace defective goods within 5 Business Days. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 2 facts |
+| **Generation Time** | 6,917 ms |
+
+---
+
+### Q5: "What are the liquidated damages for late delivery?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Tiered: 1-5 days (0.5%/day, cap 5%), 6-15 days (1.0%/day, cap 15%), >15 days (cancel PO + 15%). Quality: 150% replacement cost (cap 25%). Documentation: GBP 500/doc/day (cap GBP 10,000). Annual aggregate cap: 10% of annual spend. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 13 facts |
+| **Generation Time** | 11,901 ms |
+
+---
+
+### Q6: "What is the performance bond amount?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Binding defines Performance Bond as irrevocable bank guarantee. Specific GBP 5,000,000 amount not directly matched. |
+| **Answer Type** | `not_found` |
+| **Confidence** | **0.85** — high (green) |
+| **Facts Referenced** | 2 facts |
+| **Generation Time** | 9,001 ms |
+
+---
+
+### Q7: "What are the payment terms?"
+
+| Field | Value |
+|-------|-------|
+| **Answer** | Net 60 (payment within 60 days of valid invoice). Early payment discount: 2% for payment within 10 days (2/10 Net 60). Set-off rights for LDs, warranty claims, and credit notes. |
+| **Answer Type** | `fact` |
+| **Confidence** | **0.95** — very_high (blue) |
+| **Facts Referenced** | 17 facts |
+| **Generation Time** | 11,882 ms |
+
+---
+
 ## Key Observations
+
+### Simple Fixtures (Phase 6)
 
 1. **Grounded answers**: 12 of 17 queries (71%) returned fact-grounded answers with very high confidence. The system cites specific character offsets and table cell locations.
 
@@ -301,3 +551,17 @@
 5. **Confidence calibration**: The model appropriately assigns lower confidence when evidence is ambiguous (Q10: contract value = moderate) or missing (Q6: confidentiality = speculative).
 
 6. **Provenance depth**: Answers reference 1–10 facts each, with full document locations. Every claim traces back to specific evidence.
+
+### Complex Fixtures (Phase 7)
+
+7. **Scale handling**: The system successfully processes contracts with 607 facts (DOCX) and 376 facts (PDF), maintaining answer quality. Average generation time increases modestly (10.3s vs 7.4s).
+
+8. **Clause body text improvement**: With the new `CLAUSE_TEXT` fact type, the model can now answer questions about termination conditions (Q4), data protection requirements (Q6), and price escalation (Q7) that were previously "not found" gaps.
+
+9. **Complex table extraction**: Volume discount tiers (5 tiers), liquidated damages matrices (5 breach types), and delivery schedules are fully extracted and queryable. The LD query (Report 4, Q5) references 13 facts.
+
+10. **Definition resolution at scale**: 31 bindings resolved for the IT outsourcing contract, including complex definitions like "Liability Cap", "Escalation Cap", "Monthly Credit Cap", "Transition Completion Date", and IP ownership categories.
+
+11. **PDF limitations**: PDF heading detection remains limited — the procurement framework PDF extracted 0 clauses (vs 65 for the DOCX). This affects clause-level analysis but fact extraction still works well (376 facts).
+
+12. **Remaining gaps**: Some answers marked "not_found" despite data being in the TrustGraph (e.g., insurance coverage, FTE count, governing law). This is a context window / fact retrieval limitation — the relevant facts exist but aren't surfaced to the LLM in the query context.
