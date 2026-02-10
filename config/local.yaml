@@ -1,0 +1,13 @@
+contractos:
+  llm:
+    provider: mock
+    model: mock-v1
+  storage:
+    backend: sqlite
+    path: ~/.contractos/trustgraph.db
+  server:
+    host: 127.0.0.1
+    port: 8742
+    cors_origins:
+      - "https://localhost"
+      - "http://localhost:3000"

@@ -1,0 +1,106 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "contractos"
+version = "0.1.0"
+description = "The operating system for contract intelligence"
+readme = "README.md"
+requires-python = ">=3.12"
+# Note: spaCy does not yet support Python 3.14. Use Python 3.12 or 3.13
+# for full NER functionality. Core features work without spaCy.
+license = { text = "MIT" }
+dependencies = [
+    "anthropic>=0.40.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "python-docx>=1.1.0",
+    "PyMuPDF>=1.25.0",
+    "pdfplumber>=0.11.0",
+    # "spacy>=3.8.0",  # Optional: requires Python <=3.13
+    "pyyaml>=6.0.0",
+    "python-multipart>=0.0.18",
+    "sse-starlette>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.0",
+    "respx>=0.22.0",
+    "factory-boy>=3.3.0",
+    "mypy>=1.14.0",
+    "ruff>=0.9.0",
+]
+
+[project.scripts]
+contractos = "contractos.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contractos"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-q",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "benchmark: marks benchmark tests (deselect with '-m \"not benchmark\"')",
+]
+
+[tool.coverage.run]
+source = ["src/contractos"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific
+]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.ruff.lint.isort]
+known-first-party = ["contractos"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+packages = ["src.contractos"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false

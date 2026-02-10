@@ -9,10 +9,17 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
 dist/
 *.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
 
 # Node
 node_modules/
@@ -25,3 +32,10 @@ node_modules/
 # Build
 build/
 out/
+
+# ContractOS data
+.contractos/
+*.db
+
+# Spec-kit
+.specify/scripts/
