@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
 from contractos.api.deps import AppState, get_state
+from contractos.fabric.embedding_index import build_chunks_from_extraction
 from contractos.models.document import Contract
 from contractos.tools.binding_resolver import resolve_bindings
 from contractos.tools.confidence import ConfidenceDisplay, confidence_label
@@ -193,6 +194,12 @@ async def upload_contract(
             state.trust_graph.insert_cross_reference(xref)
         for slot in extraction.clause_fact_slots:
             state.trust_graph.insert_clause_fact_slot(slot)
+
+        # Build semantic vector index (FAISS + sentence-transformers)
+        chunks = build_chunks_from_extraction(
+            doc_id, extraction.facts, extraction.clauses, all_bindings
+        )
+        state.embedding_index.index_document(doc_id, chunks)
 
         return ContractResponse(
             document_id=doc_id,

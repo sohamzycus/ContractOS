@@ -324,6 +324,46 @@
 
 ---
 
+### Phase 7c: FAISS Vector Indexing & Provenance Visualization ✅ COMPLETE
+
+**Goal**: Replace naive full-scan retrieval with industry-standard FAISS semantic vector search. Enhance TrustGraph visualization with query provenance overlay.
+**Tests**: 18 new embedding tests (546 total passing)
+
+- [x] T151 Add `sentence-transformers` + `faiss-cpu` + `numpy` dependencies to `pyproject.toml`
+- [x] T152 Build `EmbeddingIndex` (`src/contractos/fabric/embedding_index.py`):
+  - FAISS IndexFlatIP (inner product on L2-normalized = cosine similarity)
+  - `all-MiniLM-L6-v2` sentence-transformer model (384-dim, 80MB, local inference)
+  - Lazy model loading (singleton) — loads on first use
+  - Mock fallback when sentence-transformers not installed
+  - Per-document FAISS index stored in memory
+  - `index_document()` — batch embed all chunks (facts, clauses, bindings)
+  - `search()` — top-k nearest neighbors with chunk_type filtering
+  - `build_chunks_from_extraction()` — converts extraction results to IndexedChunks
+- [x] T153 Unit tests for EmbeddingIndex (`tests/unit/test_embedding_index.py`) — 18 tests:
+  - `TestEmbeddingIndexCreation` (5 tests): create, index, multi-doc, remove
+  - `TestEmbeddingSearch` (8 tests): results, scores, ordering, top-k, type filtering, semantic relevance (payment, termination, parties)
+  - `TestBuildChunksFromExtraction` (5 tests): facts, clauses, bindings, short-skip, combined
+- [x] T154 Integrate embedding index into upload pipeline (`contracts.py`):
+  - After TrustGraph storage, build chunks and index in FAISS
+  - `AppState` now holds `EmbeddingIndex` instance
+- [x] T155 Upgrade `DocumentAgent` to use FAISS semantic retrieval:
+  - When embedding index available: FAISS top-30 → retrieve relevant Fact objects → ordered by similarity
+  - Fallback to full-scan when no embedding index (backward compatible)
+  - Context now annotated with retrieval method
+  - `QueryResult.retrieval_method` field: `"faiss_semantic"` or `"full_scan"`
+  - API response includes `retrieval_method` for transparency
+- [x] T156 TrustGraph Provenance Visualization (`demo/graph.html`):
+  - Q&A panel in side panel — ask questions directly from the graph view
+  - Provenance chain display: fact nodes, inference nodes, reasoning summary
+  - Click provenance node → highlights it on the graph with yellow ring
+  - After Q&A: referenced facts highlighted on graph (white ring, others dimmed)
+  - Retrieval method badge: "FAISS Semantic" (green) or "Full Scan" (orange)
+  - Demo console also shows retrieval method in Q&A responses
+
+**Checkpoint**: ✅ FAISS vector indexing operational. Semantic retrieval replaces full-scan. Provenance visible on TrustGraph. **546 tests total.**
+
+---
+
 ## Phase 8: Word Copilot Add-in (P2)
 
 **Goal**: A working Word sidebar that communicates with the ContractOS server.

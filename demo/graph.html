@@ -418,6 +418,16 @@
       </p>
     </div>
     <hr style="border-color: var(--border); margin: 16px 0;">
+    <div id="queryPanel">
+      <h3>Ask a Question</h3>
+      <p style="font-size: 12px; color: var(--text2); margin-bottom: 8px;">Ask about the uploaded contract. Provenance nodes will be highlighted on the graph.</p>
+      <textarea id="queryInput" placeholder="e.g. What are the termination conditions?" style="width: 100%; min-height: 50px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-size: 12px; resize: vertical; font-family: inherit;"></textarea>
+      <button onclick="askQuestion()" style="margin-top: 6px; background: var(--accent); color: white; border: none; padding: 6px 16px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; width: 100%;" id="askBtn">Ask</button>
+      <div id="answerPanel" style="display: none; margin-top: 12px;">
+        <div id="answerContent"></div>
+      </div>
+    </div>
+    <hr style="border-color: var(--border); margin: 16px 0;">
     <div id="nodeDetail">
       <h3>Node Inspector</h3>
       <p style="font-size: 12px; color: var(--text2);">Click a node in the graph to inspect it. Hover to see connections.</p>
@@ -480,6 +490,7 @@ async function uploadAndVisualize() {
     const resp = await fetch(BASE + '/contracts/upload', { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.document_id) {
+      currentDocumentId = data.document_id;
       await loadGraph(data.document_id);
     }
   } catch (err) {
@@ -491,7 +502,10 @@ async function uploadAndVisualize() {
 
 async function loadExistingGraph() {
   const docId = document.getElementById('docIdInput').value.trim();
-  if (docId) await loadGraph(docId);
+  if (docId) {
+    currentDocumentId = docId;
+    await loadGraph(docId);
+  }
 }
 
 function animatePipeline() {
@@ -848,6 +862,126 @@ function changeLayout() {
 function resetZoom() {
   if (svg && zoom) {
     svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  }
+}
+
+let currentDocumentId = null;
+
+async function askQuestion() {
+  const question = document.getElementById('queryInput').value.trim();
+  if (!question || !currentDocumentId) {
+    alert('Please upload a document first and enter a question.');
+    return;
+  }
+
+  const btn = document.getElementById('askBtn');
+  const panel = document.getElementById('answerPanel');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Thinking...';
+  panel.style.display = 'block';
+  panel.querySelector('#answerContent').innerHTML = '<span class="spinner"></span> Querying with FAISS semantic retrieval...';
+
+  try {
+    const resp = await fetch(BASE + '/query/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, document_id: currentDocumentId }),
+    });
+    const data = await resp.json();
+
+    // Build answer display
+    const conf = data.confidence ? `${data.confidence.label} (${data.confidence.score})` : 'N/A';
+    const retrieval = data.retrieval_method === 'faiss_semantic'
+      ? '<span style="color: var(--green);">FAISS Semantic</span>'
+      : '<span style="color: var(--orange);">Full Scan</span>';
+
+    let provenanceHTML = '';
+    if (data.provenance && data.provenance.nodes) {
+      provenanceHTML = '<div style="margin-top: 8px;"><b style="font-size: 11px; color: var(--accent2);">PROVENANCE CHAIN</b>';
+      data.provenance.nodes.forEach(node => {
+        const icon = node.icon || '?';
+        const color = node.node_type === 'fact' ? 'var(--green)' : node.node_type === 'inference' ? 'var(--orange)' : 'var(--blue)';
+        provenanceHTML += `
+          <div style="display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); cursor: pointer;"
+               onclick="highlightProvenanceNode('${node.reference_id}')">
+            <span style="font-size: 14px;">${icon}</span>
+            <div style="font-size: 11px;">
+              <span style="color: ${color}; font-weight: 600;">${node.node_type}</span>:
+              <span style="color: var(--text2);">${node.summary}</span>
+              ${node.document_location ? `<br><span style="color: var(--text2); font-size: 10px;">${node.document_location}</span>` : ''}
+            </div>
+          </div>`;
+      });
+      if (data.provenance.reasoning_summary) {
+        provenanceHTML += `<div style="margin-top: 6px; font-size: 11px; color: var(--text2); padding: 6px; background: var(--surface2); border-radius: 4px;">
+          <b>Reasoning:</b> ${data.provenance.reasoning_summary}
+        </div>`;
+      }
+      provenanceHTML += '</div>';
+    }
+
+    panel.querySelector('#answerContent').innerHTML = `
+      <div style="padding: 10px; background: rgba(108,92,231,0.1); border-radius: 6px; margin-bottom: 8px;">
+        <div style="font-size: 13px; line-height: 1.6;">${data.answer}</div>
+        <div style="font-size: 11px; color: var(--text2); margin-top: 6px;">
+          Confidence: <b>${conf}</b> | Retrieval: ${retrieval}
+          ${data.generation_time_ms ? ` | ${data.generation_time_ms}ms` : ''}
+          ${data.facts_referenced ? ` | ${data.facts_referenced.length} facts cited` : ''}
+        </div>
+      </div>
+      ${provenanceHTML}
+    `;
+
+    // Highlight provenance nodes on the graph
+    if (data.facts_referenced && data.facts_referenced.length > 0) {
+      highlightProvenanceFacts(data.facts_referenced);
+    }
+
+  } catch (err) {
+    panel.querySelector('#answerContent').innerHTML = `<div style="color: var(--red);">Error: ${err.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Ask';
+}
+
+function highlightProvenanceFacts(factIds) {
+  const factSet = new Set(factIds);
+  const nodes = d3.selectAll('circle');
+  const links = d3.selectAll('line');
+
+  // Highlight referenced facts with a pulsing ring
+  nodes
+    .attr('stroke', d => factSet.has(d.id) ? '#fff' : 'none')
+    .attr('stroke-width', d => factSet.has(d.id) ? 3 : 0)
+    .attr('opacity', d => {
+      if (factSet.has(d.id)) return 1;
+      if (d.type === 'contract') return 1;
+      return 0.2;
+    });
+
+  // Dim non-relevant edges
+  links.attr('stroke-opacity', l => {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source;
+    const tid = typeof l.target === 'object' ? l.target.id : l.target;
+    return factSet.has(sid) || factSet.has(tid) ? 0.6 : 0.05;
+  });
+}
+
+function highlightProvenanceNode(nodeId) {
+  // Highlight a single provenance node
+  const nodes = d3.selectAll('circle');
+  nodes
+    .attr('stroke', d => d.id === nodeId ? '#ff0' : (d.id === nodeId ? '#fff' : 'none'))
+    .attr('stroke-width', d => d.id === nodeId ? 4 : 0);
+
+  // Show detail
+  if (graphData) {
+    const n = graphData.nodes.find(n => n.id === nodeId);
+    if (n) {
+      const enriched = { ...n, color: NODE_COLORS[n.type], radius: NODE_SIZES[n.type] };
+      showNodeDetail(enriched);
+    }
   }
 }
 

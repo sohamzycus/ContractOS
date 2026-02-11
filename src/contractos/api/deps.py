@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from contractos.config import ContractOSConfig, load_config
+from contractos.fabric.embedding_index import EmbeddingIndex
 from contractos.fabric.trust_graph import TrustGraph
 from contractos.fabric.workspace_store import WorkspaceStore
 from contractos.llm.provider import LLMProvider, MockLLMProvider
@@ -25,6 +26,7 @@ class AppState:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self.trust_graph = TrustGraph(db_path)
         self.workspace_store = WorkspaceStore(self.trust_graph._conn)
+        self.embedding_index = EmbeddingIndex()
         self.llm: LLMProvider = self._build_llm()
 
     def _build_llm(self) -> LLMProvider:

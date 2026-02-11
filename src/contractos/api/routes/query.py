@@ -54,6 +54,7 @@ class QueryResponse(BaseModel):
     facts_referenced: list[str] = Field(default_factory=list)
     provenance: ProvenanceResponse | None = None
     generation_time_ms: int | None = None
+    retrieval_method: str | None = None  # "full_scan" or "faiss_semantic"
 
 
 @router.post("/ask", response_model=QueryResponse)
@@ -85,8 +86,8 @@ async def ask_question(
         submitted_at=datetime.now(),
     )
 
-    # Run through DocumentAgent
-    agent = DocumentAgent(state.trust_graph, state.llm)
+    # Run through DocumentAgent (with FAISS semantic retrieval)
+    agent = DocumentAgent(state.trust_graph, state.llm, state.embedding_index)
     result = await agent.answer(query)
 
     # Format provenance for display
@@ -108,4 +109,5 @@ async def ask_question(
         facts_referenced=result.facts_referenced,
         provenance=provenance_data,
         generation_time_ms=result.generation_time_ms,
+        retrieval_method=result.retrieval_method,
     )
