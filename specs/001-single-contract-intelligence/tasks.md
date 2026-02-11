@@ -281,8 +281,46 @@
 - [x] T142 LegalBench/CUAD benchmark fixtures — `legalbench_nda.docx` (bilateral NDA, 11 sections) and `cuad_license_agreement.docx` (software license, 13 sections + exhibits)
 - [x] T143 LegalBench integration tests — 32 extraction tests + 14 API contract tests covering contract_nli, CUAD categories
 - [x] T144 Bug fix: `get_facts_by_document` and `get_clauses_by_document` now accept string filters (API compatibility)
+- [x] T145 Browser-based Demo Console (`demo/index.html`) — replaces Postman dependency, 22 pre-built requests, file upload, auto-chaining, rich response display
+- [x] T146 CORS middleware + static file serving for `/demo/` route in `app.py`
 
-**Checkpoint**: ✅ All US5 tests pass. Workspace persistence works. Postman collection ready. LegalBench/CUAD benchmarks integrated. 467 tests passing.
+### Phase 7b: Algorithm Documentation, TrustGraph Visualization & LegalBench Evaluation ✅ COMPLETE
+
+**Goal**: Document the indexing algorithm, build interactive TrustGraph visualization, download real LegalBench datasets, and build evaluation harness.
+**Tests**: 61 new benchmark tests (528 total passing)
+
+- [x] T147 Interactive TrustGraph Visualization (`demo/graph.html`) — D3.js force-directed graph with:
+  - Upload & visualize workflow (upload contract → see graph instantly)
+  - Load existing document by `document_id`
+  - 5 node types: Contract (purple), Clause (orange), Fact (green), Binding (blue), CrossRef (pink)
+  - 5 relationship types: contains, binds_to, cross_references, fills, supports
+  - Node inspector panel — click any node to see full metadata
+  - Traversal panel — BFS path exploration showing how facts/clauses connect
+  - Filter controls: All Nodes, Clauses Only, Facts Only, Bindings Only, Cross-Refs, Hide Clause Text
+  - Layout modes: Force-Directed, Radial, Hierarchy
+  - Hover highlighting — shows connected subgraph
+  - Drag, zoom, reset controls
+  - Stats bar: total facts, clauses, bindings, cross-refs, nodes, edges
+- [x] T148 Indexing Algorithm Documentation (embedded in graph.html side panel):
+  - Why it's fast: zero LLM calls during indexing, compiled regex, deterministic heuristics
+  - 7-stage pipeline architecture with animated step visualization
+  - Key design decisions: regex over LLM, heading-based classification, SQLite WAL mode
+  - TrustGraph ontology: 8 entity types, 5 relationship types
+- [x] T149 LegalBench Dataset Download — 16 tasks (14 contract_nli + definition_extraction + contract_qa):
+  - `tests/fixtures/legalbench/download_legalbench.py` — automated downloader
+  - 128 train rows across 16 tasks from https://github.com/HazyResearch/legalbench
+  - Each task includes `train.tsv` (data) and `base_prompt.txt` (hypothesis/few-shot prompt)
+  - Summary report: `tests/fixtures/legalbench/SUMMARY.md`
+- [x] T150 LegalBench Evaluation Harness (`tests/benchmark/test_legalbench_eval.py`) — 61 tests:
+  - `TestContractNLIExtraction` (42 tests): keyword discrimination, pattern extraction, clause classification across all 14 contract_nli tasks
+  - `TestContractNLIAccuracy` (15 tests): binary classification accuracy per task + overall balanced accuracy (>60%)
+  - `TestDefinitionExtraction` (1 test): definition extraction from legal opinions
+  - `TestContractQA` (1 test): clause-level question answering accuracy
+  - `TestExtractionCoverage` (2 tests): pattern coverage across all texts, alias detection on NDA clauses
+  - Keyword-to-hypothesis mapping for all 14 contract_nli tasks
+  - Metrics: accuracy, balanced accuracy, coverage, pattern type diversity
+
+**Checkpoint**: ✅ TrustGraph visualization live at `/demo/graph.html`. Algorithm documented. 16 LegalBench datasets downloaded. 61 benchmark tests passing. **528 tests total.**
 
 ---
 
