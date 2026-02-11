@@ -364,6 +364,43 @@
 
 ---
 
+### Phase 7d: TrustGraph Branding, Chat Persistence, Multi-Doc & D3 Cleanup ✅ COMPLETE
+
+**Goal**: Make TrustGraph concept prominent. Add chat persistence. Enable multi-document queries. Clean up D3 provenance visualization.
+**Tests**: 7 new tests (553 total passing)
+
+- [x] T157 TrustGraph branding & explanation (`demo/graph.html`):
+  - Empty state explains TrustGraph as "graph-powered context harness" with entity flow diagram
+  - Full ontology documentation: 8 entity types, 5 relationship types with color-coded legend
+  - Links to TrustGraph.ai as inspiration for graph-powered AI context
+  - Header shows "TrustGraph" badge alongside ContractOS branding
+- [x] T158 D3.js visualization cleanup — cleaner provenance display:
+  - Provenance edges animate in sequentially (150ms stagger per edge)
+  - Cited fact nodes pulse with expanding radius animation
+  - Provenance edges use 8,4 dash pattern with 0.85 opacity fade-in
+  - Non-relevant nodes dimmed to 12% for clearer focus
+- [x] T159 Query/chat persistence (`src/contractos/api/routes/query.py`):
+  - Every Q&A persisted as `reasoning_session` in SQLite via `WorkspaceStore`
+  - Default workspace auto-created (`w-default`)
+  - `session_id` returned in every `QueryResponse`
+  - New `GET /query/history` endpoint — returns chat history (most recent first)
+  - Chat history panel in graph.html — shows past questions with status, confidence, timing
+  - Click history item to replay the question
+- [x] T160 Multi-document answer support:
+  - `QueryRequest` now accepts `document_ids` (list) in addition to `document_id` (singular)
+  - `DocumentAgent.answer()` iterates all target documents, merges FAISS results
+  - Context labels facts with source document title for multi-doc queries
+  - Scope selector in graph.html: "Current Document" or "All Uploaded Documents"
+  - `uploadedDocIds` tracks all uploaded documents across the session
+  - `QueryResponse.document_ids` shows which documents were queried
+- [x] T161 Tests for persistence & multi-doc (`tests/unit/test_query_persistence.py`) — 7 tests:
+  - `TestQueryPersistence` (3 tests): session_id in response, history retrieval, answers in history
+  - `TestMultiDocumentQuery` (4 tests): multi-doc query, backward compat, 404, 400
+
+**Checkpoint**: ✅ TrustGraph branding prominent. Chat persisted. Multi-doc queries working. D3 provenance animated. **553 tests total.**
+
+---
+
 ## Phase 8: Word Copilot Add-in (P2)
 
 **Goal**: A working Word sidebar that communicates with the ContractOS server.
