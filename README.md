@@ -88,13 +88,17 @@ curl -X POST http://127.0.0.1:8742/query/ask \
 | `GET` | `/health` | Service health check |
 | `GET` | `/config` | Current configuration (non-sensitive) |
 | `POST` | `/contracts/upload` | Upload and index a contract (docx/pdf) |
+| `GET` | `/contracts` | List all indexed contracts |
 | `GET` | `/contracts/{id}` | Get contract metadata |
 | `GET` | `/contracts/{id}/facts` | List extracted facts (paginated, filterable) |
 | `GET` | `/contracts/{id}/clauses` | List classified clauses |
 | `GET` | `/contracts/{id}/bindings` | List resolved bindings (definitions + aliases) |
 | `GET` | `/contracts/{id}/clauses/gaps` | List missing mandatory facts |
 | `GET` | `/contracts/{id}/graph` | **TrustGraph context** — full node/edge graph |
-| `POST` | `/query/ask` | Ask a question about a contract |
+| `DELETE` | `/contracts/clear` | **Clear all** contracts, facts, sessions, FAISS indices |
+| `POST` | `/query/ask` | Ask a question (single or multi-document) |
+| `GET` | `/query/history` | Chat / query history (most recent first) |
+| `DELETE` | `/query/history` | Clear all chat history |
 | `POST` | `/workspaces` | Create a workspace |
 | `GET` | `/workspaces` | List all workspaces |
 | `GET` | `/workspaces/{id}` | Get workspace with recent sessions |
@@ -208,12 +212,14 @@ Features:
 - **Hover highlighting** — hover a node to see its connected subgraph
 - **Algorithm documentation** — side panel explains the 7-stage indexing pipeline
 
-### Indexing Algorithm
+### Indexing Algorithm — Two-Stage Pipeline
 
-ContractOS indexes contracts in **under 1 second** for a 30-page document. The secret: **zero LLM calls during indexing**.
+ContractOS indexes contracts in **under 1 second** for a 30-page document using a **two-stage pipeline**:
 
-| Stage | What It Does | Method |
-|-------|-------------|--------|
+**Stage 1: Deterministic Extraction** (zero LLM calls)
+
+| Step | What It Does | Method |
+|------|-------------|--------|
 | 1. Parse | Document → paragraphs, tables, headings | python-docx / PyMuPDF |
 | 2. Pattern Extract | Definitions, dates, amounts, durations, percentages, section refs, aliases | 7 compiled regex patterns |
 | 3. Fact Generation | PatternMatch → Fact with precise character offsets | Deterministic mapping |
@@ -222,7 +228,14 @@ ContractOS indexes contracts in **under 1 second** for a 30-page document. The s
 | 6. Cross-References | "Section 3.2.1", "Appendix A" → resolved links | Regex + clause lookup |
 | 7. Mandatory Facts | Per clause type, check required facts | Keyword + regex |
 
-LLMs are used **only at query time** — the extraction pipeline is fully deterministic and reproducible.
+**Stage 2: FAISS Vector Indexing** (industry-standard semantic search)
+
+| Step | What It Does | Method |
+|------|-------------|--------|
+| 8. Embed | Facts, clauses, bindings → 384-dim vectors | `all-MiniLM-L6-v2` (sentence-transformers) |
+| 9. Index | Per-document FAISS index for top-k retrieval | `faiss-cpu` (Facebook AI Similarity Search) |
+
+LLMs are used **only at query time** — the extraction and indexing pipeline is fully deterministic and reproducible. At query time, FAISS semantic search retrieves the most relevant facts for the LLM context.
 
 ---
 
@@ -334,7 +347,7 @@ npm install -g newman newman-reporter-htmlextra
 ### Run the Full Suite
 
 ```bash
-# All 528 tests
+# All 622 tests
 python -m pytest tests/
 
 # Verbose output
@@ -347,18 +360,24 @@ python -m pytest tests/ --cov=src/contractos --cov-report=term-missing
 ### Run Specific Test Categories
 
 ```bash
-# Unit tests only (389 tests)
+# Unit tests only
 python -m pytest tests/unit/
 
-# Integration tests only (51 tests)
+# Integration tests only
 python -m pytest tests/integration/
 
-# Contract tests (27 tests)
+# Contract tests
 python -m pytest tests/contract/
 
 # LegalBench / CUAD benchmark tests
 python -m pytest tests/integration/test_legalbench_extraction.py -v
 python -m pytest tests/contract/test_legalbench_api.py -v
+
+# Real NDA document tests (50 ContractNLI documents)
+python -m pytest tests/integration/test_real_nda_documents.py -v
+
+# Multi-document analysis tests (HuggingFace contracts)
+python -m pytest tests/integration/test_multi_doc_analysis.py -v
 
 # Specific module
 python -m pytest tests/unit/test_fact_extractor.py -v
@@ -382,8 +401,17 @@ python -m pytest tests/unit/test_docx_parser.py tests/unit/test_pdf_parser.py \
   tests/unit/test_clause_classifier.py tests/unit/test_cross_reference_extractor.py \
   tests/unit/test_mandatory_fact_extractor.py tests/unit/test_alias_detector.py -v
 
+# FAISS embedding index (18 tests)
+python -m pytest tests/unit/test_embedding_index.py -v
+
 # Q&A pipeline (26 tests)
 python -m pytest tests/unit/test_binding_resolver.py tests/unit/test_document_agent.py -v
+
+# Query persistence & multi-doc (7 tests)
+python -m pytest tests/unit/test_query_persistence.py -v
+
+# Chat history & clear operations (8 tests)
+python -m pytest tests/unit/test_chat_history_and_clear.py -v
 
 # Workspace persistence (32 tests)
 python -m pytest tests/unit/test_change_detection.py tests/unit/test_workspace_documents.py \
@@ -396,23 +424,29 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py \
 
 # LegalBench benchmark evaluation (61 tests)
 python -m pytest tests/benchmark/test_legalbench_eval.py -v
+
+# Real NDA documents — 50 ContractNLI NDAs (54 tests)
+python -m pytest tests/integration/test_real_nda_documents.py -v
 ```
 
 ---
 
 ## Test Report
 
-**528 tests, all passing** (Python 3.14.2, pytest 9.0.2)
+**622 tests, all passing** (Python 3.14.2, pytest 9.0.2)
 
 ### Test Breakdown by Module
 
 | Module | Tests | Category |
 |--------|------:|----------|
+| `test_legalbench_eval.py` (benchmark) | 61 | Benchmark — LegalBench contract_nli, definition extraction, contract QA |
+| `test_real_nda_documents.py` (integration) | 54 | Integration — 50 real ContractNLI NDAs, single + multi-doc Q&A |
 | `test_fact_extractor.py` | 40 | Tools — extraction orchestrator + complex fixtures |
 | `test_trust_graph.py` | 39 | Storage — TrustGraph CRUD |
 | `test_legalbench_extraction.py` | 32 | Integration — LegalBench/CUAD benchmark extraction |
 | `test_clause_classifier.py` | 29 | Tools — clause type classification |
 | `test_contract_patterns.py` | 25 | Tools — regex pattern extraction |
+| `test_embedding_index.py` | 18 | FAISS — vector indexing + semantic search |
 | `test_workspace_store.py` | 17 | Storage — workspace persistence |
 | `test_models_fact.py` | 16 | Models — Fact, FactEvidence, FactType |
 | `test_docx_parser.py` | 16 | Tools — Word document parser |
@@ -432,16 +466,38 @@ python -m pytest tests/benchmark/test_legalbench_eval.py -v
 | `test_mandatory_fact_extractor.py` | 10 | Tools — mandatory fact slots |
 | `test_models_workspace.py` | 10 | Models — Workspace, Session |
 | `test_models_provenance.py` | 9 | Models — ProvenanceChain |
+| `test_chat_history_and_clear.py` | 8 | Unit — chat history visibility, clear operations |
 | `test_models_inference.py` | 8 | Models — Inference |
 | `test_provenance_formatting.py` | 8 | Tools — provenance display |
 | `test_workspace_documents.py` | 8 | Storage — workspace-document association |
 | `test_session_history.py` (integration) | 8 | Integration — session history ordering |
 | `test_models_binding.py` | 7 | Models — Binding |
 | `test_config.py` | 7 | Config — YAML loading |
+| `test_query_persistence.py` | 7 | Unit — query persistence + multi-doc API |
 | `test_api.py` (integration) | 7 | API — full pipeline |
+| `test_multi_doc_analysis.py` (integration) | 7 | Integration — HuggingFace multi-doc analysis |
 | `test_workspace_persistence.py` (integration) | 3 | Integration — persistence across restart |
-| `test_legalbench_eval.py` (benchmark) | 61 | Benchmark — LegalBench contract_nli, definition extraction, contract QA |
-| **Total** | **528** | |
+| **Total** | **622** | |
+
+### Test Breakdown by Category
+
+| Category | Tests | Description |
+|----------|------:|-------------|
+| Unit Tests | 428 | Models, tools, storage, agents, FAISS, query persistence, chat history |
+| Integration Tests | 111 | API pipeline, LegalBench extraction, multi-doc, real NDA documents |
+| Contract Tests | 27 | API contract tests via TestClient |
+| Benchmark Tests | 61 | LegalBench contract_nli, definition extraction, contract QA |
+| **Total** | **622** | |
+
+### Real Document Coverage
+
+| Document Source | Count | Description |
+|----------------|------:|-------------|
+| ContractNLI (Stanford NLP) | 50 | Real-world NDAs (corporate, M&A, government, SEC filings) |
+| HuggingFace (CUAD/ContractNLI) | 3 | Synthetic procurement contracts based on real dataset patterns |
+| LegalBench fixtures | 4 | NDA, CUAD license, IT outsourcing, procurement framework |
+| Simple fixtures | 2 | MSA (DOCX), NDA (PDF) |
+| **Total documents tested** | **59** | |
 
 ---
 
@@ -590,15 +646,16 @@ A multi-category procurement framework between Pinnacle Manufacturing Group (Buy
 ## Architecture
 
 ```
-Interaction    →  Word/PDF Copilot · CLI · API
-Workspace      →  Persistent context · Session history · Change detection
-Agents         →  DocumentAgent (Q&A with provenance)
+Interaction    →  Word/PDF Copilot · CLI · API · TrustGraph Visualization
+Workspace      →  Persistent context · Session history · Change detection · Chat persistence
+Agents         →  DocumentAgent (Q&A with provenance, multi-document support)
 Tools          →  FactExtractor · BindingResolver · ClauseClassifier
                   CrossReferenceExtractor · MandatoryFactExtractor
                   AliasDetector · ContractPatterns · Confidence
                   ChangeDetection · ProvenanceFormatter
-Fabric         →  TrustGraph (SQLite) · WorkspaceStore
+Fabric         →  TrustGraph (SQLite) · WorkspaceStore · EmbeddingIndex (FAISS)
 LLM            →  Anthropic Claude · Mock (testing)
+Indexing       →  sentence-transformers (all-MiniLM-L6-v2) · faiss-cpu
 ```
 
 ### TrustGraph
@@ -639,6 +696,7 @@ src/contractos/
 ├── fabric/              # Storage layer
 │   ├── trust_graph.py   # SQLite-backed fact/binding/clause store
 │   ├── workspace_store.py
+│   ├── embedding_index.py  # FAISS vector index (sentence-transformers)
 │   └── schema.sql       # Database schema
 ├── llm/                 # LLM provider abstraction
 │   └── provider.py      # Anthropic + Mock providers
@@ -699,7 +757,7 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 
 ## Status
 
-**Phase 7 complete** — Full extraction pipeline, Q&A with provenance, workspace persistence, TrustGraph visualization, 17 API endpoints, 421 tests passing.
+**Phase 7f complete** — Full extraction pipeline, FAISS semantic search, multi-document Q&A with provenance, chat persistence, TrustGraph visualization, 22 API endpoints, **622 tests passing**, tested against **50 real NDA documents** from ContractNLI.
 
 | Phase | Status | Tests |
 |-------|--------|------:|
@@ -710,5 +768,12 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 | Phase 5: Q&A Pipeline (DocumentAgent) | Done | 13 |
 | Phase 6: Pipeline Wiring, Provenance Display, CLI | Done | 28 |
 | Phase 7: Workspace Persistence, Change Detection, Complex Fixtures | Done | 62 |
+| Phase 7a: LegalBench Evaluation | Done | 61 |
+| Phase 7b: Postman / Newman Integration | Done | — |
+| Phase 7c: FAISS Vector Indexing & Provenance Visualization | Done | 18 |
+| Phase 7d: TrustGraph Branding, Chat Persistence, Multi-Doc | Done | 7 |
+| Phase 7e: Chat History View, Clear All, HuggingFace Multi-Doc | Done | 15 |
+| Phase 7f: Real ContractNLI Document Testing (50 NDAs) | Done | 54 |
 | Phase 8: Word Copilot Add-in | Planned | — |
 | Phase 9: Polish & Benchmarks | Planned | — |
+| **Total** | | **622** |
