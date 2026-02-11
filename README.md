@@ -189,6 +189,98 @@ The demo console provides:
 
 ---
 
+## TrustGraph Visualization
+
+Interactive D3.js force-directed graph showing the contract knowledge graph.
+
+```bash
+# Open in browser (server must be running)
+open http://127.0.0.1:8742/demo/graph.html
+```
+
+Features:
+- **Upload & visualize** — upload a contract and see its knowledge graph instantly
+- **5 node types**: Contract (purple), Clause (orange), Fact (green), Binding (blue), Cross-Reference (pink)
+- **Node inspector** — click any node to see full metadata, type, and ID
+- **Traversal explorer** — BFS path exploration showing how facts and clauses connect
+- **Filter controls** — show all nodes, clauses only, facts only, bindings only, hide clause text
+- **Layout modes** — Force-Directed, Radial, Hierarchy
+- **Hover highlighting** — hover a node to see its connected subgraph
+- **Algorithm documentation** — side panel explains the 7-stage indexing pipeline
+
+### Indexing Algorithm
+
+ContractOS indexes contracts in **under 1 second** for a 30-page document. The secret: **zero LLM calls during indexing**.
+
+| Stage | What It Does | Method |
+|-------|-------------|--------|
+| 1. Parse | Document → paragraphs, tables, headings | python-docx / PyMuPDF |
+| 2. Pattern Extract | Definitions, dates, amounts, durations, percentages, section refs, aliases | 7 compiled regex patterns |
+| 3. Fact Generation | PatternMatch → Fact with precise character offsets | Deterministic mapping |
+| 4. Alias Detection | Entity alias resolution ("hereinafter referred to as") | Regex + heuristics |
+| 5. Clause Classification | Heading text → clause type (25+ types) | Heading pattern matching |
+| 6. Cross-References | "Section 3.2.1", "Appendix A" → resolved links | Regex + clause lookup |
+| 7. Mandatory Facts | Per clause type, check required facts | Keyword + regex |
+
+LLMs are used **only at query time** — the extraction pipeline is fully deterministic and reproducible.
+
+---
+
+## LegalBench Evaluation
+
+ContractOS is benchmarked against real [LegalBench](https://github.com/HazyResearch/legalbench) datasets — 16 tasks, 128 samples from the contract_nli, definition_extraction, and contract_qa benchmarks.
+
+### Download Datasets
+
+```bash
+python tests/fixtures/legalbench/download_legalbench.py
+```
+
+This downloads all 14 contract_nli tasks + definition_extraction + contract_qa from the LegalBench GitHub repository.
+
+### Run Benchmark Tests
+
+```bash
+# Run all 61 LegalBench benchmark tests
+pytest tests/benchmark/test_legalbench_eval.py -v
+
+# Run specific test class
+pytest tests/benchmark/test_legalbench_eval.py::TestContractNLIAccuracy -v
+```
+
+### Benchmark Coverage
+
+| Test Class | Tests | What It Measures |
+|-----------|-------|-----------------|
+| `TestContractNLIExtraction` | 42 | Keyword discrimination, pattern extraction, clause classification |
+| `TestContractNLIAccuracy` | 15 | Binary classification accuracy per task + balanced accuracy |
+| `TestDefinitionExtraction` | 1 | Definition extraction from legal opinions |
+| `TestContractQA` | 1 | Clause-level question answering |
+| `TestExtractionCoverage` | 2 | Pattern coverage, alias detection |
+
+### Contract NLI Tasks Evaluated
+
+All 14 contract_nli tasks from LegalBench (derived from [ContractNLI](https://stanfordnlp.github.io/contract-nli/)):
+
+| Task | Hypothesis |
+|------|-----------|
+| confidentiality_of_agreement | Agreement existence is confidential |
+| explicit_identification | Confidential info must be marked |
+| inclusion_of_verbally_conveyed_information | Verbal info is included |
+| limited_use | Use restricted to specific purpose |
+| no_licensing | No IP license granted |
+| notice_on_compelled_disclosure | Must notify before compelled disclosure |
+| permissible_acquirement_of_similar_information | Can acquire similar info elsewhere |
+| permissible_copy | Can make copies |
+| permissible_development_of_similar_information | Can independently develop |
+| permissible_post-agreement_possession | Can retain after termination |
+| return_of_confidential_information | Must return/destroy |
+| sharing_with_employees | Can share with employees |
+| sharing_with_third-parties | Can share with third parties |
+| survival_of_obligations | Obligations survive termination |
+
+---
+
 ## Postman / Newman Integration Tests
 
 ContractOS also ships with a Postman collection for CLI-based API integration testing.
@@ -242,7 +334,7 @@ npm install -g newman newman-reporter-htmlextra
 ### Run the Full Suite
 
 ```bash
-# All 467 tests
+# All 528 tests
 python -m pytest tests/
 
 # Verbose output
@@ -301,13 +393,16 @@ python -m pytest tests/unit/test_change_detection.py tests/unit/test_workspace_d
 # API endpoints (36 tests)
 python -m pytest tests/unit/test_api.py tests/integration/test_api.py \
   tests/contract/test_workspace_api.py -v
+
+# LegalBench benchmark evaluation (61 tests)
+python -m pytest tests/benchmark/test_legalbench_eval.py -v
 ```
 
 ---
 
 ## Test Report
 
-**467 tests, all passing** (Python 3.14.2, pytest 9.0.2)
+**528 tests, all passing** (Python 3.14.2, pytest 9.0.2)
 
 ### Test Breakdown by Module
 
@@ -345,7 +440,8 @@ python -m pytest tests/unit/test_api.py tests/integration/test_api.py \
 | `test_config.py` | 7 | Config — YAML loading |
 | `test_api.py` (integration) | 7 | API — full pipeline |
 | `test_workspace_persistence.py` (integration) | 3 | Integration — persistence across restart |
-| **Total** | **421** | |
+| `test_legalbench_eval.py` (benchmark) | 61 | Benchmark — LegalBench contract_nli, definition extraction, contract QA |
+| **Total** | **528** | |
 
 ---
 

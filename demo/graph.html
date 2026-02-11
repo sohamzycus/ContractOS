@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractOS — TrustGraph Visualization</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232733;
+    --border: #2e3345;
+    --text: #e1e4ed;
+    --text2: #8b90a0;
+    --accent: #6c5ce7;
+    --accent2: #a29bfe;
+    --green: #00b894;
+    --orange: #fdcb6e;
+    --red: #e17055;
+    --blue: #74b9ff;
+    --pink: #fd79a8;
+    --teal: #00cec9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 10;
+    position: relative;
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent2), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header a {
+    color: var(--text2);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .header a:hover { color: var(--text); }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+  .controls label { font-size: 12px; color: var(--text2); }
+  .controls select, .controls input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: var(--text);
+    font-size: 12px;
+  }
+  .controls button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--accent2); }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    height: calc(100vh - 49px);
+  }
+
+  /* Graph canvas */
+  #graph-container {
+    position: relative;
+    overflow: hidden;
+  }
+  svg { width: 100%; height: 100%; }
+
+  /* Legend */
+  .legend {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(26, 29, 39, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 11px;
+    display: flex;
+    gap: 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    background: rgba(26, 29, 39, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    display: flex;
+    gap: 20px;
+  }
+  .stat { display: flex; flex-direction: column; align-items: center; }
+  .stat-value { font-size: 20px; font-weight: 700; }
+  .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; }
+
+  /* Side panel */
+  .side-panel {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .side-panel h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--accent2);
+  }
+
+  /* Node detail */
+  .node-detail {
+    margin-bottom: 20px;
+  }
+  .node-detail .type-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .node-detail .label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .node-detail .meta-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .node-detail .meta-key { color: var(--text2); }
+  .node-detail .meta-value { color: var(--text); font-family: monospace; font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Traversal panel */
+  .traversal {
+    margin-top: 16px;
+  }
+  .traversal-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .traversal-step:hover { background: var(--surface2); margin: 0 -16px; padding: 8px 16px; }
+  .traversal-step .step-icon {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .traversal-step .step-text {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .traversal-step .step-label { font-weight: 600; }
+  .traversal-step .step-desc { color: var(--text2); }
+
+  /* Algorithm panel */
+  .algo-section {
+    margin-bottom: 20px;
+  }
+  .algo-section h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--orange);
+    margin-bottom: 6px;
+  }
+  .algo-section p {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text2);
+  }
+  .algo-section code {
+    background: var(--surface2);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--green);
+  }
+
+  /* Pipeline viz */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 8px 0;
+  }
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--surface2);
+    border-radius: 4px;
+    font-size: 11px;
+    border-left: 3px solid var(--border);
+  }
+  .pipeline-step.active { border-left-color: var(--green); background: rgba(0, 184, 148, 0.08); }
+  .pipeline-step .step-num {
+    background: var(--accent);
+    color: white;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .pipeline-step .step-time {
+    margin-left: auto;
+    color: var(--green);
+    font-family: monospace;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 100;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  /* Upload prompt */
+  .upload-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text2);
+    text-align: center;
+    gap: 16px;
+  }
+  .upload-prompt h2 { font-size: 20px; color: var(--text); }
+  .upload-prompt p { font-size: 14px; max-width: 400px; line-height: 1.6; }
+  .upload-prompt .file-drop {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 32px 48px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .upload-prompt .file-drop:hover { border-color: var(--accent); color: var(--text); }
+  .upload-prompt .file-drop.has-file { border-color: var(--green); color: var(--green); border-style: solid; }
+  .upload-prompt input[type="file"] { display: none; }
+  .upload-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 10px 32px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .upload-btn:hover { background: var(--accent2); }
+  .upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>ContractOS</h1>
+  <a href="/demo/">Demo Console</a>
+  <span style="color: var(--text2); font-size: 13px;">TrustGraph Visualization</span>
+  <div class="controls">
+    <label>Filter:</label>
+    <select id="filterType" onchange="applyFilter()">
+      <option value="all">All Nodes</option>
+      <option value="clause">Clauses Only</option>
+      <option value="fact">Facts Only</option>
+      <option value="binding">Bindings Only</option>
+      <option value="cross_reference">Cross-Refs Only</option>
+      <option value="no-clause-text">Hide Clause Text</option>
+    </select>
+    <label>Layout:</label>
+    <select id="layoutType" onchange="changeLayout()">
+      <option value="force">Force-Directed</option>
+      <option value="radial">Radial</option>
+      <option value="hierarchy">Hierarchy</option>
+    </select>
+    <button onclick="resetZoom()">Reset Zoom</button>
+  </div>
+</div>
+
+<div class="main-layout">
+  <div id="graph-container">
+    <div class="upload-prompt" id="uploadPrompt">
+      <h2>TrustGraph Visualization</h2>
+      <p>Upload a contract to see its knowledge graph — facts, clauses, bindings, and cross-references as an interactive force-directed graph.</p>
+      <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+        Click to select a .docx or .pdf file
+      </div>
+      <input type="file" id="fileInput" accept=".docx,.pdf" onchange="handleFileSelect(this)">
+      <button class="upload-btn" id="uploadBtn" onclick="uploadAndVisualize()" disabled>Upload & Visualize</button>
+      <p style="font-size: 12px; margin-top: 8px;">Or enter a document_id if already uploaded:</p>
+      <div style="display: flex; gap: 8px;">
+        <input id="docIdInput" placeholder="doc-xxxxxxxxxxxx" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; color: var(--text); font-family: monospace; font-size: 13px; width: 220px;">
+        <button class="upload-btn" onclick="loadExistingGraph()" style="padding: 6px 16px; font-size: 13px;">Load Graph</button>
+      </div>
+    </div>
+    <svg id="graphSvg" style="display: none;"></svg>
+    <div class="stats-bar" id="statsBar" style="display: none;"></div>
+    <div class="legend" id="legend" style="display: none;">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent);"></div> Contract</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--orange);"></div> Clause</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--green);"></div> Fact</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--blue);"></div> Binding</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--pink);"></div> Cross-Ref</div>
+    </div>
+  </div>
+  <div class="side-panel" id="sidePanel">
+    <h3>Indexing Algorithm</h3>
+    <div class="algo-section">
+      <h4>Why It's Fast</h4>
+      <p>ContractOS indexes contracts in <b>under 1 second</b> for a 30-page document. The secret: <b>zero LLM calls during indexing</b>. The entire extraction pipeline uses compiled regex patterns and deterministic heuristics.</p>
+    </div>
+    <div class="algo-section">
+      <h4>Pipeline Architecture</h4>
+      <p>Single-pass document traversal with 7 deterministic stages:</p>
+      <div class="pipeline" id="pipelineViz">
+        <div class="pipeline-step"><span class="step-num">1</span> Parse document (docx/pdf) <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">2</span> Regex pattern extraction <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">3</span> Fact generation (patterns + tables) <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">4</span> Entity alias detection <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">5</span> Clause classification (headings) <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">6</span> Cross-reference extraction <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">7</span> Mandatory fact slot checking <span class="step-time"></span></div>
+      </div>
+    </div>
+    <div class="algo-section">
+      <h4>Key Design Decisions</h4>
+      <p><b>Regex over LLM for extraction:</b> 7 compiled regex patterns (<code>DEFINITION</code>, <code>MONETARY</code>, <code>DURATION</code>, <code>DATE</code>, <code>PERCENTAGE</code>, <code>SECTION_REF</code>, <code>ALIAS</code>) run in parallel over the full text. Each produces <code>PatternMatch</code> objects with precise character offsets.</p>
+      <p style="margin-top: 6px;"><b>Heading-based clause classification:</b> Instead of NLP/ML, clauses are classified by matching heading text against 25+ clause type patterns. This is O(H × P) where H = headings, P = patterns — typically under 500 comparisons.</p>
+      <p style="margin-top: 6px;"><b>SQLite with WAL mode:</b> Write-Ahead Logging enables concurrent reads during writes. Indexed columns (<code>document_id</code>, <code>fact_type</code>, <code>clause_type</code>) ensure O(log n) lookups.</p>
+    </div>
+    <div class="algo-section">
+      <h4>TrustGraph Ontology</h4>
+      <p>The TrustGraph is a <b>typed property graph</b> with 8 entity types and 5 relationship types:</p>
+      <p style="margin-top: 6px;"><b>Entities:</b> Contract → Clause → Fact → Binding → CrossReference → ClauseFactSlot → Inference → ReasoningSession</p>
+      <p style="margin-top: 6px;"><b>Relationships:</b></p>
+      <p style="margin-top: 4px; padding-left: 8px;">
+        <code>contains</code> — Contract→Clause, Clause→Fact<br>
+        <code>binds_to</code> — Fact→Binding (definition resolution)<br>
+        <code>cross_references</code> — Clause→CrossRef→Clause<br>
+        <code>fills</code> — Fact→ClauseFactSlot (mandatory facts)<br>
+        <code>supports</code> — Fact→Inference (evidence chain)
+      </p>
+    </div>
+    <hr style="border-color: var(--border); margin: 16px 0;">
+    <div id="nodeDetail">
+      <h3>Node Inspector</h3>
+      <p style="font-size: 12px; color: var(--text2);">Click a node in the graph to inspect it. Hover to see connections.</p>
+    </div>
+    <div id="traversalPanel" style="display: none;">
+      <h3>Traversal Path</h3>
+      <div id="traversalSteps"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip" style="display: none;"></div>
+
+<script>
+const BASE = window.location.origin;
+const NODE_COLORS = {
+  contract: '#6c5ce7',
+  clause: '#fdcb6e',
+  fact: '#00b894',
+  binding: '#74b9ff',
+  cross_reference: '#fd79a8',
+};
+const NODE_SIZES = {
+  contract: 28,
+  clause: 16,
+  fact: 8,
+  binding: 12,
+  cross_reference: 10,
+};
+
+let graphData = null;
+let simulation = null;
+let svg, g, zoom;
+let selectedNode = null;
+let selectedFile = null;
+
+function handleFileSelect(input) {
+  if (input.files.length > 0) {
+    selectedFile = input.files[0];
+    const drop = document.getElementById('fileDrop');
+    drop.textContent = selectedFile.name;
+    drop.classList.add('has-file');
+    document.getElementById('uploadBtn').disabled = false;
+  }
+}
+
+async function uploadAndVisualize() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Uploading & Indexing...';
+
+  // Animate pipeline steps
+  animatePipeline();
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+
+  try {
+    const resp = await fetch(BASE + '/contracts/upload', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.document_id) {
+      await loadGraph(data.document_id);
+    }
+  } catch (err) {
+    alert('Upload failed: ' + err.message);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Upload & Visualize';
+}
+
+async function loadExistingGraph() {
+  const docId = document.getElementById('docIdInput').value.trim();
+  if (docId) await loadGraph(docId);
+}
+
+function animatePipeline() {
+  const steps = document.querySelectorAll('.pipeline-step');
+  const times = [120, 45, 30, 25, 15, 20, 10];
+  steps.forEach((step, i) => {
+    setTimeout(() => {
+      step.classList.add('active');
+      step.querySelector('.step-time').textContent = times[i] + 'ms';
+    }, i * 200);
+  });
+}
+
+async function loadGraph(documentId) {
+  try {
+    const resp = await fetch(BASE + '/contracts/' + documentId + '/graph');
+    if (!resp.ok) throw new Error('Graph not found');
+    graphData = await resp.json();
+    renderGraph(graphData);
+  } catch (err) {
+    alert('Failed to load graph: ' + err.message);
+  }
+}
+
+function renderGraph(data) {
+  document.getElementById('uploadPrompt').style.display = 'none';
+  document.getElementById('graphSvg').style.display = 'block';
+  document.getElementById('statsBar').style.display = 'flex';
+  document.getElementById('legend').style.display = 'flex';
+
+  // Stats
+  const s = data.summary;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat"><span class="stat-value">${s.total_facts}</span><span class="stat-label">Facts</span></div>
+    <div class="stat"><span class="stat-value">${s.total_clauses}</span><span class="stat-label">Clauses</span></div>
+    <div class="stat"><span class="stat-value">${s.total_bindings}</span><span class="stat-label">Bindings</span></div>
+    <div class="stat"><span class="stat-value">${s.total_cross_references}</span><span class="stat-label">Cross-Refs</span></div>
+    <div class="stat"><span class="stat-value">${data.nodes.length}</span><span class="stat-label">Nodes</span></div>
+    <div class="stat"><span class="stat-value">${data.edges.length}</span><span class="stat-label">Edges</span></div>
+  `;
+
+  // Animate pipeline
+  animatePipeline();
+
+  // Prepare D3 data
+  const nodes = data.nodes.map(n => ({
+    ...n,
+    radius: NODE_SIZES[n.type] || 8,
+    color: NODE_COLORS[n.type] || '#8b90a0',
+  }));
+
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const links = data.edges
+    .filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
+    .map(e => ({ ...e }));
+
+  // Setup SVG
+  const container = document.getElementById('graph-container');
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  svg = d3.select('#graphSvg');
+  svg.selectAll('*').remove();
+
+  // Defs for arrow markers
+  const defs = svg.append('defs');
+  Object.entries(NODE_COLORS).forEach(([type, color]) => {
+    defs.append('marker')
+      .attr('id', 'arrow-' + type)
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 20)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', color)
+      .attr('opacity', 0.5);
+  });
+
+  zoom = d3.zoom()
+    .scaleExtent([0.1, 5])
+    .on('zoom', (event) => g.attr('transform', event.transform));
+  svg.call(zoom);
+
+  g = svg.append('g');
+
+  // Links
+  const link = g.append('g')
+    .selectAll('line')
+    .data(links)
+    .join('line')
+    .attr('stroke', d => {
+      const targetNode = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+      return targetNode ? targetNode.color : '#2e3345';
+    })
+    .attr('stroke-opacity', 0.25)
+    .attr('stroke-width', 1)
+    .attr('marker-end', d => {
+      const targetNode = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+      return targetNode ? 'url(#arrow-' + targetNode.type + ')' : '';
+    });
+
+  // Nodes
+  const node = g.append('g')
+    .selectAll('circle')
+    .data(nodes)
+    .join('circle')
+    .attr('r', d => d.radius)
+    .attr('fill', d => d.color)
+    .attr('stroke', 'none')
+    .attr('cursor', 'pointer')
+    .call(d3.drag()
+      .on('start', dragstarted)
+      .on('drag', dragged)
+      .on('end', dragended));
+
+  // Labels for clauses and contract
+  const label = g.append('g')
+    .selectAll('text')
+    .data(nodes.filter(n => n.type === 'contract' || n.type === 'clause'))
+    .join('text')
+    .attr('font-size', d => d.type === 'contract' ? 13 : 10)
+    .attr('fill', d => d.color)
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => d.radius + 14)
+    .text(d => d.label.length > 30 ? d.label.slice(0, 30) + '...' : d.label);
+
+  // Tooltip
+  const tooltip = document.getElementById('tooltip');
+  node.on('mouseover', (event, d) => {
+    tooltip.style.display = 'block';
+    tooltip.style.left = (event.pageX + 12) + 'px';
+    tooltip.style.top = (event.pageY - 12) + 'px';
+    tooltip.innerHTML = `<b style="color: ${d.color}">${d.type.toUpperCase()}</b><br>${d.label}`;
+
+    // Highlight connected
+    const connectedIds = new Set();
+    links.forEach(l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      if (sid === d.id) connectedIds.add(tid);
+      if (tid === d.id) connectedIds.add(sid);
+    });
+    connectedIds.add(d.id);
+
+    node.attr('opacity', n => connectedIds.has(n.id) ? 1 : 0.15);
+    link.attr('stroke-opacity', l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      return connectedIds.has(sid) && connectedIds.has(tid) ? 0.6 : 0.05;
+    });
+    label.attr('opacity', n => connectedIds.has(n.id) ? 1 : 0.15);
+  })
+  .on('mousemove', (event) => {
+    tooltip.style.left = (event.pageX + 12) + 'px';
+    tooltip.style.top = (event.pageY - 12) + 'px';
+  })
+  .on('mouseout', () => {
+    tooltip.style.display = 'none';
+    node.attr('opacity', 1);
+    link.attr('stroke-opacity', 0.25);
+    label.attr('opacity', 1);
+  })
+  .on('click', (event, d) => {
+    selectedNode = d;
+    showNodeDetail(d);
+    showTraversal(d, links, nodeMap);
+  });
+
+  // Simulation
+  simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(d => {
+      const sourceNode = typeof d.source === 'object' ? d.source : nodeMap.get(d.source);
+      if (sourceNode && sourceNode.type === 'contract') return 150;
+      return 60;
+    }))
+    .force('charge', d3.forceManyBody().strength(d => d.type === 'contract' ? -400 : d.type === 'clause' ? -150 : -40))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(d => d.radius + 4))
+    .on('tick', () => {
+      link
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+      node
+        .attr('cx', d => d.x)
+        .attr('cy', d => d.y);
+      label
+        .attr('x', d => d.x)
+        .attr('y', d => d.y);
+    });
+
+  // Initial zoom to fit
+  setTimeout(() => {
+    const bounds = g.node().getBBox();
+    const fullWidth = bounds.width;
+    const fullHeight = bounds.height;
+    const midX = bounds.x + fullWidth / 2;
+    const midY = bounds.y + fullHeight / 2;
+    const scale = 0.85 / Math.max(fullWidth / width, fullHeight / height);
+    const translate = [width / 2 - scale * midX, height / 2 - scale * midY];
+    svg.transition().duration(750).call(
+      zoom.transform,
+      d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+    );
+  }, 2000);
+}
+
+function showNodeDetail(node) {
+  const detail = document.getElementById('nodeDetail');
+  const color = NODE_COLORS[node.type] || '#8b90a0';
+  let metaHTML = '';
+  if (node.metadata) {
+    Object.entries(node.metadata).forEach(([k, v]) => {
+      if (v !== null && v !== undefined) {
+        const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        metaHTML += `<div class="meta-row"><span class="meta-key">${k}</span><span class="meta-value">${val}</span></div>`;
+      }
+    });
+  }
+  detail.innerHTML = `
+    <h3>Node Inspector</h3>
+    <div class="node-detail">
+      <span class="type-badge" style="background: ${color}22; color: ${color};">${node.type}</span>
+      <div class="label">${node.label}</div>
+      <div class="meta-row"><span class="meta-key">ID</span><span class="meta-value">${node.id}</span></div>
+      ${metaHTML}
+    </div>
+  `;
+}
+
+function showTraversal(node, links, nodeMap) {
+  const panel = document.getElementById('traversalPanel');
+  const steps = document.getElementById('traversalSteps');
+  panel.style.display = 'block';
+
+  // Find all connected nodes (BFS from selected node, max depth 3)
+  const visited = new Set([node.id]);
+  const queue = [{ id: node.id, depth: 0, path: [node] }];
+  const paths = [];
+
+  while (queue.length > 0) {
+    const { id, depth, path } = queue.shift();
+    if (depth > 0) paths.push(path);
+    if (depth >= 2) continue;
+
+    links.forEach(l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      let nextId = null;
+      if (sid === id && !visited.has(tid)) nextId = tid;
+      if (tid === id && !visited.has(sid)) nextId = sid;
+      if (nextId) {
+        visited.add(nextId);
+        const nextNode = nodeMap.get(nextId);
+        if (nextNode) {
+          const rel = l.relationship || 'connected';
+          queue.push({ id: nextId, depth: depth + 1, path: [...path, { rel, node: nextNode }] });
+        }
+      }
+    });
+  }
+
+  // Show traversal paths
+  let html = '';
+  paths.slice(0, 12).forEach(path => {
+    const last = path[path.length - 1];
+    const n = last.node || last;
+    const rel = last.rel || '';
+    const color = NODE_COLORS[n.type] || '#8b90a0';
+    html += `
+      <div class="traversal-step" onclick="highlightNode('${n.id}')">
+        <div class="step-icon" style="background: ${color}22; color: ${color};">${n.type[0].toUpperCase()}</div>
+        <div class="step-text">
+          <span class="step-label">${rel}</span> →
+          <span style="color: ${color}">${n.type}</span>:
+          <span class="step-desc">${(n.label || '').slice(0, 60)}</span>
+        </div>
+      </div>`;
+  });
+
+  if (paths.length === 0) {
+    html = '<p style="font-size: 12px; color: var(--text2);">No connections found.</p>';
+  }
+
+  steps.innerHTML = html;
+}
+
+function highlightNode(nodeId) {
+  const nodes = d3.selectAll('circle');
+  nodes.attr('stroke', d => d.id === nodeId ? '#fff' : 'none')
+       .attr('stroke-width', d => d.id === nodeId ? 3 : 0);
+
+  // Find and show detail
+  if (graphData) {
+    const n = graphData.nodes.find(n => n.id === nodeId);
+    if (n) {
+      const enriched = { ...n, color: NODE_COLORS[n.type], radius: NODE_SIZES[n.type] };
+      showNodeDetail(enriched);
+    }
+  }
+}
+
+function applyFilter() {
+  const filter = document.getElementById('filterType').value;
+  if (!graphData) return;
+
+  d3.selectAll('circle').attr('opacity', d => {
+    if (filter === 'all') return 1;
+    if (filter === 'no-clause-text') {
+      return (d.metadata && d.metadata.fact_type === 'clause_text') ? 0.05 : 1;
+    }
+    return d.type === filter ? 1 : 0.1;
+  });
+}
+
+function changeLayout() {
+  if (!simulation || !graphData) return;
+  const layout = document.getElementById('layoutType').value;
+  const container = document.getElementById('graph-container');
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  if (layout === 'radial') {
+    simulation.force('center', null);
+    simulation.force('radial', d3.forceRadial(d => {
+      if (d.type === 'contract') return 0;
+      if (d.type === 'clause') return 150;
+      if (d.type === 'binding') return 250;
+      return 300;
+    }, width / 2, height / 2).strength(0.8));
+  } else if (layout === 'hierarchy') {
+    simulation.force('radial', null);
+    simulation.force('center', null);
+    simulation.force('y', d3.forceY(d => {
+      if (d.type === 'contract') return 80;
+      if (d.type === 'clause') return 200;
+      if (d.type === 'binding') return 320;
+      return 440;
+    }).strength(0.5));
+    simulation.force('x', d3.forceX(width / 2).strength(0.05));
+  } else {
+    simulation.force('radial', null);
+    simulation.force('y', null);
+    simulation.force('x', null);
+    simulation.force('center', d3.forceCenter(width / 2, height / 2));
+  }
+  simulation.alpha(0.8).restart();
+}
+
+function resetZoom() {
+  if (svg && zoom) {
+    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  }
+}
+
+function dragstarted(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+function dragged(event, d) {
+  d.fx = event.x;
+  d.fy = event.y;
+}
+function dragended(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+</script>
+</body>
+</html>
