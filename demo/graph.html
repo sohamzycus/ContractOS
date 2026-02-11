@@ -21,6 +21,7 @@
     --blue: #74b9ff;
     --pink: #fd79a8;
     --teal: #00cec9;
+    --yellow: #ffeaa7;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -84,7 +85,7 @@
 
   .main-layout {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr 380px;
     height: calc(100vh - 49px);
   }
 
@@ -141,18 +142,186 @@
     border-left: 1px solid var(--border);
     overflow-y: auto;
     padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
   .side-panel h3 {
     font-size: 13px;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: var(--accent2);
   }
+  .side-panel .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 12px 0;
+  }
+
+  /* Upload section in side panel */
+  .upload-section {
+    padding: 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-bottom: 4px;
+  }
+  .upload-section .file-drop {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text2);
+    transition: all 0.15s;
+    margin-bottom: 8px;
+  }
+  .upload-section .file-drop:hover { border-color: var(--accent); color: var(--text); }
+  .upload-section .file-drop.has-file { border-color: var(--green); color: var(--green); border-style: solid; }
+  .upload-section input[type="file"] { display: none; }
+  .upload-section .upload-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 0;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
+  .upload-section .upload-btn:hover { background: var(--accent2); }
+  .upload-section .upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .upload-section .or-divider {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text2);
+    margin: 8px 0;
+  }
+  .upload-section .doc-id-row {
+    display: flex;
+    gap: 6px;
+  }
+  .upload-section .doc-id-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-family: monospace;
+    font-size: 11px;
+  }
+  .upload-section .doc-id-row button {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* Q&A section */
+  .qa-section textarea {
+    width: 100%;
+    min-height: 48px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    color: var(--text);
+    font-size: 12px;
+    resize: vertical;
+    font-family: inherit;
+    margin-bottom: 6px;
+  }
+  .qa-section .ask-btn {
+    background: var(--green);
+    color: #000;
+    border: none;
+    padding: 8px 0;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    letter-spacing: 0.5px;
+  }
+  .qa-section .ask-btn:hover { opacity: 0.9; }
+  .qa-section .ask-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Answer card */
+  .answer-card {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(108,92,231,0.08);
+    border: 1px solid rgba(108,92,231,0.2);
+    border-radius: 8px;
+  }
+  .answer-card .answer-text {
+    font-size: 13px;
+    line-height: 1.65;
+    margin-bottom: 8px;
+  }
+  .answer-card .answer-meta {
+    font-size: 11px;
+    color: var(--text2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .answer-card .answer-meta b { color: var(--text); }
+  .badge-green { color: var(--green); font-weight: 700; }
+  .badge-orange { color: var(--orange); font-weight: 700; }
+
+  /* Provenance chain */
+  .provenance-chain {
+    margin-top: 10px;
+  }
+  .provenance-chain .chain-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .provenance-node {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    border-left: 3px solid var(--green);
+    margin-bottom: 4px;
+    background: var(--surface2);
+    border-radius: 0 6px 6px 0;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .provenance-node:hover { background: rgba(0,184,148,0.1); }
+  .provenance-node.active { border-left-color: var(--yellow); background: rgba(255,234,167,0.08); }
+  .provenance-node .prov-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .provenance-node .prov-body { font-size: 11px; line-height: 1.5; }
+  .provenance-node .prov-type { font-weight: 600; }
+  .provenance-node .prov-summary { color: var(--text2); }
+  .provenance-node .prov-location { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+  .reasoning-box {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text2);
+  }
+  .reasoning-box b { color: var(--text); }
 
   /* Node detail */
-  .node-detail {
-    margin-bottom: 20px;
-  }
+  .node-detail { margin-bottom: 4px; }
   .node-detail .type-badge {
     display: inline-block;
     font-size: 10px;
@@ -160,40 +329,38 @@
     padding: 2px 8px;
     border-radius: 3px;
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
   .node-detail .label {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     line-height: 1.4;
   }
   .node-detail .meta-row {
     display: flex;
     justify-content: space-between;
-    padding: 4px 0;
-    font-size: 12px;
+    padding: 3px 0;
+    font-size: 11px;
     border-bottom: 1px solid var(--border);
   }
   .node-detail .meta-key { color: var(--text2); }
-  .node-detail .meta-value { color: var(--text); font-family: monospace; font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  .node-detail .meta-value { color: var(--text); font-family: monospace; font-size: 10px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 
-  /* Traversal panel */
-  .traversal {
-    margin-top: 16px;
-  }
+  /* Traversal */
   .traversal-step {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 8px 0;
+    gap: 8px;
+    padding: 6px 0;
     border-bottom: 1px solid var(--border);
     cursor: pointer;
     transition: background 0.15s;
+    font-size: 12px;
   }
-  .traversal-step:hover { background: var(--surface2); margin: 0 -16px; padding: 8px 16px; }
+  .traversal-step:hover { background: var(--surface2); margin: 0 -16px; padding: 6px 16px; }
   .traversal-step .step-icon {
-    width: 24px; height: 24px;
+    width: 22px; height: 22px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -201,27 +368,18 @@
     font-size: 10px;
     font-weight: 700;
     flex-shrink: 0;
-    margin-top: 2px;
   }
-  .traversal-step .step-text {
-    font-size: 12px;
-    line-height: 1.5;
-  }
-  .traversal-step .step-label { font-weight: 600; }
-  .traversal-step .step-desc { color: var(--text2); }
 
   /* Algorithm panel */
-  .algo-section {
-    margin-bottom: 20px;
-  }
+  .algo-section { margin-bottom: 12px; }
   .algo-section h4 {
     font-size: 12px;
     font-weight: 600;
     color: var(--orange);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
   .algo-section p {
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.6;
     color: var(--text2);
   }
@@ -229,7 +387,7 @@
     background: var(--surface2);
     padding: 1px 4px;
     border-radius: 3px;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--green);
   }
 
@@ -237,29 +395,29 @@
   .pipeline {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin: 8px 0;
+    gap: 3px;
+    margin: 6px 0;
   }
   .pipeline-step {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
+    padding: 5px 8px;
     background: var(--surface2);
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 10px;
     border-left: 3px solid var(--border);
   }
   .pipeline-step.active { border-left-color: var(--green); background: rgba(0, 184, 148, 0.08); }
   .pipeline-step .step-num {
     background: var(--accent);
     color: white;
-    width: 18px; height: 18px;
+    width: 16px; height: 16px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     flex-shrink: 0;
   }
@@ -283,8 +441,8 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
 
-  /* Upload prompt */
-  .upload-prompt {
+  /* Empty state */
+  .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -292,35 +450,16 @@
     height: 100%;
     color: var(--text2);
     text-align: center;
-    gap: 16px;
+    gap: 12px;
+    padding: 40px;
   }
-  .upload-prompt h2 { font-size: 20px; color: var(--text); }
-  .upload-prompt p { font-size: 14px; max-width: 400px; line-height: 1.6; }
-  .upload-prompt .file-drop {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 32px 48px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .upload-prompt .file-drop:hover { border-color: var(--accent); color: var(--text); }
-  .upload-prompt .file-drop.has-file { border-color: var(--green); color: var(--green); border-style: solid; }
-  .upload-prompt input[type="file"] { display: none; }
-  .upload-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 10px 32px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .upload-btn:hover { background: var(--accent2); }
-  .upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .empty-state h2 { font-size: 20px; color: var(--text); }
+  .empty-state p { font-size: 13px; max-width: 400px; line-height: 1.6; }
 
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .pulse { animation: pulse 1.5s ease-in-out infinite; }
 
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -333,6 +472,7 @@
   <h1>ContractOS</h1>
   <a href="/demo/">Demo Console</a>
   <span style="color: var(--text2); font-size: 13px;">TrustGraph Visualization</span>
+  <span id="docBadge" style="display: none; font-size: 11px; font-family: monospace; color: var(--green); background: rgba(0,184,148,0.1); padding: 3px 10px; border-radius: 4px;"></span>
   <div class="controls">
     <label>Filter:</label>
     <select id="filterType" onchange="applyFilter()">
@@ -349,25 +489,17 @@
       <option value="radial">Radial</option>
       <option value="hierarchy">Hierarchy</option>
     </select>
-    <button onclick="resetZoom()">Reset Zoom</button>
+    <button onclick="resetView()">Reset View</button>
   </div>
 </div>
 
 <div class="main-layout">
   <div id="graph-container">
-    <div class="upload-prompt" id="uploadPrompt">
+    <!-- Empty state shown when no document loaded -->
+    <div class="empty-state" id="emptyState">
       <h2>TrustGraph Visualization</h2>
-      <p>Upload a contract to see its knowledge graph — facts, clauses, bindings, and cross-references as an interactive force-directed graph.</p>
-      <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
-        Click to select a .docx or .pdf file
-      </div>
-      <input type="file" id="fileInput" accept=".docx,.pdf" onchange="handleFileSelect(this)">
-      <button class="upload-btn" id="uploadBtn" onclick="uploadAndVisualize()" disabled>Upload & Visualize</button>
-      <p style="font-size: 12px; margin-top: 8px;">Or enter a document_id if already uploaded:</p>
-      <div style="display: flex; gap: 8px;">
-        <input id="docIdInput" placeholder="doc-xxxxxxxxxxxx" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; color: var(--text); font-family: monospace; font-size: 13px; width: 220px;">
-        <button class="upload-btn" onclick="loadExistingGraph()" style="padding: 6px 16px; font-size: 13px;">Load Graph</button>
-      </div>
+      <p>Upload a contract in the side panel to see its knowledge graph — facts, clauses, bindings, and cross-references as an interactive force-directed graph.</p>
+      <p style="font-size: 12px; color: var(--text2);">Upload a file or enter a document ID in the panel on the right.</p>
     </div>
     <svg id="graphSvg" style="display: none;"></svg>
     <div class="stats-bar" id="statsBar" style="display: none;"></div>
@@ -377,17 +509,59 @@
       <div class="legend-item"><div class="legend-dot" style="background: var(--green);"></div> Fact</div>
       <div class="legend-item"><div class="legend-dot" style="background: var(--blue);"></div> Binding</div>
       <div class="legend-item"><div class="legend-dot" style="background: var(--pink);"></div> Cross-Ref</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--yellow); border: 1px solid var(--orange);"></div> Provenance</div>
     </div>
   </div>
+
   <div class="side-panel" id="sidePanel">
-    <h3>Indexing Algorithm</h3>
+    <!-- 1. Upload Contract -->
+    <h3>Upload Contract</h3>
+    <div class="upload-section">
+      <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+        Click to select .docx or .pdf
+      </div>
+      <input type="file" id="fileInput" accept=".docx,.pdf" onchange="handleFileSelect(this)">
+      <button class="upload-btn" id="uploadBtn" onclick="uploadAndVisualize()" disabled>Upload & Visualize</button>
+      <div class="or-divider">— or load existing —</div>
+      <div class="doc-id-row">
+        <input id="docIdInput" placeholder="doc-xxxxxxxxxxxx">
+        <button onclick="loadExistingGraph()">Load</button>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- 2. Ask a Question -->
+    <h3>Ask a Question</h3>
+    <div class="qa-section">
+      <textarea id="queryInput" placeholder="e.g. What are the termination conditions?&#10;Who are the parties?&#10;What is the notice period?"></textarea>
+      <button class="ask-btn" id="askBtn" onclick="askQuestion()" disabled>Ask with FAISS Semantic Search</button>
+    </div>
+    <div id="answerPanel" style="display: none;"></div>
+
+    <hr class="section-divider">
+
+    <!-- 3. Node Inspector -->
+    <div id="nodeDetail">
+      <h3>Node Inspector</h3>
+      <p style="font-size: 11px; color: var(--text2);">Click a node in the graph to inspect it.</p>
+    </div>
+    <div id="traversalPanel" style="display: none;">
+      <h3>Graph Traversal</h3>
+      <div id="traversalSteps"></div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- 4. Algorithm Documentation -->
+    <h3>Indexing & Retrieval Algorithm</h3>
     <div class="algo-section">
-      <h4>Why It's Fast</h4>
-      <p>ContractOS indexes contracts in <b>under 1 second</b> for a 30-page document. The secret: <b>zero LLM calls during indexing</b>. The entire extraction pipeline uses compiled regex patterns and deterministic heuristics.</p>
+      <h4>Two-Stage Pipeline</h4>
+      <p>ContractOS uses a <b>hybrid extraction + vector indexing</b> pipeline. Stage 1 extracts facts deterministically. Stage 2 embeds them for semantic retrieval.</p>
     </div>
     <div class="algo-section">
-      <h4>Pipeline Architecture</h4>
-      <p>Single-pass document traversal with 7 deterministic stages:</p>
+      <h4>Stage 1: Deterministic Extraction (<1s)</h4>
+      <p>Zero LLM calls. Compiled regex patterns and heading-based heuristics extract facts, clauses, bindings, and cross-references in a single pass:</p>
       <div class="pipeline" id="pipelineViz">
         <div class="pipeline-step"><span class="step-num">1</span> Parse document (docx/pdf) <span class="step-time"></span></div>
         <div class="pipeline-step"><span class="step-num">2</span> Regex pattern extraction <span class="step-time"></span></div>
@@ -399,32 +573,35 @@
       </div>
     </div>
     <div class="algo-section">
-      <h4>Key Design Decisions</h4>
-      <p><b>Regex over LLM for extraction:</b> 7 compiled regex patterns (<code>DEFINITION</code>, <code>MONETARY</code>, <code>DURATION</code>, <code>DATE</code>, <code>PERCENTAGE</code>, <code>SECTION_REF</code>, <code>ALIAS</code>) run in parallel over the full text. Each produces <code>PatternMatch</code> objects with precise character offsets.</p>
-      <p style="margin-top: 6px;"><b>Heading-based clause classification:</b> Instead of NLP/ML, clauses are classified by matching heading text against 25+ clause type patterns. This is O(H × P) where H = headings, P = patterns — typically under 500 comparisons.</p>
-      <p style="margin-top: 6px;"><b>SQLite with WAL mode:</b> Write-Ahead Logging enables concurrent reads during writes. Indexed columns (<code>document_id</code>, <code>fact_type</code>, <code>clause_type</code>) ensure O(log n) lookups.</p>
+      <h4>Stage 2: FAISS Vector Indexing</h4>
+      <p>After extraction, every fact, clause, and binding is embedded using <code>all-MiniLM-L6-v2</code> (384-dim sentence-transformer) and stored in a <b>FAISS IndexFlatIP</b> index (inner product on L2-normalized vectors = cosine similarity).</p>
+      <p style="margin-top: 4px;">When a question is asked, the query is embedded and <b>FAISS returns the top-k most semantically similar chunks</b> — only these relevant facts are sent to the LLM, not the entire document.</p>
+    </div>
+    <div class="algo-section">
+      <h4>Why This Is Industry-Standard</h4>
+      <p><b>FAISS</b> (Facebook AI Similarity Search) is the same vector search library used by Meta, Google, and OpenAI for production retrieval. <b>sentence-transformers</b> provides state-of-the-art text embeddings. Together they enable:</p>
+      <p style="margin-top: 4px; padding-left: 8px;">
+        <code>Embedding</code> — ~50ms per fact on CPU (batched)<br>
+        <code>Search</code> — &lt;5ms for top-k on 1000+ facts<br>
+        <code>Memory</code> — ~384 bytes per fact (float32)<br>
+        <code>Accuracy</code> — Cosine similarity for semantic matching
+      </p>
     </div>
     <div class="algo-section">
       <h4>TrustGraph Ontology</h4>
-      <p>The TrustGraph is a <b>typed property graph</b> with 8 entity types and 5 relationship types:</p>
-      <p style="margin-top: 6px;"><b>Entities:</b> Contract → Clause → Fact → Binding → CrossReference → ClauseFactSlot → Inference → ReasoningSession</p>
-      <p style="margin-top: 6px;"><b>Relationships:</b></p>
-      <p style="margin-top: 4px; padding-left: 8px;">
+      <p><b>Entities:</b> Contract → Clause → Fact → Binding → CrossReference → ClauseFactSlot → Inference</p>
+      <p style="margin-top: 4px;"><b>Relationships:</b></p>
+      <p style="padding-left: 8px;">
         <code>contains</code> — Contract→Clause, Clause→Fact<br>
-        <code>binds_to</code> — Fact→Binding (definition resolution)<br>
+        <code>binds_to</code> — Fact→Binding<br>
         <code>cross_references</code> — Clause→CrossRef→Clause<br>
-        <code>fills</code> — Fact→ClauseFactSlot (mandatory facts)<br>
+        <code>fills</code> — Fact→ClauseFactSlot<br>
         <code>supports</code> — Fact→Inference (evidence chain)
       </p>
     </div>
-    <hr style="border-color: var(--border); margin: 16px 0;">
-    <div id="nodeDetail">
-      <h3>Node Inspector</h3>
-      <p style="font-size: 12px; color: var(--text2);">Click a node in the graph to inspect it. Hover to see connections.</p>
-    </div>
-    <div id="traversalPanel" style="display: none;">
-      <h3>Traversal Path</h3>
-      <div id="traversalSteps"></div>
+    <div class="algo-section">
+      <h4>Query Provenance</h4>
+      <p>When a question is answered, the provenance chain shows exactly <b>which facts were retrieved by FAISS</b>, which were cited by the LLM, and the full reasoning path. Click any provenance node to highlight it and its connections on the graph.</p>
     </div>
   </div>
 </div>
@@ -453,6 +630,11 @@ let simulation = null;
 let svg, g, zoom;
 let selectedNode = null;
 let selectedFile = null;
+let currentDocumentId = null;
+let currentLinks = [];   // D3 link data (for traversal)
+let currentNodeMap = null; // Map of id -> node
+
+// ── Upload & Load ──────────────────────────────────────────────
 
 function handleFileSelect(input) {
   if (input.files.length > 0) {
@@ -469,8 +651,6 @@ async function uploadAndVisualize() {
   const btn = document.getElementById('uploadBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Uploading & Indexing...';
-
-  // Animate pipeline steps
   animatePipeline();
 
   const fd = new FormData();
@@ -478,8 +658,14 @@ async function uploadAndVisualize() {
 
   try {
     const resp = await fetch(BASE + '/contracts/upload', { method: 'POST', body: fd });
+    if (!resp.ok) throw new Error('Upload failed: ' + resp.status);
     const data = await resp.json();
     if (data.document_id) {
+      currentDocumentId = data.document_id;
+      document.getElementById('docBadge').style.display = 'inline';
+      document.getElementById('docBadge').textContent = data.document_id;
+      document.getElementById('askBtn').disabled = false;
+      // Automatically load the TrustGraph visualization
       await loadGraph(data.document_id);
     }
   } catch (err) {
@@ -491,7 +677,12 @@ async function uploadAndVisualize() {
 
 async function loadExistingGraph() {
   const docId = document.getElementById('docIdInput').value.trim();
-  if (docId) await loadGraph(docId);
+  if (!docId) return;
+  currentDocumentId = docId;
+  document.getElementById('docBadge').style.display = 'inline';
+  document.getElementById('docBadge').textContent = docId;
+  document.getElementById('askBtn').disabled = false;
+  await loadGraph(docId);
 }
 
 function animatePipeline() {
@@ -505,10 +696,12 @@ function animatePipeline() {
   });
 }
 
+// ── Graph Loading & Rendering ──────────────────────────────────
+
 async function loadGraph(documentId) {
   try {
     const resp = await fetch(BASE + '/contracts/' + documentId + '/graph');
-    if (!resp.ok) throw new Error('Graph not found');
+    if (!resp.ok) throw new Error('Graph not found (HTTP ' + resp.status + ')');
     graphData = await resp.json();
     renderGraph(graphData);
   } catch (err) {
@@ -517,7 +710,7 @@ async function loadGraph(documentId) {
 }
 
 function renderGraph(data) {
-  document.getElementById('uploadPrompt').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
   document.getElementById('graphSvg').style.display = 'block';
   document.getElementById('statsBar').style.display = 'flex';
   document.getElementById('legend').style.display = 'flex';
@@ -533,7 +726,6 @@ function renderGraph(data) {
     <div class="stat"><span class="stat-value">${data.edges.length}</span><span class="stat-label">Edges</span></div>
   `;
 
-  // Animate pipeline
   animatePipeline();
 
   // Prepare D3 data
@@ -543,10 +735,11 @@ function renderGraph(data) {
     color: NODE_COLORS[n.type] || '#8b90a0',
   }));
 
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  currentNodeMap = new Map(nodes.map(n => [n.id, n]));
   const links = data.edges
-    .filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
+    .filter(e => currentNodeMap.has(e.source) && currentNodeMap.has(e.target))
     .map(e => ({ ...e }));
+  currentLinks = links;
 
   // Setup SVG
   const container = document.getElementById('graph-container');
@@ -572,6 +765,19 @@ function renderGraph(data) {
       .attr('fill', color)
       .attr('opacity', 0.5);
   });
+  // Provenance arrow
+  defs.append('marker')
+    .attr('id', 'arrow-provenance')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 20)
+    .attr('refY', 0)
+    .attr('markerWidth', 8)
+    .attr('markerHeight', 8)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,-5L10,0L0,5')
+    .attr('fill', '#ffeaa7')
+    .attr('opacity', 0.9);
 
   zoom = d3.zoom()
     .scaleExtent([0.1, 5])
@@ -581,23 +787,26 @@ function renderGraph(data) {
   g = svg.append('g');
 
   // Links
-  const link = g.append('g')
+  const link = g.append('g').attr('class', 'links-group')
     .selectAll('line')
     .data(links)
     .join('line')
     .attr('stroke', d => {
-      const targetNode = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+      const targetNode = currentNodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
       return targetNode ? targetNode.color : '#2e3345';
     })
     .attr('stroke-opacity', 0.25)
     .attr('stroke-width', 1)
     .attr('marker-end', d => {
-      const targetNode = nodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
+      const targetNode = currentNodeMap.get(typeof d.target === 'object' ? d.target.id : d.target);
       return targetNode ? 'url(#arrow-' + targetNode.type + ')' : '';
     });
 
+  // Provenance overlay group (drawn on top)
+  g.append('g').attr('class', 'provenance-overlay');
+
   // Nodes
-  const node = g.append('g')
+  const node = g.append('g').attr('class', 'nodes-group')
     .selectAll('circle')
     .data(nodes)
     .join('circle')
@@ -611,7 +820,7 @@ function renderGraph(data) {
       .on('end', dragended));
 
   // Labels for clauses and contract
-  const label = g.append('g')
+  const label = g.append('g').attr('class', 'labels-group')
     .selectAll('text')
     .data(nodes.filter(n => n.type === 'contract' || n.type === 'clause'))
     .join('text')
@@ -629,7 +838,6 @@ function renderGraph(data) {
     tooltip.style.top = (event.pageY - 12) + 'px';
     tooltip.innerHTML = `<b style="color: ${d.color}">${d.type.toUpperCase()}</b><br>${d.label}`;
 
-    // Highlight connected
     const connectedIds = new Set();
     links.forEach(l => {
       const sid = typeof l.source === 'object' ? l.source.id : l.source;
@@ -660,13 +868,13 @@ function renderGraph(data) {
   .on('click', (event, d) => {
     selectedNode = d;
     showNodeDetail(d);
-    showTraversal(d, links, nodeMap);
+    showTraversal(d, links, currentNodeMap);
   });
 
   // Simulation
   simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id(d => d.id).distance(d => {
-      const sourceNode = typeof d.source === 'object' ? d.source : nodeMap.get(d.source);
+      const sourceNode = typeof d.source === 'object' ? d.source : currentNodeMap.get(d.source);
       if (sourceNode && sourceNode.type === 'contract') return 150;
       return 60;
     }))
@@ -685,13 +893,19 @@ function renderGraph(data) {
       label
         .attr('x', d => d.x)
         .attr('y', d => d.y);
+      // Update provenance overlay lines
+      g.select('.provenance-overlay').selectAll('line')
+        .attr('x1', d => { const n = currentNodeMap.get(d.source); return n ? n.x : 0; })
+        .attr('y1', d => { const n = currentNodeMap.get(d.source); return n ? n.y : 0; })
+        .attr('x2', d => { const n = currentNodeMap.get(d.target); return n ? n.x : 0; })
+        .attr('y2', d => { const n = currentNodeMap.get(d.target); return n ? n.y : 0; });
     });
 
-  // Initial zoom to fit
+  // Auto-fit after stabilization
   setTimeout(() => {
     const bounds = g.node().getBBox();
-    const fullWidth = bounds.width;
-    const fullHeight = bounds.height;
+    const fullWidth = bounds.width || 1;
+    const fullHeight = bounds.height || 1;
     const midX = bounds.x + fullWidth / 2;
     const midY = bounds.y + fullHeight / 2;
     const scale = 0.85 / Math.max(fullWidth / width, fullHeight / height);
@@ -703,6 +917,211 @@ function renderGraph(data) {
   }, 2000);
 }
 
+// ── Q&A with Provenance ────────────────────────────────────────
+
+async function askQuestion() {
+  const question = document.getElementById('queryInput').value.trim();
+  if (!question || !currentDocumentId) {
+    alert('Please upload a document first and enter a question.');
+    return;
+  }
+
+  const btn = document.getElementById('askBtn');
+  const panel = document.getElementById('answerPanel');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Searching with FAISS...';
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="padding: 12px; text-align: center;"><span class="spinner"></span> <span style="color: var(--text2); font-size: 12px;">FAISS semantic retrieval → LLM reasoning...</span></div>';
+
+  try {
+    const resp = await fetch(BASE + '/query/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, document_id: currentDocumentId }),
+    });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Query failed: ' + resp.status);
+    }
+    const data = await resp.json();
+    renderAnswer(data);
+  } catch (err) {
+    panel.innerHTML = `<div class="answer-card" style="border-color: var(--red);"><div style="color: var(--red); font-size: 13px;">Error: ${err.message}</div></div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Ask with FAISS Semantic Search';
+}
+
+function renderAnswer(data) {
+  const panel = document.getElementById('answerPanel');
+  const conf = data.confidence ? `${data.confidence.label} (${data.confidence.score})` : 'N/A';
+  const retrieval = data.retrieval_method === 'faiss_semantic'
+    ? '<span class="badge-green">FAISS Semantic</span>'
+    : '<span class="badge-orange">Full Scan</span>';
+
+  // Build provenance HTML
+  let provenanceHTML = '';
+  if (data.provenance && data.provenance.nodes && data.provenance.nodes.length > 0) {
+    provenanceHTML = '<div class="provenance-chain"><div class="chain-title">Provenance Chain (' + data.provenance.node_count + ' nodes)</div>';
+    data.provenance.nodes.forEach((node, idx) => {
+      const icon = node.icon || (node.node_type === 'fact' ? '📄' : node.node_type === 'inference' ? '💡' : '🔗');
+      const typeColor = node.node_type === 'fact' ? 'var(--green)' : node.node_type === 'inference' ? 'var(--orange)' : 'var(--blue)';
+      provenanceHTML += `
+        <div class="provenance-node" id="prov-${idx}" onclick="focusProvenanceNode('${node.reference_id}', ${idx})">
+          <span class="prov-icon">${icon}</span>
+          <div class="prov-body">
+            <span class="prov-type" style="color: ${typeColor};">${node.node_type}</span>:
+            <span class="prov-summary">${node.summary}</span>
+            ${node.document_location ? `<div class="prov-location">📍 ${node.document_location}</div>` : ''}
+          </div>
+        </div>`;
+    });
+    if (data.provenance.reasoning_summary) {
+      provenanceHTML += `<div class="reasoning-box"><b>Reasoning Chain:</b><br>${data.provenance.reasoning_summary}</div>`;
+    }
+    provenanceHTML += '</div>';
+  }
+
+  panel.innerHTML = `
+    <div class="answer-card">
+      <div class="answer-text">${data.answer}</div>
+      <div class="answer-meta">
+        <span>Confidence: <b>${conf}</b></span>
+        <span>Retrieval: ${retrieval}</span>
+        ${data.generation_time_ms ? `<span>${data.generation_time_ms}ms</span>` : ''}
+        ${data.facts_referenced ? `<span>${data.facts_referenced.length} facts cited</span>` : ''}
+      </div>
+    </div>
+    ${provenanceHTML}
+  `;
+
+  // Highlight provenance on the graph
+  if (data.facts_referenced && data.facts_referenced.length > 0) {
+    highlightProvenanceOnGraph(data.facts_referenced, data.provenance);
+  }
+}
+
+function highlightProvenanceOnGraph(factIds, provenance) {
+  if (!graphData || !currentNodeMap) return;
+
+  const factSet = new Set(factIds);
+
+  // Find all provenance-related node IDs (facts + their parent clauses)
+  const provenanceNodeIds = new Set(factIds);
+  // Walk edges to find parent clauses of provenance facts
+  currentLinks.forEach(l => {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source;
+    const tid = typeof l.target === 'object' ? l.target.id : l.target;
+    if (factSet.has(tid)) {
+      const sourceNode = currentNodeMap.get(sid);
+      if (sourceNode && (sourceNode.type === 'clause' || sourceNode.type === 'contract')) {
+        provenanceNodeIds.add(sid);
+      }
+    }
+    if (factSet.has(sid)) {
+      const targetNode = currentNodeMap.get(tid);
+      if (targetNode && (targetNode.type === 'clause' || targetNode.type === 'contract')) {
+        provenanceNodeIds.add(tid);
+      }
+    }
+  });
+
+  // Dim all nodes, highlight provenance
+  d3.selectAll('.nodes-group circle')
+    .attr('opacity', d => provenanceNodeIds.has(d.id) ? 1 : 0.12)
+    .attr('stroke', d => factSet.has(d.id) ? '#ffeaa7' : provenanceNodeIds.has(d.id) ? '#fff' : 'none')
+    .attr('stroke-width', d => factSet.has(d.id) ? 4 : provenanceNodeIds.has(d.id) ? 2 : 0);
+
+  // Dim non-relevant edges
+  d3.selectAll('.links-group line')
+    .attr('stroke-opacity', l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      return provenanceNodeIds.has(sid) && provenanceNodeIds.has(tid) ? 0.7 : 0.03;
+    })
+    .attr('stroke-width', l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      return provenanceNodeIds.has(sid) && provenanceNodeIds.has(tid) ? 2 : 1;
+    });
+
+  d3.selectAll('.labels-group text')
+    .attr('opacity', d => provenanceNodeIds.has(d.id) ? 1 : 0.1);
+
+  // Draw provenance traversal lines (yellow overlay connecting provenance facts through their clauses)
+  const overlay = g.select('.provenance-overlay');
+  overlay.selectAll('*').remove();
+
+  // Build provenance path: for each pair of consecutive provenance facts, draw through their shared clause
+  const provenanceEdges = [];
+  const factArray = Array.from(factSet);
+  factArray.forEach(fid => {
+    // Find clause parent of this fact
+    currentLinks.forEach(l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      if (tid === fid && provenanceNodeIds.has(sid)) {
+        provenanceEdges.push({ source: sid, target: fid });
+      }
+      if (sid === fid && provenanceNodeIds.has(tid)) {
+        provenanceEdges.push({ source: fid, target: tid });
+      }
+    });
+  });
+
+  // Draw yellow provenance edges
+  overlay.selectAll('line')
+    .data(provenanceEdges)
+    .join('line')
+    .attr('stroke', '#ffeaa7')
+    .attr('stroke-width', 3)
+    .attr('stroke-opacity', 0.8)
+    .attr('stroke-dasharray', '6,3')
+    .attr('marker-end', 'url(#arrow-provenance)')
+    .attr('x1', d => { const n = currentNodeMap.get(d.source); return n ? n.x : 0; })
+    .attr('y1', d => { const n = currentNodeMap.get(d.source); return n ? n.y : 0; })
+    .attr('x2', d => { const n = currentNodeMap.get(d.target); return n ? n.x : 0; })
+    .attr('y2', d => { const n = currentNodeMap.get(d.target); return n ? n.y : 0; });
+}
+
+function focusProvenanceNode(nodeId, idx) {
+  // Highlight the clicked provenance node in the side panel
+  document.querySelectorAll('.provenance-node').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('prov-' + idx);
+  if (el) el.classList.add('active');
+
+  // Highlight on graph with yellow ring
+  d3.selectAll('.nodes-group circle')
+    .attr('stroke', d => d.id === nodeId ? '#ffeaa7' : 'none')
+    .attr('stroke-width', d => d.id === nodeId ? 5 : 0)
+    .attr('opacity', d => d.id === nodeId ? 1 : 0.15);
+
+  // Zoom to the node
+  if (currentNodeMap) {
+    const n = currentNodeMap.get(nodeId);
+    if (n && n.x !== undefined) {
+      const container = document.getElementById('graph-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      svg.transition().duration(600).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(width / 2 - n.x * 2, height / 2 - n.y * 2).scale(2)
+      );
+    }
+  }
+
+  // Show node detail
+  if (graphData) {
+    const n = graphData.nodes.find(n => n.id === nodeId);
+    if (n) {
+      showNodeDetail({ ...n, color: NODE_COLORS[n.type], radius: NODE_SIZES[n.type] });
+    }
+  }
+}
+
+// ── Node Inspector & Traversal ─────────────────────────────────
+
 function showNodeDetail(node) {
   const detail = document.getElementById('nodeDetail');
   const color = NODE_COLORS[node.type] || '#8b90a0';
@@ -711,7 +1130,7 @@ function showNodeDetail(node) {
     Object.entries(node.metadata).forEach(([k, v]) => {
       if (v !== null && v !== undefined) {
         const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
-        metaHTML += `<div class="meta-row"><span class="meta-key">${k}</span><span class="meta-value">${val}</span></div>`;
+        metaHTML += `<div class="meta-row"><span class="meta-key">${k}</span><span class="meta-value" title="${val}">${val}</span></div>`;
       }
     });
   }
@@ -731,7 +1150,7 @@ function showTraversal(node, links, nodeMap) {
   const steps = document.getElementById('traversalSteps');
   panel.style.display = 'block';
 
-  // Find all connected nodes (BFS from selected node, max depth 3)
+  // BFS from selected node, max depth 2
   const visited = new Set([node.id]);
   const queue = [{ id: node.id, depth: 0, path: [node] }];
   const paths = [];
@@ -758,7 +1177,6 @@ function showTraversal(node, links, nodeMap) {
     });
   }
 
-  // Show traversal paths
   let html = '';
   paths.slice(0, 12).forEach(path => {
     const last = path[path.length - 1];
@@ -768,41 +1186,38 @@ function showTraversal(node, links, nodeMap) {
     html += `
       <div class="traversal-step" onclick="highlightNode('${n.id}')">
         <div class="step-icon" style="background: ${color}22; color: ${color};">${n.type[0].toUpperCase()}</div>
-        <div class="step-text">
-          <span class="step-label">${rel}</span> →
+        <div style="font-size: 12px;">
+          <span style="font-weight: 600;">${rel}</span> →
           <span style="color: ${color}">${n.type}</span>:
-          <span class="step-desc">${(n.label || '').slice(0, 60)}</span>
+          <span style="color: var(--text2);">${(n.label || '').slice(0, 60)}</span>
         </div>
       </div>`;
   });
 
   if (paths.length === 0) {
-    html = '<p style="font-size: 12px; color: var(--text2);">No connections found.</p>';
+    html = '<p style="font-size: 11px; color: var(--text2);">No connections found.</p>';
   }
-
   steps.innerHTML = html;
 }
 
 function highlightNode(nodeId) {
-  const nodes = d3.selectAll('circle');
-  nodes.attr('stroke', d => d.id === nodeId ? '#fff' : 'none')
-       .attr('stroke-width', d => d.id === nodeId ? 3 : 0);
+  d3.selectAll('.nodes-group circle')
+    .attr('stroke', d => d.id === nodeId ? '#fff' : 'none')
+    .attr('stroke-width', d => d.id === nodeId ? 3 : 0);
 
-  // Find and show detail
   if (graphData) {
     const n = graphData.nodes.find(n => n.id === nodeId);
-    if (n) {
-      const enriched = { ...n, color: NODE_COLORS[n.type], radius: NODE_SIZES[n.type] };
-      showNodeDetail(enriched);
-    }
+    if (n) showNodeDetail({ ...n, color: NODE_COLORS[n.type], radius: NODE_SIZES[n.type] });
   }
 }
+
+// ── Filter, Layout, Zoom ───────────────────────────────────────
 
 function applyFilter() {
   const filter = document.getElementById('filterType').value;
   if (!graphData) return;
 
-  d3.selectAll('circle').attr('opacity', d => {
+  d3.selectAll('.nodes-group circle').attr('opacity', d => {
     if (filter === 'all') return 1;
     if (filter === 'no-clause-text') {
       return (d.metadata && d.metadata.fact_type === 'clause_text') ? 0.05 : 1;
@@ -845,11 +1260,28 @@ function changeLayout() {
   simulation.alpha(0.8).restart();
 }
 
-function resetZoom() {
+function resetView() {
+  // Reset zoom
   if (svg && zoom) {
     svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
   }
+  // Clear provenance overlay
+  if (g) {
+    g.select('.provenance-overlay').selectAll('*').remove();
+  }
+  // Reset node styles
+  d3.selectAll('.nodes-group circle')
+    .attr('opacity', 1)
+    .attr('stroke', 'none')
+    .attr('stroke-width', 0);
+  d3.selectAll('.links-group line')
+    .attr('stroke-opacity', 0.25)
+    .attr('stroke-width', 1);
+  d3.selectAll('.labels-group text')
+    .attr('opacity', 1);
 }
+
+// ── Drag handlers ──────────────────────────────────────────────
 
 function dragstarted(event, d) {
   if (!event.active) simulation.alphaTarget(0.3).restart();

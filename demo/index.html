@@ -554,10 +554,14 @@ async function sendRequest(index) {
       }
       if (data.answer) {
         const conf = data.confidence ? ` (${data.confidence.label}: ${data.confidence.score})` : '';
+        const retrieval = data.retrieval_method === 'faiss_semantic'
+          ? '<span style="color: var(--green);">FAISS Semantic</span>'
+          : '<span style="color: var(--orange);">Full Scan</span>';
         summary = `<div style="margin-bottom: 12px; padding: 16px; background: rgba(108,92,231,0.1); border-radius: 8px;">
           <div style="font-size: 15px; line-height: 1.7; margin-bottom: 8px;">${data.answer}</div>
           <div style="font-size: 12px; color: var(--text2);">
             Confidence: <b>${data.confidence ? data.confidence.label : 'N/A'}</b>${conf}
+            | Retrieval: ${retrieval}
             ${data.provenance ? ' | Evidence: ' + data.provenance.node_count + ' nodes' : ''}
             ${data.generation_time_ms ? ' | Time: ' + data.generation_time_ms + 'ms' : ''}
           </div>

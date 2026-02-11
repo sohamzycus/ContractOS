@@ -43,3 +43,4 @@ class QueryResult(BaseModel):
     inferences_generated: list[str] = Field(default_factory=list)
     generated_at: datetime
     generation_time_ms: int = Field(ge=0)
+    retrieval_method: str = Field(default="full_scan")  # "full_scan" or "faiss_semantic"

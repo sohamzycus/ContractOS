@@ -24,6 +24,10 @@ dependencies = [
     "pyyaml>=6.0.0",
     "python-multipart>=0.0.18",
     "sse-starlette>=2.2.0",
+    # Vector indexing — industry-standard semantic search
+    "sentence-transformers>=3.0.0",
+    "faiss-cpu>=1.9.0",
+    "numpy>=1.26.0",
 ]
 
 [project.optional-dependencies]
