@@ -364,6 +364,92 @@
 
 ---
 
+### Phase 7d: TrustGraph Branding, Chat Persistence, Multi-Doc & D3 Cleanup ✅ COMPLETE
+
+**Goal**: Make TrustGraph concept prominent. Add chat persistence. Enable multi-document queries. Clean up D3 provenance visualization.
+**Tests**: 7 new tests (553 total passing)
+
+- [x] T157 TrustGraph branding & explanation (`demo/graph.html`):
+  - Empty state explains TrustGraph as "graph-powered context harness" with entity flow diagram
+  - Full ontology documentation: 8 entity types, 5 relationship types with color-coded legend
+  - Links to TrustGraph.ai as inspiration for graph-powered AI context
+  - Header shows "TrustGraph" badge alongside ContractOS branding
+- [x] T158 D3.js visualization cleanup — cleaner provenance display:
+  - Provenance edges animate in sequentially (150ms stagger per edge)
+  - Cited fact nodes pulse with expanding radius animation
+  - Provenance edges use 8,4 dash pattern with 0.85 opacity fade-in
+  - Non-relevant nodes dimmed to 12% for clearer focus
+- [x] T159 Query/chat persistence (`src/contractos/api/routes/query.py`):
+  - Every Q&A persisted as `reasoning_session` in SQLite via `WorkspaceStore`
+  - Default workspace auto-created (`w-default`)
+  - `session_id` returned in every `QueryResponse`
+  - New `GET /query/history` endpoint — returns chat history (most recent first)
+  - Chat history panel in graph.html — shows past questions with status, confidence, timing
+  - Click history item to replay the question
+- [x] T160 Multi-document answer support:
+  - `QueryRequest` now accepts `document_ids` (list) in addition to `document_id` (singular)
+  - `DocumentAgent.answer()` iterates all target documents, merges FAISS results
+  - Context labels facts with source document title for multi-doc queries
+  - Scope selector in graph.html: "Current Document" or "All Uploaded Documents"
+  - `uploadedDocIds` tracks all uploaded documents across the session
+  - `QueryResponse.document_ids` shows which documents were queried
+- [x] T161 Tests for persistence & multi-doc (`tests/unit/test_query_persistence.py`) — 7 tests:
+  - `TestQueryPersistence` (3 tests): session_id in response, history retrieval, answers in history
+  - `TestMultiDocumentQuery` (4 tests): multi-doc query, backward compat, 404, 400
+
+**Checkpoint**: ✅ TrustGraph branding prominent. Chat persisted. Multi-doc queries working. D3 provenance animated. **553 tests total.**
+
+---
+
+### Phase 7e: Chat History View, Clear All, HuggingFace Multi-Doc ✅ COMPLETE
+
+**Goal**: Full chat history visibility, clear uploaded files & history, multi-document analysis with real HuggingFace-sourced contracts.
+**Tests**: 15 new tests (568 total passing)
+
+- [x] T162 Chat history visibility — full Q&A display in both UIs:
+  - `demo/graph.html`: expandable history items showing answer preview, confidence, timing
+  - Click any history item to replay the question in the query input
+  - `demo/index.html`: new "Chat History" sidebar section with rich card rendering
+  - History auto-loads on document upload and after each query
+- [x] T163 Clear uploaded files & history — API + UI:
+  - `DELETE /contracts/clear` — wipes all contracts, facts, sessions, FAISS indices
+  - `DELETE /query/history` — clears all chat sessions
+  - `GET /contracts` — list all uploaded contracts with metadata
+  - `TrustGraph.clear_all_data()` — cascading delete across 9 tables
+  - `TrustGraph.list_contracts()` — list all indexed contracts
+  - `WorkspaceStore.clear_sessions_by_workspace()` — delete sessions by workspace
+  - `demo/graph.html`: "Clear All" button (red) resets graph, FAISS, history, UI state
+  - `demo/graph.html`: "Clear" button on chat history section
+  - `demo/index.html`: "Clear All Data" and "Clear Chat History" sidebar endpoints
+  - Auto-clears client state (document_id, uploadedDocIds) on clear
+- [x] T164 HuggingFace contract fixtures — 3 realistic procurement contracts:
+  - `hf_master_services_agreement.docx` — GlobalTech ↔ Meridian ($2.4M, 3yr MSA)
+    - 13 sections: definitions, scope, fees/payment, termination, IP, confidentiality,
+      indemnification, liability cap, insurance, non-solicitation, audit, governing law
+  - `hf_software_license_agreement.docx` — CloudVault ↔ Pacific Rim ($750K SaaS)
+    - 8 sections: license grant, subscription fees, SLA (99.95%), data processing,
+      termination, warranties, liability, governing law
+  - `hf_supply_chain_agreement.docx` — Apex ↔ NovaTech (EUR 18.5M, 5yr supply)
+    - 9 sections: supply obligations, pricing, quality (50 PPM), delivery (DDP),
+      warranties, penalties, termination, liability, governing law
+  - Based on CUAD (510 real contracts) and ContractNLI (607 NDAs) dataset patterns
+- [x] T165 Multi-document analysis integration tests (`tests/integration/test_multi_doc_analysis.py`) — 7 tests:
+  - Upload 3 HuggingFace contracts, verify all listed
+  - Single-doc query on MSA (payment terms)
+  - 2-doc cross-query (MSA + Software License termination comparison)
+  - 3-doc cross-query (liability caps across all contracts)
+  - Chat history records multi-doc queries with correct document_ids
+  - Clear all contracts + history
+  - Metadata richness: >20 facts, >5 clauses, >3 bindings per contract
+- [x] T166 Unit tests for clear & history (`tests/unit/test_chat_history_and_clear.py`) — 8 tests:
+  - `TestChatHistoryVisibility` (3): empty initially, shows Q&A, ordered most-recent-first
+  - `TestClearOperations` (3): clear history, clear all contracts, clear empty is safe
+  - `TestListContracts` (2): list empty, list after upload
+
+**Checkpoint**: ✅ Full chat history visible. Clear all working. 3 HuggingFace contracts for multi-doc. **568 tests total.**
+
+---
+
 ## Phase 8: Word Copilot Add-in (P2)
 
 **Goal**: A working Word sidebar that communicates with the ContractOS server.

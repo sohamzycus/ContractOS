@@ -470,8 +470,8 @@
 
 <div class="header">
   <h1>ContractOS</h1>
+  <span style="color: var(--text2); font-size: 11px; border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px;">TrustGraph</span>
   <a href="/demo/">Demo Console</a>
-  <span style="color: var(--text2); font-size: 13px;">TrustGraph Visualization</span>
   <span id="docBadge" style="display: none; font-size: 11px; font-family: monospace; color: var(--green); background: rgba(0,184,148,0.1); padding: 3px 10px; border-radius: 4px;"></span>
   <div class="controls">
     <label>Filter:</label>
@@ -497,9 +497,20 @@
   <div id="graph-container">
     <!-- Empty state shown when no document loaded -->
     <div class="empty-state" id="emptyState">
-      <h2>TrustGraph Visualization</h2>
-      <p>Upload a contract in the side panel to see its knowledge graph — facts, clauses, bindings, and cross-references as an interactive force-directed graph.</p>
-      <p style="font-size: 12px; color: var(--text2);">Upload a file or enter a document ID in the panel on the right.</p>
+      <div style="font-size: 48px; opacity: 0.3; margin-bottom: 8px;">&#x1F578;</div>
+      <h2>ContractOS TrustGraph</h2>
+      <p>The <b>TrustGraph</b> is a typed property graph that transforms contracts from static documents into queryable, explainable legal knowledge.</p>
+      <p style="font-size: 12px; max-width: 500px;">Every fact is <b>evidence-grounded</b>. Every inference is <b>provenance-tracked</b>. Every answer shows exactly which nodes in the graph were traversed to produce it.</p>
+      <div style="display: flex; gap: 24px; margin-top: 8px; font-size: 11px; color: var(--text2);">
+        <div style="text-align: center;"><span style="font-size: 20px; display: block; color: var(--green);">&#x1F4C4;</span>Facts</div>
+        <div style="text-align: center; color: var(--text2);">&rarr;</div>
+        <div style="text-align: center;"><span style="font-size: 20px; display: block; color: var(--orange);">&#x1F4CB;</span>Clauses</div>
+        <div style="text-align: center; color: var(--text2);">&rarr;</div>
+        <div style="text-align: center;"><span style="font-size: 20px; display: block; color: var(--blue);">&#x1F517;</span>Bindings</div>
+        <div style="text-align: center; color: var(--text2);">&rarr;</div>
+        <div style="text-align: center;"><span style="font-size: 20px; display: block; color: var(--accent2);">&#x1F4A1;</span>Inferences</div>
+      </div>
+      <p style="font-size: 12px; color: var(--text2); margin-top: 12px;">Upload a contract in the side panel to build its TrustGraph.</p>
     </div>
     <svg id="graphSvg" style="display: none;"></svg>
     <div class="stats-bar" id="statsBar" style="display: none;"></div>
@@ -515,7 +526,10 @@
 
   <div class="side-panel" id="sidePanel">
     <!-- 1. Upload Contract -->
-    <h3>Upload Contract</h3>
+    <h3 style="display: flex; align-items: center; gap: 8px;">
+      Upload Contract
+      <button onclick="clearAllData()" style="margin-left: auto; background: none; border: 1px solid var(--red); color: var(--red); padding: 2px 8px; border-radius: 3px; font-size: 9px; cursor: pointer;" title="Clear all uploaded files and history">Clear All</button>
+    </h3>
     <div class="upload-section">
       <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
         Click to select .docx or .pdf
@@ -535,9 +549,27 @@
     <h3>Ask a Question</h3>
     <div class="qa-section">
       <textarea id="queryInput" placeholder="e.g. What are the termination conditions?&#10;Who are the parties?&#10;What is the notice period?"></textarea>
+      <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+        <label style="font-size: 10px; color: var(--text2); white-space: nowrap;">Scope:</label>
+        <select id="queryScope" style="flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: var(--text); font-size: 10px;">
+          <option value="current">Current Document</option>
+          <option value="all">All Uploaded Documents</option>
+        </select>
+      </div>
       <button class="ask-btn" id="askBtn" onclick="askQuestion()" disabled>Ask with FAISS Semantic Search</button>
     </div>
     <div id="answerPanel" style="display: none;"></div>
+
+    <hr class="section-divider">
+
+    <!-- 2b. Chat History -->
+    <h3 style="display: flex; align-items: center; gap: 8px;">
+      Chat History <span id="historyCount" style="font-size: 10px; color: var(--text2); font-weight: 400;"></span>
+      <button onclick="clearChatHistory()" style="margin-left: auto; background: none; border: 1px solid var(--border); color: var(--text2); padding: 2px 8px; border-radius: 3px; font-size: 9px; cursor: pointer;" title="Clear chat history">Clear</button>
+    </h3>
+    <div id="chatHistory" style="max-height: 280px; overflow-y: auto;">
+      <p style="font-size: 11px; color: var(--text2);">No queries yet.</p>
+    </div>
 
     <hr class="section-divider">
 
@@ -553,55 +585,59 @@
 
     <hr class="section-divider">
 
-    <!-- 4. Algorithm Documentation -->
-    <h3>Indexing & Retrieval Algorithm</h3>
+    <!-- 4. What is TrustGraph -->
+    <h3>What is TrustGraph?</h3>
     <div class="algo-section">
-      <h4>Two-Stage Pipeline</h4>
-      <p>ContractOS uses a <b>hybrid extraction + vector indexing</b> pipeline. Stage 1 extracts facts deterministically. Stage 2 embeds them for semantic retrieval.</p>
+      <h4>Graph-Powered Context Harness</h4>
+      <p>The <b>TrustGraph</b> is ContractOS's core intelligence layer — a <b>typed property graph</b> that stores every extracted fact with full provenance. Unlike flat text search, the TrustGraph preserves <b>relationships between entities</b>, enabling multi-hop reasoning across clauses, definitions, and cross-references.</p>
+      <p style="margin-top: 6px;">Inspired by <a href="https://trustgraph.ai/" target="_blank" style="color: var(--accent2);">TrustGraph.ai</a>'s vision of graph-powered context for AI agents — every response is driven by connected, verifiable context rather than guessing from flat text.</p>
     </div>
     <div class="algo-section">
-      <h4>Stage 1: Deterministic Extraction (<1s)</h4>
-      <p>Zero LLM calls. Compiled regex patterns and heading-based heuristics extract facts, clauses, bindings, and cross-references in a single pass:</p>
+      <h4>TrustGraph Ontology</h4>
+      <p style="margin-bottom: 4px;"><b>8 Entity Types:</b></p>
+      <p style="padding-left: 8px; font-size: 10px;">
+        <span style="color: var(--accent);">&#x25CF;</span> <b>Contract</b> — root document node<br>
+        <span style="color: var(--orange);">&#x25CF;</span> <b>Clause</b> — classified sections (termination, payment, etc.)<br>
+        <span style="color: var(--green);">&#x25CF;</span> <b>Fact</b> — evidence-grounded text spans with char offsets<br>
+        <span style="color: var(--blue);">&#x25CF;</span> <b>Binding</b> — entity aliases ("Buyer" → "Alpha Corp")<br>
+        <span style="color: var(--pink);">&#x25CF;</span> <b>CrossReference</b> — inter-clause links<br>
+        <span style="color: var(--teal);">&#x25CF;</span> <b>ClauseFactSlot</b> — mandatory facts per clause type<br>
+        <span style="color: var(--accent2);">&#x25CF;</span> <b>Inference</b> — derived claims with confidence<br>
+        <span style="color: var(--text2);">&#x25CF;</span> <b>ReasoningSession</b> — persisted Q&A with provenance
+      </p>
+      <p style="margin-top: 6px;"><b>5 Relationship Types:</b></p>
+      <p style="padding-left: 8px; font-size: 10px;">
+        <code>contains</code> Contract→Clause→Fact &nbsp;
+        <code>binds_to</code> Fact→Binding<br>
+        <code>cross_references</code> Clause→Clause &nbsp;
+        <code>fills</code> Fact→Slot<br>
+        <code>supports</code> Fact→Inference (evidence chain)
+      </p>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- 5. How Indexing Works -->
+    <h3>Indexing Pipeline</h3>
+    <div class="algo-section">
+      <h4>Stage 1: Extraction (<1s, zero LLM)</h4>
       <div class="pipeline" id="pipelineViz">
         <div class="pipeline-step"><span class="step-num">1</span> Parse document (docx/pdf) <span class="step-time"></span></div>
         <div class="pipeline-step"><span class="step-num">2</span> Regex pattern extraction <span class="step-time"></span></div>
-        <div class="pipeline-step"><span class="step-num">3</span> Fact generation (patterns + tables) <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">3</span> Fact generation <span class="step-time"></span></div>
         <div class="pipeline-step"><span class="step-num">4</span> Entity alias detection <span class="step-time"></span></div>
-        <div class="pipeline-step"><span class="step-num">5</span> Clause classification (headings) <span class="step-time"></span></div>
-        <div class="pipeline-step"><span class="step-num">6</span> Cross-reference extraction <span class="step-time"></span></div>
-        <div class="pipeline-step"><span class="step-num">7</span> Mandatory fact slot checking <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">5</span> Clause classification <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">6</span> Cross-reference linking <span class="step-time"></span></div>
+        <div class="pipeline-step"><span class="step-num">7</span> Fact slot validation <span class="step-time"></span></div>
       </div>
     </div>
     <div class="algo-section">
       <h4>Stage 2: FAISS Vector Indexing</h4>
-      <p>After extraction, every fact, clause, and binding is embedded using <code>all-MiniLM-L6-v2</code> (384-dim sentence-transformer) and stored in a <b>FAISS IndexFlatIP</b> index (inner product on L2-normalized vectors = cosine similarity).</p>
-      <p style="margin-top: 4px;">When a question is asked, the query is embedded and <b>FAISS returns the top-k most semantically similar chunks</b> — only these relevant facts are sent to the LLM, not the entire document.</p>
-    </div>
-    <div class="algo-section">
-      <h4>Why This Is Industry-Standard</h4>
-      <p><b>FAISS</b> (Facebook AI Similarity Search) is the same vector search library used by Meta, Google, and OpenAI for production retrieval. <b>sentence-transformers</b> provides state-of-the-art text embeddings. Together they enable:</p>
-      <p style="margin-top: 4px; padding-left: 8px;">
-        <code>Embedding</code> — ~50ms per fact on CPU (batched)<br>
-        <code>Search</code> — &lt;5ms for top-k on 1000+ facts<br>
-        <code>Memory</code> — ~384 bytes per fact (float32)<br>
-        <code>Accuracy</code> — Cosine similarity for semantic matching
-      </p>
-    </div>
-    <div class="algo-section">
-      <h4>TrustGraph Ontology</h4>
-      <p><b>Entities:</b> Contract → Clause → Fact → Binding → CrossReference → ClauseFactSlot → Inference</p>
-      <p style="margin-top: 4px;"><b>Relationships:</b></p>
-      <p style="padding-left: 8px;">
-        <code>contains</code> — Contract→Clause, Clause→Fact<br>
-        <code>binds_to</code> — Fact→Binding<br>
-        <code>cross_references</code> — Clause→CrossRef→Clause<br>
-        <code>fills</code> — Fact→ClauseFactSlot<br>
-        <code>supports</code> — Fact→Inference (evidence chain)
-      </p>
+      <p>Every fact, clause, and binding is embedded with <code>all-MiniLM-L6-v2</code> (384-dim) into a <b>FAISS IndexFlatIP</b>. Queries retrieve the top-k semantically similar chunks in &lt;5ms.</p>
     </div>
     <div class="algo-section">
       <h4>Query Provenance</h4>
-      <p>When a question is answered, the provenance chain shows exactly <b>which facts were retrieved by FAISS</b>, which were cited by the LLM, and the full reasoning path. Click any provenance node to highlight it and its connections on the graph.</p>
+      <p>When answered, the <b style="color: var(--yellow);">yellow provenance path</b> on the graph shows exactly which facts FAISS retrieved and the LLM cited. Click any provenance node to zoom to it.</p>
     </div>
   </div>
 </div>
@@ -631,6 +667,7 @@ let svg, g, zoom;
 let selectedNode = null;
 let selectedFile = null;
 let currentDocumentId = null;
+let uploadedDocIds = [];  // All uploaded document IDs (for multi-doc)
 let currentLinks = [];   // D3 link data (for traversal)
 let currentNodeMap = null; // Map of id -> node
 
@@ -662,11 +699,22 @@ async function uploadAndVisualize() {
     const data = await resp.json();
     if (data.document_id) {
       currentDocumentId = data.document_id;
+      if (!uploadedDocIds.includes(data.document_id)) {
+        uploadedDocIds.push(data.document_id);
+      }
       document.getElementById('docBadge').style.display = 'inline';
-      document.getElementById('docBadge').textContent = data.document_id;
+      document.getElementById('docBadge').textContent = uploadedDocIds.length > 1
+        ? `${uploadedDocIds.length} docs loaded`
+        : data.document_id;
       document.getElementById('askBtn').disabled = false;
+      // Update scope selector
+      if (uploadedDocIds.length > 1) {
+        document.getElementById('queryScope').querySelector('option[value="all"]').textContent =
+          `All ${uploadedDocIds.length} Documents`;
+      }
       // Automatically load the TrustGraph visualization
       await loadGraph(data.document_id);
+      loadChatHistory();
     }
   } catch (err) {
     alert('Upload failed: ' + err.message);
@@ -679,10 +727,14 @@ async function loadExistingGraph() {
   const docId = document.getElementById('docIdInput').value.trim();
   if (!docId) return;
   currentDocumentId = docId;
+  if (!uploadedDocIds.includes(docId)) {
+    uploadedDocIds.push(docId);
+  }
   document.getElementById('docBadge').style.display = 'inline';
   document.getElementById('docBadge').textContent = docId;
   document.getElementById('askBtn').disabled = false;
   await loadGraph(docId);
+  loadChatHistory();
 }
 
 function animatePipeline() {
@@ -921,11 +973,16 @@ function renderGraph(data) {
 
 async function askQuestion() {
   const question = document.getElementById('queryInput').value.trim();
-  if (!question || !currentDocumentId) {
-    alert('Please upload a document first and enter a question.');
+  if (!question) {
+    alert('Please enter a question.');
+    return;
+  }
+  if (uploadedDocIds.length === 0) {
+    alert('Please upload a document first.');
     return;
   }
 
+  const scope = document.getElementById('queryScope').value;
   const btn = document.getElementById('askBtn');
   const panel = document.getElementById('answerPanel');
   btn.disabled = true;
@@ -933,11 +990,19 @@ async function askQuestion() {
   panel.style.display = 'block';
   panel.innerHTML = '<div style="padding: 12px; text-align: center;"><span class="spinner"></span> <span style="color: var(--text2); font-size: 12px;">FAISS semantic retrieval → LLM reasoning...</span></div>';
 
+  // Build request body — single or multi-doc
+  let body;
+  if (scope === 'all' && uploadedDocIds.length > 1) {
+    body = { question, document_ids: uploadedDocIds };
+  } else {
+    body = { question, document_id: currentDocumentId };
+  }
+
   try {
     const resp = await fetch(BASE + '/query/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, document_id: currentDocumentId }),
+      body: JSON.stringify(body),
     });
     if (!resp.ok) {
       const errData = await resp.json().catch(() => ({}));
@@ -945,12 +1010,93 @@ async function askQuestion() {
     }
     const data = await resp.json();
     renderAnswer(data);
+    loadChatHistory(); // Refresh history
   } catch (err) {
     panel.innerHTML = `<div class="answer-card" style="border-color: var(--red);"><div style="color: var(--red); font-size: 13px;">Error: ${err.message}</div></div>`;
   }
 
   btn.disabled = false;
   btn.textContent = 'Ask with FAISS Semantic Search';
+}
+
+async function loadChatHistory() {
+  try {
+    const resp = await fetch(BASE + '/query/history?limit=30');
+    if (!resp.ok) return;
+    const history = await resp.json();
+    const el = document.getElementById('chatHistory');
+    const countEl = document.getElementById('historyCount');
+    if (history.length === 0) {
+      el.innerHTML = '<p style="font-size: 11px; color: var(--text2);">No queries yet. Ask a question above.</p>';
+      countEl.textContent = '';
+      return;
+    }
+    countEl.textContent = `(${history.length})`;
+    el.innerHTML = history.map((h, i) => {
+      const confPct = h.confidence ? (h.confidence * 100).toFixed(0) + '%' : '';
+      const answerPreview = h.answer ? h.answer.substring(0, 120) + (h.answer.length > 120 ? '...' : '') : '';
+      const docCount = h.document_ids ? h.document_ids.length : 0;
+      const isExpanded = false;
+      return `
+      <div class="history-item" style="padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; font-size: 11px;"
+           onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
+           onclick="toggleHistoryItem(this)">
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+          <span style="color: ${h.status === 'completed' ? 'var(--green)' : 'var(--orange)'}; font-size: 10px;">${h.status === 'completed' ? '●' : '○'}</span>
+          <span style="color: var(--text); font-weight: 500; flex: 1;">${h.question}</span>
+        </div>
+        <div class="history-answer" style="display: none; padding: 6px 0 4px 16px; color: var(--text2); font-size: 10px; line-height: 1.5; border-left: 2px solid var(--accent); margin: 4px 0;">
+          ${answerPreview || '<i>No answer</i>'}
+        </div>
+        <div style="display: flex; gap: 8px; color: var(--text2); font-size: 9px; padding-left: 16px;">
+          ${docCount > 1 ? `<span style="color: var(--blue);">${docCount} docs</span>` : ''}
+          ${confPct ? `<span>${confPct}</span>` : ''}
+          ${h.generation_time_ms ? `<span>${h.generation_time_ms}ms</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) { /* ignore */ }
+}
+
+function toggleHistoryItem(el) {
+  const answerDiv = el.querySelector('.history-answer');
+  if (answerDiv) {
+    const isHidden = answerDiv.style.display === 'none';
+    answerDiv.style.display = isHidden ? 'block' : 'none';
+  }
+  // Also populate the query input for re-asking
+  const questionEl = el.querySelector('span[style*="font-weight: 500"]');
+  if (questionEl) {
+    document.getElementById('queryInput').value = questionEl.textContent;
+  }
+}
+
+async function clearChatHistory() {
+  if (!confirm('Clear all chat history?')) return;
+  try {
+    const resp = await fetch(BASE + '/query/history', { method: 'DELETE' });
+    if (resp.ok) loadChatHistory();
+  } catch (e) { /* ignore */ }
+}
+
+async function clearAllData() {
+  if (!confirm('Clear ALL uploaded contracts, facts, and chat history? This cannot be undone.')) return;
+  try {
+    await fetch(BASE + '/contracts/clear', { method: 'DELETE' });
+    await fetch(BASE + '/query/history', { method: 'DELETE' });
+    // Reset UI state
+    currentDocumentId = null;
+    uploadedDocIds = [];
+    graphData = null;
+    document.getElementById('docBadge').style.display = 'none';
+    document.getElementById('askBtn').disabled = true;
+    document.getElementById('answerPanel').style.display = 'none';
+    document.getElementById('graphSvg').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'flex';
+    document.getElementById('statsBar').style.display = 'none';
+    document.getElementById('legend').style.display = 'none';
+    loadChatHistory();
+  } catch (e) { /* ignore */ }
 }
 
 function renderAnswer(data) {
@@ -1070,19 +1216,38 @@ function highlightProvenanceOnGraph(factIds, provenance) {
     });
   });
 
-  // Draw yellow provenance edges
-  overlay.selectAll('line')
+  // Draw yellow provenance edges with animation
+  const provLines = overlay.selectAll('line')
     .data(provenanceEdges)
     .join('line')
     .attr('stroke', '#ffeaa7')
     .attr('stroke-width', 3)
-    .attr('stroke-opacity', 0.8)
-    .attr('stroke-dasharray', '6,3')
+    .attr('stroke-opacity', 0)
+    .attr('stroke-dasharray', '8,4')
     .attr('marker-end', 'url(#arrow-provenance)')
     .attr('x1', d => { const n = currentNodeMap.get(d.source); return n ? n.x : 0; })
     .attr('y1', d => { const n = currentNodeMap.get(d.source); return n ? n.y : 0; })
     .attr('x2', d => { const n = currentNodeMap.get(d.target); return n ? n.x : 0; })
     .attr('y2', d => { const n = currentNodeMap.get(d.target); return n ? n.y : 0; });
+
+  // Animate provenance edges appearing sequentially
+  provLines.transition()
+    .delay((d, i) => i * 150)
+    .duration(400)
+    .attr('stroke-opacity', 0.85);
+
+  // Add pulsing glow to provenance fact nodes
+  d3.selectAll('.nodes-group circle')
+    .filter(d => factSet.has(d.id))
+    .each(function() {
+      const circle = d3.select(this);
+      const origR = +circle.attr('r');
+      (function pulse() {
+        circle.transition().duration(800).attr('r', origR + 3)
+          .transition().duration(800).attr('r', origR)
+          .on('end', pulse);
+      })();
+    });
 }
 
 function focusProvenanceNode(nodeId, idx) {

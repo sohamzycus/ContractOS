@@ -383,6 +383,18 @@ const ENDPOINTS = [
   { name: "Custom Question", method: "POST", path: "/query/ask",
     body: JSON.stringify({ question: "Type your question here", document_id: "{document_id}" }, null, 2) },
 
+  { section: "Chat History" },
+  { name: "View Chat History", method: "GET", path: "/query/history?limit=50", body: null },
+  { name: "Clear Chat History", method: "DELETE", path: "/query/history", body: null },
+
+  { section: "Manage Data" },
+  { name: "List All Contracts", method: "GET", path: "/contracts", body: null },
+  { name: "Clear All Data", method: "DELETE", path: "/contracts/clear", body: null },
+
+  { section: "Multi-Document Q&A" },
+  { name: "Ask Across All Docs", method: "POST", path: "/query/ask",
+    body: JSON.stringify({ question: "Compare the termination clauses across these contracts", document_ids: ["{document_id}", "{document_id_2}"] }, null, 2) },
+
   { section: "Workspaces" },
   { name: "Create Workspace", method: "POST", path: "/workspaces",
     body: JSON.stringify({ name: "Procurement Review", settings: { confidence_threshold: 0.7 } }, null, 2) },
@@ -393,7 +405,7 @@ const ENDPOINTS = [
   { name: "Session History", method: "GET", path: "/workspaces/{workspace_id}/sessions", body: null },
 ];
 
-let state = { document_id: '', workspace_id: '', selectedFile: null };
+let state = { document_id: '', document_id_2: '', workspace_id: '', selectedFile: null, uploadedDocIds: [] };
 
 function getBase() { return document.getElementById('serverUrl').value.replace(/\/+$/, ''); }
 
@@ -405,9 +417,21 @@ function resolvePath(path) {
 
 function resolveBody(body) {
   if (!body || body === 'file') return body;
-  return body
+  let resolved = body
     .replace(/"\{document_id\}"/g, JSON.stringify(state.document_id || 'UPLOAD_FIRST'))
+    .replace(/"\{document_id_2\}"/g, JSON.stringify(state.document_id_2 || state.document_id || 'UPLOAD_SECOND'))
     .replace(/"\{workspace_id\}"/g, JSON.stringify(state.workspace_id || 'CREATE_FIRST'));
+  // For multi-doc: replace placeholder array with actual uploaded IDs
+  if (state.uploadedDocIds.length >= 2 && body.includes('document_ids')) {
+    try {
+      const parsed = JSON.parse(resolved);
+      if (parsed.document_ids) {
+        parsed.document_ids = state.uploadedDocIds;
+        resolved = JSON.stringify(parsed, null, 2);
+      }
+    } catch {}
+  }
+  return resolved;
 }
 
 // Build sidebar
@@ -533,10 +557,23 @@ async function sendRequest(index) {
 
     // Auto-capture IDs
     if (data && data.document_id && ep.path.includes('/upload')) {
+      // Track previous doc as doc_id_2 for multi-doc queries
+      if (state.document_id && state.document_id !== data.document_id) {
+        state.document_id_2 = state.document_id;
+      }
       state.document_id = data.document_id;
+      if (!state.uploadedDocIds.includes(data.document_id)) {
+        state.uploadedDocIds.push(data.document_id);
+      }
     }
     if (data && data.workspace_id && ep.path === '/workspaces' && ep.method === 'POST') {
       state.workspace_id = data.workspace_id;
+    }
+    // Auto-clear state on clear operations
+    if (ep.path === '/contracts/clear' && ep.method === 'DELETE' && resp.status < 300) {
+      state.document_id = '';
+      state.document_id_2 = '';
+      state.uploadedDocIds = [];
     }
 
     // Format response
@@ -576,6 +613,46 @@ async function sendRequest(index) {
       if (Array.isArray(data) && data.length > 0 && data[0].clause_type) {
         summary = `<div style="margin-bottom: 12px; padding: 12px; background: rgba(253,203,110,0.1); border-radius: 6px; font-size: 13px;">
           <b>${data.length} clauses:</b> ${data.map(c => c.clause_type).join(', ')}
+        </div>`;
+      }
+      // Chat history display
+      if (Array.isArray(data) && data.length > 0 && data[0].session_id && data[0].question) {
+        summary = `<div style="margin-bottom: 12px; padding: 16px; background: rgba(108,92,231,0.08); border-radius: 8px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Chat History (${data.length} sessions)</div>
+          ${data.map((h, i) => `
+            <div style="padding: 10px 12px; margin-bottom: 6px; background: var(--surface2); border-radius: 6px; border-left: 3px solid ${h.status === 'completed' ? 'var(--green)' : 'var(--orange)'};">
+              <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px;">${h.question}</div>
+              <div style="font-size: 12px; color: var(--text2); margin-bottom: 4px; line-height: 1.5;">${h.answer ? h.answer.substring(0, 200) + (h.answer.length > 200 ? '...' : '') : '<i>No answer</i>'}</div>
+              <div style="font-size: 10px; color: var(--text2); display: flex; gap: 12px;">
+                <span>${h.status === 'completed' ? '✓ Completed' : '⏳ ' + h.status}</span>
+                ${h.confidence ? '<span>Confidence: ' + (h.confidence * 100).toFixed(0) + '%</span>' : ''}
+                ${h.generation_time_ms ? '<span>' + h.generation_time_ms + 'ms</span>' : ''}
+                <span>${h.document_ids ? h.document_ids.length + ' doc(s)' : ''}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+      }
+      // Clear response display
+      if (data && data.message && (data.cleared !== undefined || data.cleared_contracts !== undefined)) {
+        const color = 'var(--orange)';
+        summary = `<div style="margin-bottom: 12px; padding: 12px; background: rgba(253,203,110,0.1); border-radius: 6px; font-size: 13px; border-left: 3px solid ${color};">
+          <b>${data.message}</b>
+        </div>`;
+      }
+      // Contract list display
+      if (Array.isArray(data) && data.length > 0 && data[0].document_id && data[0].fact_count !== undefined && !data[0].session_id) {
+        summary = `<div style="margin-bottom: 12px; padding: 16px; background: rgba(0,184,148,0.08); border-radius: 8px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">${data.length} Uploaded Contract(s)</div>
+          ${data.map(c => `
+            <div style="padding: 8px 12px; margin-bottom: 4px; background: var(--surface2); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-size: 13px; font-weight: 500;">${c.title}</span>
+                <span style="font-size: 10px; color: var(--text2); margin-left: 8px;">${c.document_id}</span>
+              </div>
+              <div style="font-size: 10px; color: var(--text2);">${c.fact_count} facts | ${c.clause_count} clauses | ${c.binding_count} bindings</div>
+            </div>
+          `).join('')}
         </div>`;
       }
     }

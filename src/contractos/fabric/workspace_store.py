@@ -169,6 +169,14 @@ class WorkspaceStore:
         )
         self._conn.commit()
 
+    def clear_sessions_by_workspace(self, workspace_id: str) -> int:
+        """Delete all reasoning sessions for a workspace. Returns count deleted."""
+        cursor = self._conn.execute(
+            "DELETE FROM reasoning_sessions WHERE workspace_id = ?", (workspace_id,)
+        )
+        self._conn.commit()
+        return cursor.rowcount
+
     def _row_to_session(self, row: sqlite3.Row) -> ReasoningSession:
         return ReasoningSession(
             session_id=row["session_id"],

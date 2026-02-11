@@ -44,6 +44,26 @@ class TrustGraph:
     def close(self) -> None:
         self._conn.close()
 
+    def clear_all_data(self) -> dict[str, int]:
+        """Delete ALL data from every table. Returns counts of deleted rows per table."""
+        tables = [
+            "reasoning_sessions", "clause_fact_slots", "cross_references",
+            "clauses", "inferences", "bindings", "facts", "workspaces", "contracts",
+        ]
+        counts: dict[str, int] = {}
+        for table in tables:
+            cursor = self._conn.execute(f"DELETE FROM {table}")  # noqa: S608
+            counts[table] = cursor.rowcount
+        self._conn.commit()
+        return counts
+
+    def list_contracts(self) -> list[Contract]:
+        """Return all indexed contracts."""
+        rows = self._conn.execute(
+            "SELECT * FROM contracts ORDER BY indexed_at DESC"
+        ).fetchall()
+        return [self._row_to_contract(r) for r in rows]
+
     # ── Contract CRUD ──────────────────────────────────────────────
 
     def insert_contract(self, contract: Contract) -> None:

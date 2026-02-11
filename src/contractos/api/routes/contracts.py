@@ -245,6 +245,66 @@ async def upload_contract(
         Path(tmp_path).unlink(missing_ok=True)
 
 
+class ClearAllResponse(BaseModel):
+    """Response for clearing all data."""
+
+    cleared_contracts: int
+    cleared_tables: dict[str, int]
+    message: str
+
+
+@router.get("", response_model=list[ContractResponse])
+async def list_contracts(
+    state: Annotated[AppState, Depends(get_state)],
+) -> list[ContractResponse]:
+    """List all indexed contracts."""
+    contracts = state.trust_graph.list_contracts()
+    result = []
+    for c in contracts:
+        fact_count = state.trust_graph.count_facts(c.document_id)
+        clauses = state.trust_graph.get_clauses_by_document(c.document_id)
+        bindings = state.trust_graph.get_bindings_by_document(c.document_id)
+        result.append(ContractResponse(
+            document_id=c.document_id,
+            title=c.title,
+            file_format=c.file_format,
+            parties=c.parties,
+            page_count=c.page_count,
+            word_count=c.word_count,
+            fact_count=fact_count,
+            clause_count=len(clauses),
+            binding_count=len(bindings),
+            status="indexed",
+        ))
+    return result
+
+
+@router.delete("/clear", response_model=ClearAllResponse)
+async def clear_all_contracts(
+    state: Annotated[AppState, Depends(get_state)],
+) -> ClearAllResponse:
+    """Clear ALL uploaded contracts, facts, sessions, and FAISS indices.
+
+    This is a destructive operation — all data is permanently deleted.
+    """
+    # Count contracts before clearing
+    contracts = state.trust_graph.list_contracts()
+    contract_count = len(contracts)
+
+    # Remove FAISS indices for each document
+    for c in contracts:
+        state.embedding_index.remove_document(c.document_id)
+
+    # Clear all SQLite data
+    counts = state.trust_graph.clear_all_data()
+
+    return ClearAllResponse(
+        cleared_contracts=contract_count,
+        cleared_tables=counts,
+        message=f"Cleared {contract_count} contracts and all associated data",
+    )
+
+
 @router.get("/{document_id}", response_model=ContractResponse)
 async def get_contract(
     document_id: str,
