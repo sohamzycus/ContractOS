@@ -526,7 +526,10 @@
 
   <div class="side-panel" id="sidePanel">
     <!-- 1. Upload Contract -->
-    <h3>Upload Contract</h3>
+    <h3 style="display: flex; align-items: center; gap: 8px;">
+      Upload Contract
+      <button onclick="clearAllData()" style="margin-left: auto; background: none; border: 1px solid var(--red); color: var(--red); padding: 2px 8px; border-radius: 3px; font-size: 9px; cursor: pointer;" title="Clear all uploaded files and history">Clear All</button>
+    </h3>
     <div class="upload-section">
       <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
         Click to select .docx or .pdf
@@ -560,8 +563,11 @@
     <hr class="section-divider">
 
     <!-- 2b. Chat History -->
-    <h3 style="display: flex; align-items: center; gap: 8px;">Chat History <span id="historyCount" style="font-size: 10px; color: var(--text2); font-weight: 400;"></span></h3>
-    <div id="chatHistory" style="max-height: 200px; overflow-y: auto;">
+    <h3 style="display: flex; align-items: center; gap: 8px;">
+      Chat History <span id="historyCount" style="font-size: 10px; color: var(--text2); font-weight: 400;"></span>
+      <button onclick="clearChatHistory()" style="margin-left: auto; background: none; border: 1px solid var(--border); color: var(--text2); padding: 2px 8px; border-radius: 3px; font-size: 9px; cursor: pointer;" title="Clear chat history">Clear</button>
+    </h3>
+    <div id="chatHistory" style="max-height: 280px; overflow-y: auto;">
       <p style="font-size: 11px; color: var(--text2);">No queries yet.</p>
     </div>
 
@@ -1015,35 +1021,82 @@ async function askQuestion() {
 
 async function loadChatHistory() {
   try {
-    const resp = await fetch(BASE + '/query/history?limit=20');
+    const resp = await fetch(BASE + '/query/history?limit=30');
     if (!resp.ok) return;
     const history = await resp.json();
     const el = document.getElementById('chatHistory');
     const countEl = document.getElementById('historyCount');
     if (history.length === 0) {
-      el.innerHTML = '<p style="font-size: 11px; color: var(--text2);">No queries yet.</p>';
+      el.innerHTML = '<p style="font-size: 11px; color: var(--text2);">No queries yet. Ask a question above.</p>';
       countEl.textContent = '';
       return;
     }
     countEl.textContent = `(${history.length})`;
-    el.innerHTML = history.map((h, i) => `
-      <div style="padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; font-size: 11px;"
+    el.innerHTML = history.map((h, i) => {
+      const confPct = h.confidence ? (h.confidence * 100).toFixed(0) + '%' : '';
+      const answerPreview = h.answer ? h.answer.substring(0, 120) + (h.answer.length > 120 ? '...' : '') : '';
+      const docCount = h.document_ids ? h.document_ids.length : 0;
+      const isExpanded = false;
+      return `
+      <div class="history-item" style="padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; font-size: 11px;"
            onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
-           onclick="replayHistory(${JSON.stringify(h.question).replace(/"/g, '&quot;')})">
-        <div style="color: var(--text); font-weight: 500; margin-bottom: 2px;">${h.question}</div>
-        <div style="color: var(--text2); font-size: 10px; display: flex; gap: 8px;">
-          <span>${h.status === 'completed' ? '✓' : '⏳'}</span>
-          <span>${h.document_ids ? h.document_ids.length + ' doc' + (h.document_ids.length > 1 ? 's' : '') : ''}</span>
-          ${h.confidence ? `<span>${(h.confidence * 100).toFixed(0)}%</span>` : ''}
+           onclick="toggleHistoryItem(this)">
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+          <span style="color: ${h.status === 'completed' ? 'var(--green)' : 'var(--orange)'}; font-size: 10px;">${h.status === 'completed' ? '●' : '○'}</span>
+          <span style="color: var(--text); font-weight: 500; flex: 1;">${h.question}</span>
+        </div>
+        <div class="history-answer" style="display: none; padding: 6px 0 4px 16px; color: var(--text2); font-size: 10px; line-height: 1.5; border-left: 2px solid var(--accent); margin: 4px 0;">
+          ${answerPreview || '<i>No answer</i>'}
+        </div>
+        <div style="display: flex; gap: 8px; color: var(--text2); font-size: 9px; padding-left: 16px;">
+          ${docCount > 1 ? `<span style="color: var(--blue);">${docCount} docs</span>` : ''}
+          ${confPct ? `<span>${confPct}</span>` : ''}
           ${h.generation_time_ms ? `<span>${h.generation_time_ms}ms</span>` : ''}
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   } catch (e) { /* ignore */ }
 }
 
-function replayHistory(question) {
-  document.getElementById('queryInput').value = question;
+function toggleHistoryItem(el) {
+  const answerDiv = el.querySelector('.history-answer');
+  if (answerDiv) {
+    const isHidden = answerDiv.style.display === 'none';
+    answerDiv.style.display = isHidden ? 'block' : 'none';
+  }
+  // Also populate the query input for re-asking
+  const questionEl = el.querySelector('span[style*="font-weight: 500"]');
+  if (questionEl) {
+    document.getElementById('queryInput').value = questionEl.textContent;
+  }
+}
+
+async function clearChatHistory() {
+  if (!confirm('Clear all chat history?')) return;
+  try {
+    const resp = await fetch(BASE + '/query/history', { method: 'DELETE' });
+    if (resp.ok) loadChatHistory();
+  } catch (e) { /* ignore */ }
+}
+
+async function clearAllData() {
+  if (!confirm('Clear ALL uploaded contracts, facts, and chat history? This cannot be undone.')) return;
+  try {
+    await fetch(BASE + '/contracts/clear', { method: 'DELETE' });
+    await fetch(BASE + '/query/history', { method: 'DELETE' });
+    // Reset UI state
+    currentDocumentId = null;
+    uploadedDocIds = [];
+    graphData = null;
+    document.getElementById('docBadge').style.display = 'none';
+    document.getElementById('askBtn').disabled = true;
+    document.getElementById('answerPanel').style.display = 'none';
+    document.getElementById('graphSvg').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'flex';
+    document.getElementById('statsBar').style.display = 'none';
+    document.getElementById('legend').style.display = 'none';
+    loadChatHistory();
+  } catch (e) { /* ignore */ }
 }
 
 function renderAnswer(data) {
