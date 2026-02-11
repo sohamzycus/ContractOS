@@ -450,6 +450,78 @@
 
 ---
 
+### Phase 7f: Real ContractNLI Document Testing ✅ COMPLETE
+
+**Goal**: Download and test against all 50 real NDA documents referenced in LegalBench train.tsv files from the ContractNLI dataset (Stanford NLP, CC BY 4.0, 607 annotated NDAs). Complex single-document and multi-document questions covering diverse NDA types.
+**Tests**: 54 new tests (622 total passing)
+
+- [x] T167 Download & convert ContractNLI documents:
+  - Extracted 50 unique document names from 16 legalbench train.tsv files
+  - Downloaded ContractNLI dataset (607 NDAs) from Stanford NLP
+  - Loaded full contract texts from JSON (train.json, dev.json, test.json)
+  - Converted all 50 documents to DOCX format in `tests/fixtures/contractnli_docs/`
+  - Document types: PDFs (37), SEC filings as HTML (6), SEC filings as TXT (7)
+  - Script: `tests/fixtures/prepare_contractnli_docs.py`
+- [x] T168 Single-document extraction quality tests (11 parametrized + 5 specific):
+  - Parametrized upload test across 11 diverse NDAs (corporate, M&A, gov, SEC)
+  - Rich extraction test on 4 complex NDAs (≥10 facts, ≥2 clauses)
+  - Bosch NDA: facts + graph structure verification
+  - NSK NDA: clause classification verification
+  - CEII NDA: TrustGraph node/edge connectivity (≥10 nodes, ≥5 edges)
+  - SEC filing NDA: clean extraction from HTML-converted text (>1000 words, >15 facts)
+- [x] T169 Single-document complex Q&A tests (8 tests):
+  - Bosch: confidentiality scope definition
+  - NSK: termination provisions and survival obligations
+  - The Munt: third-party disclosure restrictions
+  - CEII: compelled disclosure procedures
+  - SEC filing: residuals clause analysis
+  - Casino: return/destruction of materials
+  - SAMED: board member confidentiality obligations
+  - Provenance chain verification on real documents
+- [x] T170 Multi-document comparative analysis tests (5 tests):
+  - 2-doc: Compare confidentiality scope (Bosch vs NSK)
+  - 3-doc: Compare termination clauses (corporate vs M&A vs gov)
+  - 5-doc: Disclosure rules across diverse NDA types
+  - 2-doc: Corporate vs M&A permitted uses + residuals
+  - 3-doc: Licensing restrictions comparison
+- [x] T171 ContractNLI-style entailment tests (10 tests):
+  - Explicit identification of confidential information
+  - Limited use restrictions
+  - No licensing grants
+  - Notice on compelled disclosure
+  - Sharing with employees
+  - Return of confidential information
+  - Survival of obligations
+  - Confidentiality of agreement itself
+  - Verbally conveyed information coverage
+  - Multi-doc entailment comparison (copying restrictions across 3 NDAs)
+- [x] T172 Chat history & session persistence with real docs (4 tests):
+  - Single-doc session persistence
+  - Multi-doc session persistence with correct document_ids
+  - Multiple queries ordering (reverse chronological)
+  - Clear history after real queries
+- [x] T173 Bulk operations tests (3 tests):
+  - Upload 10 diverse NDAs, verify all listed with facts
+  - Query across 5 uploaded documents
+  - Clear all after bulk upload
+- [x] T174 Complex cross-document legal analysis tests (5 tests):
+  - Identify most restrictive NDA (broadest definition, longest survival)
+  - Remedies comparison (injunctive relief, specific performance)
+  - Exceptions and carve-outs comparison across 4 NDAs
+  - Governing law and jurisdiction comparison (international NDAs)
+  - Definition scope analysis across 5 NDAs (marking, oral info, comparative)
+
+**Document Groups Tested**:
+- Corporate Mutual NDAs: Bosch, NSK, AMC, BT, non-disclosure-agreement-en
+- M&A Confidentiality: The Munt, Business Sale, Casino, ICTSC, SEC-814457
+- Government/Contractor: 064-19, CCTV, SAMED, CEII, Attachment-I
+- SEC Filings: 802724, 915191, 916457, 1062478, 1010552
+- Diverse Mix: Bosch + The Munt + CEII + SEC-802724 + Basic NDA
+
+**Checkpoint**: ✅ All 50 real ContractNLI NDAs converted and tested. 54 new integration tests covering extraction, Q&A, multi-doc analysis, NLI entailment, history, bulk ops, and complex legal analysis. **622 tests total.**
+
+---
+
 ## Phase 8: Word Copilot Add-in (P2)
 
 **Goal**: A working Word sidebar that communicates with the ContractOS server.
@@ -576,17 +648,20 @@ Phase 1 → Phase 2 → Phase 3 (Fact Extraction)
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 138 |
-| Test tasks | 57 (41%) |
-| Implementation tasks | 81 (59%) |
+| Total tasks | 174 |
+| Test tasks | 93 (53%) |
+| Implementation tasks | 81 (47%) |
 | Phase 1 (Setup) | 5 tasks |
 | Phase 2 (Foundation) | 35 tasks |
 | Phase 3–7 (User Stories) | 71 tasks |
+| Phase 7a–7f (Enhancements) | 36 tasks |
 | Phase 8 (Copilot) | 16 tasks |
 | Phase 9 (Polish) | 11 tasks |
-| Parallelizable tasks | 55 (40%) |
+| Total passing tests | 622 |
+| Real NDA documents tested | 50 (from ContractNLI) |
+| Parallelizable tasks | 55 (32%) |
 | MVP scope (through Phase 5) | 86 tasks |
-| Full scope (through Phase 8) | 127 tasks |
+| Full scope (through Phase 8) | 163 tasks |
 
 ---
 

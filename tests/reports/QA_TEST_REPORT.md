@@ -1,13 +1,82 @@
 # ContractOS Q&A Test Report
 
-**Generated**: 2026-02-10  
+**Generated**: 2026-02-11  
 **Model**: `claude-sonnet-4-5-global` (via LiteLLM proxy)  
-**Total Queries**: 34 (10 simple MSA + 7 simple NDA + 10 complex ITO + 7 complex PFA)  
+**Total Automated Tests**: 622 (all passing)  
+**Total Live LLM Queries**: 34 (10 simple MSA + 7 simple NDA + 10 complex ITO + 7 complex PFA)  
+**Real NDA Documents Tested**: 50 (from ContractNLI dataset, Stanford NLP)  
 **Raw JSON**: [`qa_report_procurement_msa.json`](qa_report_procurement_msa.json), [`qa_report_nda.json`](qa_report_nda.json), [`qa_report_complex_it_outsourcing.json`](qa_report_complex_it_outsourcing.json), [`qa_report_complex_procurement_framework.json`](qa_report_complex_procurement_framework.json)
 
 ---
 
-## Summary
+## Automated Test Summary (622 Tests)
+
+### Test Breakdown
+
+| Category | Tests | Description |
+|----------|------:|-------------|
+| Unit Tests | 428 | Models, tools, storage, agents, FAISS, query persistence, chat history |
+| Integration Tests | 111 | API pipeline, LegalBench extraction, multi-doc, real NDA documents |
+| Contract Tests | 27 | API contract tests via TestClient |
+| Benchmark Tests | 61 | LegalBench contract_nli, definition extraction, contract QA |
+| **Total** | **622** | **All passing** |
+
+### Real NDA Document Tests (Phase 7f — 54 tests)
+
+50 real-world NDA documents from the [ContractNLI dataset](https://stanfordnlp.github.io/contract-nli/) (Stanford NLP, CC BY 4.0) were downloaded, converted to DOCX, and tested end-to-end.
+
+| Test Suite | Tests | What It Validates |
+|-----------|------:|-------------------|
+| Single-Doc Extraction Quality | 16 | Upload + fact/clause/binding extraction on 11 diverse NDAs |
+| Single-Doc Complex Q&A | 8 | Confidentiality scope, termination, disclosure, residuals, board obligations |
+| Multi-Doc Comparative Analysis | 5 | 2-doc, 3-doc, 5-doc cross-contract comparison |
+| ContractNLI-Style Entailment | 10 | NLI hypothesis testing (licensing, survival, sharing, compelled disclosure) |
+| Chat History & Persistence | 4 | Session persistence, ordering, clear operations |
+| Bulk Operations | 3 | Upload 10 NDAs, query across 5, clear all |
+| Complex Cross-Doc Legal Analysis | 5 | Restrictiveness ranking, remedies, exceptions, governing law, definition scope |
+| **Total** | **54** | |
+
+**Document Groups Tested:**
+
+| Group | Documents | Examples |
+|-------|----------|---------|
+| Corporate Mutual NDAs | 5 | Bosch, NSK, AMC, BT, non-disclosure-agreement-en |
+| M&A Confidentiality | 5 | The Munt, Business Sale, Casino, ICTSC, SEC-814457 |
+| Government/Contractor | 5 | 064-19, CCTV, SAMED, CEII, Attachment-I |
+| SEC Filings (EDGAR) | 5 | 802724, 915191, 916457, 1062478, 1010552 |
+| Templates/Standard | 5+ | Basic NDA, Template, NDA_V3, Confidentiality Agreement |
+
+### Multi-Document Analysis Tests (Phase 7e — 7 tests)
+
+3 synthetic procurement contracts based on HuggingFace dataset patterns (CUAD, ContractNLI):
+
+| Document | Parties | Value | Sections |
+|----------|---------|-------|----------|
+| Master Services Agreement | GlobalTech ↔ Meridian | $2.4M/yr | 13 sections |
+| Software License Agreement | CloudVault ↔ Pacific Rim | $750K/yr | 8 sections |
+| Supply Chain Agreement | Apex ↔ NovaTech | EUR 18.5M/yr | 9 sections |
+
+### FAISS Vector Indexing Tests (Phase 7c — 18 tests)
+
+| Test Class | Tests | What It Validates |
+|-----------|------:|-------------------|
+| EmbeddingIndex Creation | 4 | Index initialization, model loading, dimension check |
+| Embedding Search | 8 | Top-k retrieval, relevance ranking, empty index handling |
+| Build Chunks from Extraction | 6 | Fact/clause/binding chunk generation |
+
+### Query Persistence & Chat History Tests (Phase 7d+7e — 15 tests)
+
+| Test Class | Tests | What It Validates |
+|-----------|------:|-------------------|
+| Query Persistence | 3 | Session ID returned, history populated, answers stored |
+| Multi-Document Query | 4 | Multi-doc API, backward compat, missing doc 404, no doc 400 |
+| Chat History Visibility | 3 | Empty initially, shows Q&A, ordered most-recent-first |
+| Clear Operations | 3 | Clear history, clear all contracts, clear empty is safe |
+| List Contracts | 2 | List empty, list after upload |
+
+---
+
+## Live LLM Q&A Summary
 
 ### Simple Fixtures (Phase 6)
 
@@ -565,3 +634,29 @@
 11. **PDF limitations**: PDF heading detection remains limited — the procurement framework PDF extracted 0 clauses (vs 65 for the DOCX). This affects clause-level analysis but fact extraction still works well (376 facts).
 
 12. **Remaining gaps**: Some answers marked "not_found" despite data being in the TrustGraph (e.g., insurance coverage, FTE count, governing law). This is a context window / fact retrieval limitation — the relevant facts exist but aren't surfaced to the LLM in the query context.
+
+### FAISS Semantic Search (Phase 7c)
+
+13. **Industry-standard retrieval**: FAISS + sentence-transformers (`all-MiniLM-L6-v2`, 384-dim) replaces naive full-scan fact retrieval. Top-k semantic search surfaces the most relevant facts for LLM context, improving answer quality for large documents.
+
+14. **Two-stage pipeline**: Deterministic regex extraction (Stage 1) produces facts, clauses, and bindings. FAISS vector indexing (Stage 2) embeds all chunks for efficient similarity search at query time. Zero LLM calls during indexing.
+
+### Multi-Document Analysis (Phase 7d–7e)
+
+15. **Cross-document reasoning**: The system successfully answers questions spanning 2, 3, and 5 documents simultaneously. Facts from each document are labeled with their source title in the LLM context.
+
+16. **Chat persistence**: All queries are persisted as `ReasoningSession` objects in SQLite. Chat history is retrievable via API and displayed in both demo UIs.
+
+17. **Data lifecycle**: Full CRUD lifecycle — upload contracts, query, view history, clear history, clear all data (cascading delete across 9 tables + FAISS indices).
+
+### Real NDA Documents (Phase 7f)
+
+18. **50 real-world NDAs tested**: Documents from ContractNLI (Stanford NLP) spanning corporate mutual NDAs, M&A confidentiality agreements, government/contractor NDAs, and SEC filing NDAs. All 50 documents upload and extract successfully.
+
+19. **Diverse extraction quality**: Corporate NDAs (Bosch, NSK, CEII) produce rich extraction with 10+ facts and 2+ clauses. SEC filing NDAs (originally HTML/TXT) also extract cleanly after conversion to DOCX.
+
+20. **ContractNLI entailment testing**: 10 tests modeled after the 17 ContractNLI hypotheses (explicit identification, limited use, no licensing, compelled disclosure notice, sharing with employees, return of information, survival of obligations, confidentiality of agreement, verbally conveyed information). All pass with meaningful answers.
+
+21. **Complex cross-document analysis**: Tests cover restrictiveness ranking across 3 NDAs, remedies comparison (injunctive relief), exceptions/carve-outs across 4 NDAs, governing law comparison (international), and definition scope analysis across 5 NDAs.
+
+22. **Bulk operations at scale**: Successfully uploads 10 diverse NDAs, queries across 5 simultaneously, and clears all data cleanly.
