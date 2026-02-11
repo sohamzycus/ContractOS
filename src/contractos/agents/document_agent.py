@@ -64,12 +64,15 @@ class DocumentAgent:
         self._embedding_index = embedding_index
 
     async def answer(self, query: Query) -> QueryResult:
-        """Answer a question about a contract.
+        """Answer a question about one or more contracts.
+
+        Supports multi-document queries: retrieves facts from all target
+        documents and merges them into a single context for the LLM.
 
         Pipeline:
-        1. Semantic retrieval: FAISS top-k relevant facts for the question
-        2. Fallback: if no embedding index, use all facts (legacy mode)
-        3. Build context with relevant facts + bindings
+        1. For each document: FAISS semantic retrieval (or full-scan fallback)
+        2. Merge facts + bindings across all documents
+        3. Build context with document source labels
         4. Send to LLM with system prompt
         5. Parse response and build QueryResult with provenance
         """
@@ -78,67 +81,70 @@ class DocumentAgent:
         if not query.target_document_ids:
             return self._not_found_result(query, "No target document specified", start_time)
 
-        document_id = query.target_document_ids[0]
-
-        # Step 1: Retrieve all bindings (always include all for entity resolution)
-        bindings = self._graph.get_bindings_by_document(document_id)
-
-        # Step 2: Semantic retrieval — use FAISS if available, else fallback
+        # Collect facts and bindings from ALL target documents
+        all_facts: list[Fact] = []
+        all_bindings: list[Binding] = []
         retrieval_method = "full_scan"
-        if self._embedding_index and self._embedding_index.has_document(document_id):
-            # FAISS semantic search — get top-k relevant chunks
-            search_results = self._embedding_index.search(
-                document_id, query.text, top_k=30
-            )
-            retrieval_method = "faiss_semantic"
+        doc_titles: dict[str, str] = {}
 
-            # Collect fact IDs from search results
-            relevant_fact_ids = set()
-            for sr in search_results:
-                if sr.chunk.chunk_type == "fact":
-                    fid = sr.chunk.metadata.get("fact_id", sr.chunk.chunk_id)
-                    relevant_fact_ids.add(fid)
+        for document_id in query.target_document_ids:
+            # Get document title for labeling
+            contract = self._graph.get_contract(document_id)
+            doc_titles[document_id] = contract.title if contract else document_id
 
-            # Retrieve the actual Fact objects from TrustGraph
-            all_facts = self._graph.get_facts_by_document(document_id)
-            fact_lookup = {f.fact_id: f for f in all_facts}
+            bindings = self._graph.get_bindings_by_document(document_id)
+            all_bindings.extend(bindings)
 
-            # Build ordered list: semantically relevant facts first
-            facts: list[Fact] = []
-            seen = set()
-            for sr in search_results:
-                if sr.chunk.chunk_type == "fact":
-                    fid = sr.chunk.metadata.get("fact_id", sr.chunk.chunk_id)
-                    if fid in fact_lookup and fid not in seen:
-                        facts.append(fact_lookup[fid])
-                        seen.add(fid)
+            # Semantic retrieval per document
+            if self._embedding_index and self._embedding_index.has_document(document_id):
+                search_results = self._embedding_index.search(
+                    document_id, query.text, top_k=30
+                )
+                retrieval_method = "faiss_semantic"
 
-            # If semantic search returned few results, supplement with all facts
-            if len(facts) < 10:
-                for f in all_facts:
-                    if f.fact_id not in seen:
-                        facts.append(f)
-                        seen.add(f.fact_id)
-                        if len(facts) >= 80:
-                            break
+                doc_facts = self._graph.get_facts_by_document(document_id)
+                fact_lookup = {f.fact_id: f for f in doc_facts}
 
-            logger.info(
-                "Semantic retrieval: %d relevant facts from %d total (method=%s)",
-                len(relevant_fact_ids), len(all_facts), retrieval_method,
-            )
-        else:
-            # Legacy fallback: all facts
-            facts = self._graph.get_facts_by_document(document_id)
+                facts: list[Fact] = []
+                seen: set[str] = set()
+                for sr in search_results:
+                    if sr.chunk.chunk_type == "fact":
+                        fid = sr.chunk.metadata.get("fact_id", sr.chunk.chunk_id)
+                        if fid in fact_lookup and fid not in seen:
+                            facts.append(fact_lookup[fid])
+                            seen.add(fid)
 
-        if not facts:
+                # Supplement if few results
+                if len(facts) < 10:
+                    for f in doc_facts:
+                        if f.fact_id not in seen:
+                            facts.append(f)
+                            seen.add(f.fact_id)
+                            if len(facts) >= 50:
+                                break
+
+                all_facts.extend(facts)
+                logger.info(
+                    "Semantic retrieval [%s]: %d facts (method=%s)",
+                    document_id, len(facts), retrieval_method,
+                )
+            else:
+                doc_facts = self._graph.get_facts_by_document(document_id)
+                all_facts.extend(doc_facts)
+
+        if not all_facts:
             return self._not_found_result(
-                query, f"No facts found for document {document_id}", start_time
+                query, "No facts found for the target documents", start_time
             )
 
-        # Step 3: Build context
-        context = self._build_context(facts, bindings, query.text, retrieval_method)
+        # Build context (multi-doc aware)
+        is_multi = len(query.target_document_ids) > 1
+        context = self._build_context(
+            all_facts, all_bindings, query.text, retrieval_method,
+            doc_titles=doc_titles if is_multi else None,
+        )
 
-        # Step 4: Send to LLM
+        # Send to LLM
         messages = [
             LLMMessage(role="user", content=context),
         ]
@@ -150,9 +156,9 @@ class DocumentAgent:
         except Exception as e:
             return self._error_result(query, str(e), start_time)
 
-        # Step 5: Parse and build result
+        # Parse and build result
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
-        result = self._build_result(query, llm_response, facts, elapsed_ms)
+        result = self._build_result(query, llm_response, all_facts, elapsed_ms)
         result.retrieval_method = retrieval_method
         return result
 
@@ -162,12 +168,20 @@ class DocumentAgent:
         bindings: list[Binding],
         question: str,
         retrieval_method: str = "full_scan",
+        doc_titles: dict[str, str] | None = None,
     ) -> str:
         """Build the context string for the LLM.
 
         When using semantic retrieval, facts are pre-sorted by relevance.
+        For multi-document queries, facts are labeled with their source document.
         """
         parts = [f"## Question\n{question}\n"]
+
+        if doc_titles and len(doc_titles) > 1:
+            parts.append("## Documents Being Queried")
+            for did, title in doc_titles.items():
+                parts.append(f"- [{did}] {title}")
+            parts.append("")
 
         if retrieval_method == "faiss_semantic":
             parts.append(
@@ -179,15 +193,23 @@ class DocumentAgent:
         if bindings:
             parts.append("## Entity Bindings")
             for b in bindings:
-                parts.append(f"- \"{b.term}\" → \"{b.resolves_to}\" (type: {b.binding_type})")
+                doc_label = ""
+                if doc_titles and len(doc_titles) > 1:
+                    doc_label = f" [from: {doc_titles.get(b.document_id, b.document_id)}]"
+                parts.append(
+                    f"- \"{b.term}\" → \"{b.resolves_to}\" (type: {b.binding_type}){doc_label}"
+                )
             parts.append("")
 
         # Add facts (pre-sorted by relevance when using FAISS)
         parts.append("## Extracted Facts")
         for fact in facts[:80]:  # limit to avoid token overflow
+            doc_label = ""
+            if doc_titles and len(doc_titles) > 1:
+                doc_label = f" [doc: {doc_titles.get(fact.evidence.document_id, fact.evidence.document_id)}]"
             parts.append(
                 f"- [{fact.fact_id}] ({fact.fact_type}) \"{fact.value}\" "
-                f"@ {fact.evidence.location_hint}"
+                f"@ {fact.evidence.location_hint}{doc_label}"
             )
 
         return "\n".join(parts)
