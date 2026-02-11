@@ -235,3 +235,20 @@ async def get_chat_history(
         )
         for s in sessions[:limit]
     ]
+
+
+class ClearResponse(BaseModel):
+    """Response for clear operations."""
+
+    cleared: int
+    message: str
+
+
+@router.delete("/history", response_model=ClearResponse)
+async def clear_chat_history(
+    state: Annotated[AppState, Depends(get_state)],
+) -> ClearResponse:
+    """Clear all chat/query history."""
+    _ensure_default_workspace(state)
+    count = state.workspace_store.clear_sessions_by_workspace(_DEFAULT_WORKSPACE_ID)
+    return ClearResponse(cleared=count, message=f"Cleared {count} chat sessions")
