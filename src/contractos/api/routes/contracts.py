@@ -367,7 +367,11 @@ async def load_sample_contract(
     if ext not in ("docx", "pdf"):
         raise HTTPException(status_code=400, detail=f"Unsupported format: {ext}")
 
-    # Read the sample file and process it through the same pipeline as upload
+    # Read the sample file and process it through the SAME pipeline as upload
+    import logging as _logging
+
+    _log = _logging.getLogger(__name__)
+
     content = sample_path.read_bytes()
     file_hash = hashlib.sha256(content).hexdigest()
     doc_id = f"doc-{uuid.uuid4().hex[:12]}"
@@ -380,20 +384,29 @@ async def load_sample_contract(
         tmp_path = Path(tmp.name)
 
     try:
+        # Run extraction pipeline — identical to upload_contract
         extraction = extract_from_file(tmp_path, doc_id)
 
+        # Resolve bindings
         full_text = extraction.parsed_document.full_text if extraction.parsed_document else ""
         all_bindings = resolve_bindings(
             extraction.facts, extraction.bindings, full_text, doc_id
         )
 
-        page_count = extraction.parsed_document.page_count if extraction.parsed_document else 0
-        word_count = extraction.parsed_document.word_count if extraction.parsed_document else 0
-        parties = [
-            f.value for f in extraction.facts
-            if (f.entity_type.value if hasattr(f.entity_type, "value") else str(f.entity_type or "")) == "party"
-        ]
+        # Compute metadata from parsed document — same logic as upload
+        parsed = extraction.parsed_document
+        page_count = 0
+        word_count = 0
+        parties: list[str] = []
 
+        if parsed:
+            word_count = len(parsed.full_text.split())
+            # Extract party names from alias bindings
+            for b in all_bindings:
+                if b.binding_type.value == "alias" and b.resolves_to not in parties:
+                    parties.append(b.resolves_to)
+
+        # Store contract metadata
         contract = Contract(
             document_id=doc_id,
             title=filename.rsplit(".", 1)[0],
@@ -405,18 +418,32 @@ async def load_sample_contract(
             word_count=word_count,
             indexed_at=now,
             last_parsed_at=now,
-            extraction_version="1.0.0",
+            extraction_version="0.1.0",
         )
         state.trust_graph.insert_contract(contract)
-        state.trust_graph.insert_facts(extraction.facts)
-        state.trust_graph.insert_clauses(extraction.clauses)
-        for b in all_bindings:
-            state.trust_graph.insert_binding(b)
 
+        # Store extracted entities — same as upload
+        state.trust_graph.insert_facts(extraction.facts)
+        for binding in all_bindings:
+            state.trust_graph.insert_binding(binding)
+        for clause in extraction.clauses:
+            state.trust_graph.insert_clause(clause)
+        for xref in extraction.cross_references:
+            state.trust_graph.insert_cross_reference(xref)
+        for slot in extraction.clause_fact_slots:
+            state.trust_graph.insert_clause_fact_slot(slot)
+
+        # Build semantic vector index (FAISS + sentence-transformers)
         chunks = build_chunks_from_extraction(
             doc_id, extraction.facts, extraction.clauses, all_bindings
         )
         state.embedding_index.index_document(doc_id, chunks)
+
+        _log.info(
+            "Sample '%s' loaded: %d facts, %d clauses, %d bindings, %d words",
+            filename, len(extraction.facts), len(extraction.clauses),
+            len(all_bindings), word_count,
+        )
 
         return ContractResponse(
             document_id=doc_id,
@@ -428,33 +455,11 @@ async def load_sample_contract(
             fact_count=len(extraction.facts),
             clause_count=len(extraction.clauses),
             binding_count=len(all_bindings),
+            status="indexed",
         )
     except Exception as e:
-        contract = Contract(
-            document_id=doc_id,
-            title=filename.rsplit(".", 1)[0],
-            file_path=f"samples/{filename}",
-            file_format=ext,
-            file_hash=file_hash,
-            parties=[],
-            page_count=0,
-            word_count=0,
-            indexed_at=now,
-            last_parsed_at=now,
-            extraction_version="1.0.0",
-        )
-        state.trust_graph.insert_contract(contract)
-        return ContractResponse(
-            document_id=doc_id,
-            title=contract.title,
-            file_format=ext,
-            parties=[],
-            page_count=0,
-            word_count=0,
-            fact_count=0,
-            clause_count=0,
-            binding_count=0,
-        )
+        _log.exception("Sample load failed for '%s': %s", filename, e)
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {e}")
     finally:
         tmp_path.unlink(missing_ok=True)
 

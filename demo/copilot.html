@@ -427,6 +427,9 @@
     </div>
   </div>
 
+  <!-- Hidden file input — lives outside docViewer so it survives viewer.innerHTML = '' -->
+  <input type="file" id="fileInput" accept=".docx,.pdf" onchange="handleFileUpload(event)" style="display:none">
+
   <!-- Main -->
   <div class="main">
     <div class="doc-viewer empty" id="docViewer">
@@ -436,7 +439,6 @@
         <p>Upload a contract (.docx or .pdf) to view it with an AI-powered Copilot sidebar.
           Ask questions, get grounded answers with provenance, and click any cited fact to jump to it in the document.</p>
         <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-          <input type="file" id="fileInput" accept=".docx,.pdf" onchange="handleFileUpload(event)">
           <p style="font-size:15px; margin-bottom:8px">Drop a contract here or click to browse</p>
           <p style="font-size:12px; color:var(--text-dim)">Supports .docx and .pdf</p>
         </div>
@@ -527,6 +529,8 @@
     async function handleFileUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
+      // Reset input value so the same file can be re-selected
+      event.target.value = '';
       currentFile = file;
       const ext = file.name.split('.').pop().toLowerCase();
       if (!['docx','pdf'].includes(ext)) { alert('Upload .docx or .pdf'); return; }
