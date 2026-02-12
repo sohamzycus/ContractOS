@@ -193,6 +193,38 @@ The demo console provides:
 
 ---
 
+## Document Copilot (Browser-Based)
+
+View contracts directly in the browser with an AI-powered Copilot sidebar.
+
+```bash
+# Open in browser (server must be running)
+open http://127.0.0.1:8742/demo/copilot.html
+```
+
+Features:
+- **DOCX rendering** — high-fidelity Word document display via docx-preview.js
+- **PDF rendering** — native canvas-based PDF viewer via Mozilla PDF.js
+- **Copilot sidebar** — chat-style AI assistant with:
+  - Extraction summary (facts, clauses, bindings, word count)
+  - 8 quick-action buttons (Parties, Payment, Termination, Confidentiality, etc.)
+  - Confidence labels with color coding
+  - Full provenance chain display
+  - FAISS semantic retrieval indicator
+- **Drag & drop** file upload
+- **Zoom controls** (in/out/fit)
+- **Server status** indicator
+
+### Copilot Flow
+
+1. Upload a `.docx` or `.pdf` contract
+2. The document renders in the main area (preserving original formatting)
+3. The Copilot sidebar shows extraction summary (facts, clauses, bindings)
+4. Click quick-action buttons or type your own questions
+5. Get grounded answers with confidence labels and provenance
+
+---
+
 ## TrustGraph Visualization
 
 Interactive D3.js force-directed graph showing the contract knowledge graph.
@@ -737,6 +769,47 @@ ContractOS strictly separates four layers of truth:
 
 Breaking this model breaks ContractOS.
 
+## Deployment
+
+### Docker
+
+```bash
+docker build -t contractos .
+docker run -p 8742:8742 \
+  -e ANTHROPIC_API_KEY="your-key" \
+  contractos
+```
+
+### Railway (Free Tier)
+
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Deploy
+railway login
+railway up
+```
+
+Or connect your GitHub repo at [railway.app](https://railway.app) — it auto-detects the `Dockerfile` and `railway.toml`.
+
+### Render (Free Tier)
+
+Connect your GitHub repo at [render.com](https://render.com) — it reads `render.yaml` for configuration.
+
+### Environment Variables for Deployment
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes (for real LLM) | Anthropic API key |
+| `ANTHROPIC_BASE_URL` | No | Custom endpoint (e.g. LiteLLM proxy) |
+| `ANTHROPIC_MODEL` | No | Model name (default: `claude-sonnet-4-20250514`) |
+| `PORT` | No | Server port (default: `8742`) |
+
+Without `ANTHROPIC_API_KEY`, the server runs with a mock LLM (useful for testing extraction and UI).
+
+---
+
 ## Configuration
 
 Configuration is loaded from `config/default.yaml` with environment variable overrides:
@@ -757,7 +830,7 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 
 ## Status
 
-**Phase 7f complete** — Full extraction pipeline, FAISS semantic search, multi-document Q&A with provenance, chat persistence, TrustGraph visualization, 22 API endpoints, **622 tests passing**, tested against **50 real NDA documents** from ContractNLI.
+**Phase 8a complete** — Full extraction pipeline, FAISS semantic search, multi-document Q&A with provenance, chat persistence, TrustGraph visualization, browser-based Document Copilot, deployment configs, 22 API endpoints, **631 tests passing**, tested against **50 real NDA documents** from ContractNLI.
 
 | Phase | Status | Tests |
 |-------|--------|------:|
@@ -774,6 +847,6 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 | Phase 7d: TrustGraph Branding, Chat Persistence, Multi-Doc | Done | 7 |
 | Phase 7e: Chat History View, Clear All, HuggingFace Multi-Doc | Done | 15 |
 | Phase 7f: Real ContractNLI Document Testing (50 NDAs) | Done | 54 |
-| Phase 8: Word Copilot Add-in | Planned | — |
+| Phase 8a: Browser-Based Document Copilot + Deployment | Done | 9 |
 | Phase 9: Polish & Benchmarks | Planned | — |
-| **Total** | | **622** |
+| **Total** | | **631** |

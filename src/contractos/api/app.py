@@ -19,7 +19,21 @@ def create_app(config: ContractOSConfig | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-        init_state(config)
+        import logging
+
+        _log = logging.getLogger("contractos.startup")
+        state = init_state(config)
+
+        # Eagerly warm up the embedding model at startup so the first
+        # request doesn't pay the 5-10s model-loading cost (critical for
+        # Render/Railway free tiers with 30s request timeouts).
+        try:
+            _log.info("Warming up embedding model...")
+            state.embedding_index  # triggers _get_model() in __init__
+            _log.info("Embedding model ready.")
+        except Exception as e:
+            _log.warning("Embedding model warm-up failed (will retry on first request): %s", e)
+
         yield
         shutdown_state()
 
@@ -45,11 +59,18 @@ def create_app(config: ContractOSConfig | None = None) -> FastAPI:
     app.include_router(workspace.router)
 
     # Serve the demo console at /demo
-    import importlib.resources as _res
+    import os as _os
     from pathlib import Path as _Path
 
-    _demo_dir = _Path(__file__).resolve().parent.parent.parent.parent / "demo"
-    if _demo_dir.is_dir():
-        app.mount("/demo", StaticFiles(directory=str(_demo_dir), html=True), name="demo")
+    # Try multiple locations: relative to source tree, or /app/demo in Docker
+    _candidates = [
+        _Path(__file__).resolve().parent.parent.parent.parent / "demo",  # dev: src/contractos/api/app.py -> project root
+        _Path("/app/demo"),  # Docker container
+        _Path(_os.getcwd()) / "demo",  # cwd fallback
+    ]
+    for _demo_dir in _candidates:
+        if _demo_dir.is_dir():
+            app.mount("/demo", StaticFiles(directory=str(_demo_dir), html=True), name="demo")
+            break
 
     return app

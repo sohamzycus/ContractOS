@@ -36,9 +36,18 @@ class StorageConfig(BaseModel):
 
     @property
     def database_path(self) -> str:
-        """Resolve ~ in path and return the full database path."""
+        """Resolve database path: env var CONTRACTOS_DB_PATH > config path.
+
+        Supports ~ expansion and respects the CONTRACTOS_DB_PATH environment
+        variable for container deployments where the home directory may not
+        be writable.
+        """
+        import os
         from pathlib import Path as _Path
-        return str(_Path(self.path).expanduser())
+
+        env_path = os.environ.get("CONTRACTOS_DB_PATH")
+        resolved = env_path if env_path else self.path
+        return str(_Path(resolved).expanduser())
 
 
 class WorkspaceConfig(BaseModel):
