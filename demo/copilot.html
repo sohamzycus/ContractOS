@@ -504,6 +504,15 @@
     let isAsking = false;
     let currentSessionId = null;  // Tracks conversation context across Q&A turns
 
+    /** Safely parse a fetch Response as JSON; throws a readable error if the
+     *  response is not JSON (e.g. 502 HTML proxy error pages). */
+    async function safeJson(r) {
+      const ct = r.headers.get('content-type') || '';
+      if (ct.includes('application/json')) return r.json();
+      const txt = await r.text();
+      throw new Error(`Server returned ${r.status} (non-JSON): ${txt.slice(0, 150)}`);
+    }
+
     // ── Health ──────────────────────────────────────────────
     async function checkHealth() {
       try {
@@ -555,7 +564,7 @@
 
       try {
         const r = await fetch(`${API}/contracts/upload`, { method: 'POST', body: formData });
-        const data = await r.json();
+        const data = await safeJson(r);
         if (r.ok) {
           currentDocId = data.document_id;
           currentSessionId = null;  // Reset conversation context for new document
@@ -1016,7 +1025,7 @@
         const elapsed = Date.now() - startTime;
 
         if (r.ok) {
-          const data = await r.json();
+          const data = await safeJson(r);
           discoveredFacts = data.discovered_facts || [];
 
           addReasoningStep('graph', '🔗', `<strong>Found ${discoveredFacts.length} hidden facts</strong><div class="step-detail">${data.categories_found || 'Implicit obligations, hidden risks, unstated assumptions'}</div>`);
@@ -1036,7 +1045,7 @@
           });
         } else {
           completeReasoning(elapsed);
-          const err = await r.json().catch(() => ({}));
+          const err = await safeJson(r).catch(() => ({}));
           addAssistantMsg(`Discovery error: ${err.detail || r.statusText}`);
         }
       } catch (e) {
@@ -1084,7 +1093,7 @@
         const elapsed = Date.now() - startTime;
 
         if (r.ok) {
-          const data = await r.json();
+          const data = await safeJson(r);
 
           // Track session_id for conversation continuity
           if (data.session_id) currentSessionId = data.session_id;
@@ -1107,7 +1116,7 @@
           });
         } else {
           completeReasoning(elapsed);
-          const err = await r.json().catch(() => ({}));
+          const err = await safeJson(r).catch(() => ({}));
           addAssistantMsg(`Error: ${err.detail || r.statusText}`);
         }
       } catch (e) {
@@ -1148,7 +1157,7 @@
       try {
         const r = await fetch(`${API}/contracts/samples`);
         if (!r.ok) throw new Error('Failed to fetch samples');
-        const samples = await r.json();
+        const samples = await safeJson(r);
         if (!samples.length) {
           grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-dim);font-size:12px;padding:12px;">No sample contracts available</div>';
           return;
@@ -1182,8 +1191,11 @@
       try {
         // Step 1: Load the sample via API (extraction pipeline)
         const r = await fetch(`${API}/contracts/samples/${encodeURIComponent(filename)}/load`, { method: 'POST' });
-        if (!r.ok) { throw new Error(`Load failed: ${r.status}`); }
-        const data = await r.json();
+        if (!r.ok) {
+          const detail = await safeJson(r).then(d => d.detail).catch(() => r.statusText);
+          throw new Error(`Load failed (${r.status}): ${String(detail).slice(0, 150)}`);
+        }
+        const data = await safeJson(r);
 
         // Step 2: Fetch the actual file from demo/samples/ for rendering
         const fileResp = await fetch(`/demo/samples/${encodeURIComponent(filename)}`);

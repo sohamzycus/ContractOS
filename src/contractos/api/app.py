@@ -19,7 +19,21 @@ def create_app(config: ContractOSConfig | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-        init_state(config)
+        import logging
+
+        _log = logging.getLogger("contractos.startup")
+        state = init_state(config)
+
+        # Eagerly warm up the embedding model at startup so the first
+        # request doesn't pay the 5-10s model-loading cost (critical for
+        # Render/Railway free tiers with 30s request timeouts).
+        try:
+            _log.info("Warming up embedding model...")
+            state.embedding_index  # triggers _get_model() in __init__
+            _log.info("Embedding model ready.")
+        except Exception as e:
+            _log.warning("Embedding model warm-up failed (will retry on first request): %s", e)
+
         yield
         shutdown_state()
 

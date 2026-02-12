@@ -310,9 +310,27 @@ async def clear_all_contracts(
 # IMPORTANT: These routes MUST be defined before /{document_id} routes
 # to avoid FastAPI matching "samples" as a document_id path parameter.
 
-# Resolve the demo/samples directory relative to the project root
-# __file__ = src/contractos/api/routes/contracts.py → 5 levels up = project root
-_SAMPLES_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "demo" / "samples"
+# Resolve the demo/samples directory — works in dev (source tree) and Docker (/app)
+def _find_samples_dir() -> Path:
+    """Locate demo/samples/ in multiple possible locations."""
+    import os
+
+    candidates = [
+        # Dev: src/contractos/api/routes/contracts.py → 5 levels up → project root
+        Path(__file__).resolve().parent.parent.parent.parent.parent / "demo" / "samples",
+        # Docker: /app/demo/samples
+        Path("/app/demo/samples"),
+        # cwd fallback
+        Path(os.getcwd()) / "demo" / "samples",
+    ]
+    for p in candidates:
+        if p.is_dir():
+            return p
+    # Return the first candidate even if it doesn't exist (will 404 gracefully)
+    return candidates[0]
+
+
+_SAMPLES_DIR = _find_samples_dir()
 
 
 class SampleContractInfo(BaseModel):

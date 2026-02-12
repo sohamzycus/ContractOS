@@ -15,4 +15,11 @@ dist/
 build/
 .env
 .env.*
+.env.example
 node_modules
+docker-compose.yml
+Procfile
+railway.toml
+render.yaml
+*.md
+!README.md
