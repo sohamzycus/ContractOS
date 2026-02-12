@@ -3,6 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install system dependencies for sentence-transformers / FAISS
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
