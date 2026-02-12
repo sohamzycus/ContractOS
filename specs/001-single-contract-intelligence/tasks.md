@@ -522,7 +522,65 @@
 
 ---
 
-## Phase 8: Word Copilot Add-in (P2)
+### Phase 8a: Browser-Based Document Copilot ✅ COMPLETE
+
+**Goal**: Build a browser-based DOCX/PDF document renderer with an embedded AI Copilot sidebar — replacing the need for a Word Add-in. Users can view contracts in-browser and interact with ContractOS as a Copilot alongside the rendered document. Prepare deployment configs for quick sharing.
+
+**Architecture**: Instead of building a Word/Office Add-in (Phase 8 original), we build a web-native Copilot that works in any browser:
+- **PDF rendering**: Mozilla PDF.js (v4.9.155) — native canvas-based PDF viewer
+- **DOCX rendering**: docx-preview.js (v0.3.3) — high-fidelity Word document rendering
+- **Copilot sidebar**: Chat-style AI assistant with extraction summary, quick actions, provenance display
+- **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`): Referenced for future server-side agent orchestration via TypeScript; current Copilot uses the existing `/query/ask` API
+
+**Tests**: 9 new tests (631 total passing)
+
+- [x] T175 Browser-based Document Copilot (`demo/copilot.html`):
+  - **Document Viewer**: Full-page DOCX/PDF renderer with zoom controls (in/out/fit)
+  - **PDF.js integration**: Canvas-based PDF rendering with page-by-page display
+  - **docx-preview integration**: High-fidelity DOCX rendering preserving formatting
+  - **Copilot sidebar** (420px, collapsible):
+    - Extraction summary panel (facts, clauses, bindings, word count)
+    - 8 quick-action buttons (Parties, Payment, Termination, Confidentiality, Governing Law, Liability, Key Dates, Gaps)
+    - Chat-style Q&A with typing indicator and message history
+    - Confidence labels with color coding (very_high/high/moderate/speculative)
+    - Provenance display with icons and source references
+    - Retrieval method indicator (faiss_semantic / full_scan)
+    - Generation time display
+  - **Drag & drop** file upload
+  - **Server status** indicator (online/offline with polling)
+  - **Navigation links** to API Console and TrustGraph pages
+  - **Dark theme** consistent with existing demo pages
+- [x] T176 Copilot integration tests (`tests/integration/test_copilot_page.py`) — 9 tests:
+  - `TestCopilotPageServing` (3): Page served, PDF.js included, docx-preview included
+  - `TestCopilotWorkflow` (4): Upload+query DOCX, upload+query PDF, quick actions workflow, extraction summary data
+  - `TestCopilotWithRealNDAs` (2): Bosch NDA workflow, CEII NDA workflow
+- [x] T177 Deployment configuration:
+  - `Dockerfile` — Python 3.12-slim, health check, port 8742
+  - `.dockerignore` — Excludes tests, specs, .git, .venv
+  - `railway.toml` — Railway one-click deploy config
+  - `render.yaml` — Render free-tier deploy config
+  - `Procfile` — Heroku/Railway/Render compatible process file
+
+**Deployment Options** (all free tier):
+| Platform | Deploy Method | URL Pattern |
+|----------|--------------|-------------|
+| **Railway** | `railway up` or GitHub connect | `https://contractos-xxx.up.railway.app` |
+| **Render** | Connect GitHub repo | `https://contractos.onrender.com` |
+| **Fly.io** | `fly launch` | `https://contractos.fly.dev` |
+| **Docker** | `docker build -t contractos . && docker run -p 8742:8742 contractos` | `http://localhost:8742` |
+
+**Claude Agent SDK Integration Path** (future):
+The [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript) (`@anthropic-ai/claude-agent-sdk`) enables building autonomous AI agents with Claude's capabilities. Future integration:
+1. Server-side Node.js agent using the SDK for complex multi-step contract analysis
+2. Tool system integration: bash, text editor, web fetch, web search, memory tools
+3. MCP Server integration for extending ContractOS with external tools
+4. Subagent architecture for hierarchical contract reasoning (DocumentAgent → ClauseAgent → ComplianceAgent)
+
+**Checkpoint**: ✅ Browser-based Document Copilot with PDF.js + docx-preview rendering. Copilot sidebar with chat, quick actions, provenance. Deployment configs for Railway/Render/Docker. **631 tests total.**
+
+---
+
+## Phase 8: Word Copilot Add-in (P2) — SUPERSEDED by Phase 8a
 
 **Goal**: A working Word sidebar that communicates with the ContractOS server.
 
@@ -630,6 +688,116 @@ Phase 1 → Phase 2 → Phase 3 (Fact Extraction)
 
 ---
 
+## Phase 8b: Provenance Highlighting Fix + LLM-Powered Fact Discovery [COMPLETE]
+
+### Bug Fix: Multi-Fact Document Highlighting (T178)
+
+- [X] T178: Fix provenance fact highlighting in copilot.html — only first fact was highlighting [Bug Fix]
+  - **Root cause**: `onclick` handlers used inline escaped strings that broke on quotes/special chars in fact summaries. Also `findAndHighlightText` returned on first match without trying subsequent facts.
+  - **Fix 1**: Replaced inline `onclick` string interpolation with `data-panel`/`data-idx` attributes + `window._provPanels` registry. Click handler reads from stored data, not inline strings.
+  - **Fix 2**: Rewrote `findAndHighlightText` to use `buildSearchPhrases()` — generates multiple search phrases of varying lengths (full text, first sentence, middle fragment, short fallback) and tries each progressively.
+  - **Fix 3**: Added `doc-highlight-active` CSS class for currently-selected provenance item with purple accent glow.
+  - **Fix 4**: Improved summary cleaning — strips location prefixes like "heading: X:" and "characters N-M:" before searching.
+  - Files: `demo/copilot.html`
+
+### LLM-Powered Hidden Fact Discovery (T179–T182)
+
+- [X] T179: Write unit tests for `fact_discovery.py` — 9 tests [TDD Red] → [Green]
+  - Tests: DiscoveredFact model, DiscoveryResult model, LLM discovery with mock responses, empty response handling, LLM error handling, long text truncation, empty claim filtering
+  - File: `tests/unit/test_fact_discovery.py`
+
+- [X] T180: Implement `src/contractos/tools/fact_discovery.py` — LLM discovery engine [Implementation]
+  - `DISCOVERY_SYSTEM_PROMPT`: Expert legal analyst prompt for finding implicit obligations, hidden risks, unstated assumptions, cross-clause implications, missing protections, ambiguous terms
+  - `DiscoveredFact` model: type, claim, evidence, risk_level, explanation
+  - `DiscoveryResult` model: discovered_facts list, summary, categories_found, discovery_time_ms
+  - `discover_hidden_facts()`: Async function that sends contract text + existing extraction context to LLM, parses structured response
+  - Handles: text truncation (8000 char limit), empty claims filtering, LLM errors
+  - File: `src/contractos/tools/fact_discovery.py`
+
+- [X] T181: Write integration tests for discovery endpoint — 4 tests [TDD Red] → [Green]
+  - Tests: 404 for missing doc, full discovery workflow with mock LLM, empty results handling, copilot page has discover button
+  - File: `tests/integration/test_discovery_endpoint.py`
+
+- [X] T182: Add `POST /contracts/{document_id}/discover` endpoint [Implementation]
+  - Gathers existing facts, clauses, bindings as context
+  - Reconstructs contract text from clause_text facts
+  - Calls `discover_hidden_facts()` with LLM
+  - Returns `DiscoveryResponse` with structured discovered facts, summary, categories, confidence
+  - File: `src/contractos/api/routes/contracts.py`
+
+### Copilot UI Enhancements (T183)
+
+- [X] T183: Add "Discover Hidden Facts" button + discovered facts UI in copilot.html [Implementation]
+  - Yellow-accented "Discover Hidden Facts" quick action button
+  - Cursor-like reasoning steps for discovery: Loading facts → Reading context → AI Discovery Mode → Results
+  - `discovered-section` panel: collapsible, yellow-themed, shows each discovered fact with type, claim, evidence, risk level
+  - Clicking discovered facts highlights evidence in the rendered document
+  - Extraction summary updates with discovered count badge
+  - File: `demo/copilot.html`
+
+---
+
+## Phase 8c: Conversation Context Retention [COMPLETE]
+
+**Goal**: Enable multi-turn conversations where the user can ask follow-up questions that reference prior answers. For example: user asks "What are the termination clauses?", model answers, then user asks "Any reference to section 5b?" — the model should understand the context.
+
+**Architecture Note**: ContractOS uses a **three-phase extraction pipeline**:
+1. **Phase 1: Deterministic extraction** — regex patterns for dates, amounts, definitions, section refs, aliases
+2. **Phase 2: FAISS vector embedding** — `all-MiniLM-L6-v2` sentence-transformers for semantic retrieval at query time
+3. **Phase 3: LLM discovery** — Anthropic Claude for implicit obligations, hidden risks, unstated assumptions (added in Phase 8b)
+
+Conversation context retention adds a **fourth dimension**: multi-turn memory across Q&A interactions.
+
+### ChatTurn Model + DocumentAgent Chat History (T184–T187)
+
+- [X] T184: Add `ChatTurn` model to `models/query.py` [TDD Red → Green]
+  - Simple Pydantic model: `question` + `answer` fields
+  - Used to represent prior Q&A turns in conversation history
+  - File: `src/contractos/models/query.py`
+
+- [X] T185: Write unit tests for conversation context retention — 11 tests [TDD Red → Green]
+  - Tests: ChatTurn creation/serialization, DocumentAgent accepts chat_history, history included in LLM messages, empty/None history backward compatible, multi-turn history ordering, history truncation (MAX_HISTORY_TURNS=10), system prompt includes conversation instruction, QueryRequest accepts session_id
+  - File: `tests/unit/test_conversation_context.py`
+
+- [X] T186: Update `DocumentAgent.answer()` to accept `chat_history` parameter [Implementation]
+  - New keyword-only parameter: `chat_history: list[ChatTurn] | None = None`
+  - `_build_messages()` helper: prepends prior Q&A turns as user/assistant message pairs
+  - Truncates to `MAX_HISTORY_TURNS` (10) most recent turns to avoid token overflow
+  - When history present, uses `SYSTEM_PROMPT_CONVERSATION` (includes follow-up/pronoun resolution instructions)
+  - When no history, uses original `SYSTEM_PROMPT` (fully backward compatible)
+  - File: `src/contractos/agents/document_agent.py`
+
+- [X] T187: Update `QueryRequest` to accept optional `session_id` [Implementation]
+  - New optional field: `session_id: str | None = None`
+  - Backward compatible — existing callers without session_id work unchanged
+  - File: `src/contractos/api/routes/query.py`
+
+### API Endpoint + Session History (T188–T189)
+
+- [X] T188: Add `_build_chat_history()` helper to query route [Implementation]
+  - Looks up referenced session to find workspace scope
+  - Fetches all completed sessions from same workspace targeting same document(s)
+  - Returns chronologically ordered `ChatTurn` list
+  - Only includes sessions with completed answers (filters out active/failed)
+  - File: `src/contractos/api/routes/query.py`
+
+- [X] T189: Write integration tests for conversation context endpoint — 4 tests [TDD Red → Green]
+  - Tests: first query returns session_id, follow-up with session_id includes history in LLM messages, query without session_id has no history (stateless), multi-turn accumulation (3 turns)
+  - File: `tests/integration/test_conversation_context_endpoint.py`
+
+### Copilot UI Session Tracking (T190)
+
+- [X] T190: Update copilot.html to track and send session_id [Implementation]
+  - Added `currentSessionId` variable — tracks latest session_id from responses
+  - `sendMessage()` includes `session_id` in request body when available
+  - Updates `currentSessionId` from each response
+  - Resets on new document upload or chat clear
+  - File: `demo/copilot.html`
+
+**Checkpoint**: ✅ Conversation context retention operational. Multi-turn Q&A works end-to-end. **659 tests total.**
+
+---
+
 ## Test Coverage Summary
 
 | Phase | Unit Tests | Integration Tests | Contract Tests | Total Tests |
@@ -641,27 +809,33 @@ Phase 1 → Phase 2 → Phase 3 (Fact Extraction)
 | Phase 6 (US4: Provenance) | 2 | 1 | 1 | 4 |
 | Phase 7 (US5: Workspace) | 2 | 2 | 1 | 5 |
 | Phase 8 (Copilot) | 3 | 1 | 0 | 4 |
+| Phase 8b (Discovery) | 9 | 4 | 0 | 13 |
+| Phase 8c (Conversation Context) | 11 | 4 | 0 | 15 |
 | Phase 9 (Polish) | 2 | 1 | 0 | 3 |
-| **Total** | **40** | **11** | **6** | **57** |
+| **Total** | **60** | **19** | **6** | **85** |
 
 ## Task Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 174 |
-| Test tasks | 93 (53%) |
-| Implementation tasks | 81 (47%) |
+| Total tasks | 190 |
+| Test tasks | 104 (55%) |
+| Implementation tasks | 86 (45%) |
 | Phase 1 (Setup) | 5 tasks |
 | Phase 2 (Foundation) | 35 tasks |
 | Phase 3–7 (User Stories) | 71 tasks |
 | Phase 7a–7f (Enhancements) | 36 tasks |
-| Phase 8 (Copilot) | 16 tasks |
+| Phase 8a (Browser Copilot) | 3 tasks |
+| Phase 8b (Discovery + Highlighting Fix) | 6 tasks |
+| Phase 8c (Conversation Context) | 7 tasks |
+| Phase 8 (Word Add-in, superseded) | 16 tasks |
 | Phase 9 (Polish) | 11 tasks |
-| Total passing tests | 622 |
+| Total passing tests | 659 |
 | Real NDA documents tested | 50 (from ContractNLI) |
-| Parallelizable tasks | 55 (32%) |
+| Deployment configs | 4 (Docker, Railway, Render, Procfile) |
+| Parallelizable tasks | 55 (29%) |
 | MVP scope (through Phase 5) | 86 tasks |
-| Full scope (through Phase 8) | 163 tasks |
+| Full scope (through Phase 8c) | 190 tasks |
 
 ---
 

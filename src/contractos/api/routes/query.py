@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from contractos.agents.document_agent import DocumentAgent
 from contractos.api.deps import AppState, get_state
-from contractos.models.query import Query, QueryScope
+from contractos.models.query import ChatTurn, Query, QueryScope
 from contractos.models.workspace import ReasoningSession, SessionStatus
 from contractos.tools.confidence import ConfidenceDisplay, confidence_label
 from contractos.tools.provenance_formatter import format_provenance_chain
@@ -35,6 +35,7 @@ class QueryRequest(BaseModel):
     question: str = Field(min_length=1)
     document_id: str | None = None  # Single document (backward compatible)
     document_ids: list[str] | None = None  # Multi-document support
+    session_id: str | None = None  # Optional: pass to include prior Q&A as context
 
 
 class ProvenanceNodeResponse(BaseModel):
@@ -100,6 +101,45 @@ def _ensure_default_workspace(state: AppState) -> None:
             created_at=now,
             last_accessed_at=now,
         ))
+
+
+def _build_chat_history(
+    state: AppState, session_id: str, current_doc_ids: list[str],
+) -> list[ChatTurn]:
+    """Build chat history from prior completed sessions for the same document(s).
+
+    Retrieves all completed sessions from the default workspace that target
+    the same document(s), ordered chronologically, and returns them as
+    ChatTurn objects for the DocumentAgent.
+
+    The session identified by session_id is used to find the originating
+    workspace and document scope. Only sessions that were completed (have
+    both question and answer) and target overlapping documents are included.
+    """
+    # Look up the referenced session to find its document scope
+    ref_session = state.workspace_store.get_session(session_id)
+    if ref_session is None:
+        return []
+
+    # Get all sessions for the workspace, ordered by started_at DESC
+    all_sessions = state.workspace_store.get_sessions_by_workspace(
+        ref_session.workspace_id
+    )
+
+    # Filter: completed sessions targeting overlapping documents, chronological order
+    doc_set = set(current_doc_ids)
+    turns: list[ChatTurn] = []
+    for s in reversed(all_sessions):  # reversed = oldest first (chronological)
+        if s.status != SessionStatus.COMPLETED:
+            continue
+        if not s.answer:
+            continue
+        # Only include sessions that target at least one of the same documents
+        if not doc_set.intersection(s.target_document_ids):
+            continue
+        turns.append(ChatTurn(question=s.query_text, answer=s.answer))
+
+    return turns
 
 
 @router.post("/ask", response_model=QueryResponse)
@@ -169,9 +209,14 @@ async def ask_question(
     )
     state.workspace_store.create_session(session)
 
+    # Build chat history from prior sessions (if session_id provided)
+    chat_history: list[ChatTurn] = []
+    if request.session_id:
+        chat_history = _build_chat_history(state, request.session_id, doc_ids)
+
     # Run through DocumentAgent (with FAISS semantic retrieval)
     agent = DocumentAgent(state.trust_graph, state.llm, state.embedding_index)
-    result = await agent.answer(query)
+    result = await agent.answer(query, chat_history=chat_history)
 
     # Persist session (complete)
     try:

@@ -19,6 +19,13 @@ class QueryScope(StrEnum):
     REPOSITORY = "repository"
 
 
+class ChatTurn(BaseModel):
+    """A single prior Q&A turn for multi-turn conversation context."""
+
+    question: str = Field(min_length=1)
+    answer: str = Field(min_length=1)
+
+
 class Query(BaseModel):
     """A user's natural language question."""
 

@@ -17,6 +17,7 @@ from contractos.fabric.embedding_index import build_chunks_from_extraction
 from contractos.models.document import Contract
 from contractos.tools.binding_resolver import resolve_bindings
 from contractos.tools.confidence import ConfidenceDisplay, confidence_label
+from contractos.tools.fact_discovery import discover_hidden_facts
 from contractos.tools.fact_extractor import extract_from_file
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -660,3 +661,114 @@ async def get_clause_gaps(
         )
         for s in missing_slots
     ]
+
+
+# ── Discovery Endpoint ─────────────────────────────────────────────
+
+
+class DiscoveredFactResponse(BaseModel):
+    """A single fact discovered by LLM analysis."""
+
+    type: str
+    claim: str
+    evidence: str = ""
+    risk_level: str = "medium"
+    explanation: str = ""
+
+
+class DiscoveryResponse(BaseModel):
+    """Response from the hidden fact discovery endpoint."""
+
+    discovered_facts: list[DiscoveredFactResponse] = Field(default_factory=list)
+    summary: str = ""
+    categories_found: str = ""
+    discovery_time_ms: int = 0
+    count: int = 0
+    confidence: ConfidenceDisplay | None = None
+
+
+@router.post("/{document_id}/discover", response_model=DiscoveryResponse)
+async def discover_facts(
+    document_id: str,
+    state: Annotated[AppState, Depends(get_state)],
+) -> DiscoveryResponse:
+    """Discover hidden facts, implicit obligations, and risks using LLM analysis.
+
+    This goes beyond deterministic pattern extraction to find:
+    - Implicit obligations not stated as "shall" or "must"
+    - Hidden risks: liability exposure, ambiguous terms, missing caps
+    - Unstated assumptions the contract relies on
+    - Cross-clause implications from combining provisions
+    - Missing standard protections (force majeure, IP, data protection)
+    - Ambiguous terms that could be interpreted multiple ways
+
+    Requires an active LLM provider (not mock).
+    """
+    contract = state.trust_graph.get_contract(document_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail=f"Contract {document_id} not found")
+
+    # Gather existing extraction data for context
+    facts = state.trust_graph.get_facts_by_document(document_id)
+    clauses = state.trust_graph.get_clauses_by_document(document_id)
+    bindings = state.trust_graph.get_bindings_by_document(document_id)
+
+    # Build summaries for the LLM
+    facts_summary = "\n".join(
+        f"- [{f.fact_id}] ({f.fact_type.value if hasattr(f.fact_type, 'value') else f.fact_type}) "
+        f'"{f.value[:100]}" @ {f.evidence.location_hint}'
+        for f in facts[:60]
+    )
+    if not facts_summary:
+        facts_summary = "(No facts extracted by pattern matching)"
+
+    clauses_summary = "\n".join(
+        f"- [{c.clause_id}] {c.clause_type.value if hasattr(c.clause_type, 'value') else c.clause_type}: "
+        f"{c.heading}"
+        for c in clauses
+    )
+    if not clauses_summary:
+        clauses_summary = "(No clauses classified)"
+
+    bindings_summary = "\n".join(
+        f'- "{b.term}" -> "{b.resolves_to}" ({b.binding_type.value if hasattr(b.binding_type, "value") else b.binding_type})'
+        for b in bindings
+    )
+    if not bindings_summary:
+        bindings_summary = "(No bindings resolved)"
+
+    # Reconstruct contract text from facts (since we don't store raw text)
+    # Use clause_text facts which contain the full body text
+    text_parts = []
+    for f in facts:
+        ft = f.fact_type.value if hasattr(f.fact_type, "value") else str(f.fact_type)
+        if ft == "clause_text" and f.value:
+            text_parts.append(f.value)
+    contract_text = "\n\n".join(text_parts) if text_parts else facts_summary
+
+    # Run LLM discovery
+    result = await discover_hidden_facts(
+        contract_text=contract_text,
+        existing_facts_summary=facts_summary,
+        clauses_summary=clauses_summary,
+        bindings_summary=bindings_summary,
+        llm=state.llm,
+    )
+
+    return DiscoveryResponse(
+        discovered_facts=[
+            DiscoveredFactResponse(
+                type=f.type,
+                claim=f.claim,
+                evidence=f.evidence,
+                risk_level=f.risk_level,
+                explanation=f.explanation,
+            )
+            for f in result.discovered_facts
+        ],
+        summary=result.summary,
+        categories_found=result.categories_found,
+        discovery_time_ms=result.discovery_time_ms,
+        count=len(result.discovered_facts),
+        confidence=confidence_label(0.75) if result.discovered_facts else confidence_label(0.3),
+    )
