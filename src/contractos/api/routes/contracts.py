@@ -17,6 +17,7 @@ from contractos.fabric.embedding_index import build_chunks_from_extraction
 from contractos.models.document import Contract
 from contractos.tools.binding_resolver import resolve_bindings
 from contractos.tools.confidence import ConfidenceDisplay, confidence_label
+from contractos.tools.fact_discovery import discover_hidden_facts
 from contractos.tools.fact_extractor import extract_from_file
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -303,6 +304,167 @@ async def clear_all_contracts(
         cleared_tables=counts,
         message=f"Cleared {contract_count} contracts and all associated data",
     )
+
+
+# ── Sample Contracts ──────────────────────────────────────────────
+# IMPORTANT: These routes MUST be defined before /{document_id} routes
+# to avoid FastAPI matching "samples" as a document_id path parameter.
+
+# Resolve the demo/samples directory relative to the project root
+# __file__ = src/contractos/api/routes/contracts.py → 5 levels up = project root
+_SAMPLES_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "demo" / "samples"
+
+
+class SampleContractInfo(BaseModel):
+    """Metadata for a sample contract available for testing."""
+
+    filename: str
+    title: str
+    description: str
+    format: str
+    complexity: str
+    tags: list[str] = Field(default_factory=list)
+
+
+@router.get("/samples", response_model=list[SampleContractInfo])
+async def list_sample_contracts() -> list[SampleContractInfo]:
+    """List available sample contracts that users can load for testing.
+
+    Returns metadata from demo/samples/manifest.json describing each
+    pre-built contract available for one-click loading in the Copilot UI.
+    """
+    import json as _json
+
+    manifest_path = _SAMPLES_DIR / "manifest.json"
+    if not manifest_path.exists():
+        return []
+
+    try:
+        manifest = _json.loads(manifest_path.read_text())
+        return [SampleContractInfo(**entry) for entry in manifest]
+    except Exception:
+        return []
+
+
+@router.post("/samples/{filename}/load", response_model=ContractResponse, status_code=201)
+async def load_sample_contract(
+    filename: str,
+    state: Annotated[AppState, Depends(get_state)],
+) -> ContractResponse:
+    """Load a sample contract for testing — same as upload but from built-in samples.
+
+    This allows users to try ContractOS with pre-built contracts before
+    uploading their own. The sample is processed through the full extraction
+    pipeline (parsing, fact extraction, clause classification, binding
+    resolution, FAISS indexing).
+    """
+    sample_path = _SAMPLES_DIR / filename
+    if not sample_path.exists() or not sample_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Sample '{filename}' not found")
+
+    # Validate extension
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("docx", "pdf"):
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {ext}")
+
+    # Read the sample file and process it through the SAME pipeline as upload
+    import logging as _logging
+
+    _log = _logging.getLogger(__name__)
+
+    content = sample_path.read_bytes()
+    file_hash = hashlib.sha256(content).hexdigest()
+    doc_id = f"doc-{uuid.uuid4().hex[:12]}"
+    now = datetime.now()
+
+    # Write to temp file for parsing
+    suffix = f".{ext}"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+
+    try:
+        # Run extraction pipeline — identical to upload_contract
+        extraction = extract_from_file(tmp_path, doc_id)
+
+        # Resolve bindings
+        full_text = extraction.parsed_document.full_text if extraction.parsed_document else ""
+        all_bindings = resolve_bindings(
+            extraction.facts, extraction.bindings, full_text, doc_id
+        )
+
+        # Compute metadata from parsed document — same logic as upload
+        parsed = extraction.parsed_document
+        page_count = 0
+        word_count = 0
+        parties: list[str] = []
+
+        if parsed:
+            word_count = len(parsed.full_text.split())
+            # Extract party names from alias bindings
+            for b in all_bindings:
+                if b.binding_type.value == "alias" and b.resolves_to not in parties:
+                    parties.append(b.resolves_to)
+
+        # Store contract metadata
+        contract = Contract(
+            document_id=doc_id,
+            title=filename.rsplit(".", 1)[0],
+            file_path=f"samples/{filename}",
+            file_format=ext,
+            file_hash=file_hash,
+            parties=parties,
+            page_count=page_count,
+            word_count=word_count,
+            indexed_at=now,
+            last_parsed_at=now,
+            extraction_version="0.1.0",
+        )
+        state.trust_graph.insert_contract(contract)
+
+        # Store extracted entities — same as upload
+        state.trust_graph.insert_facts(extraction.facts)
+        for binding in all_bindings:
+            state.trust_graph.insert_binding(binding)
+        for clause in extraction.clauses:
+            state.trust_graph.insert_clause(clause)
+        for xref in extraction.cross_references:
+            state.trust_graph.insert_cross_reference(xref)
+        for slot in extraction.clause_fact_slots:
+            state.trust_graph.insert_clause_fact_slot(slot)
+
+        # Build semantic vector index (FAISS + sentence-transformers)
+        chunks = build_chunks_from_extraction(
+            doc_id, extraction.facts, extraction.clauses, all_bindings
+        )
+        state.embedding_index.index_document(doc_id, chunks)
+
+        _log.info(
+            "Sample '%s' loaded: %d facts, %d clauses, %d bindings, %d words",
+            filename, len(extraction.facts), len(extraction.clauses),
+            len(all_bindings), word_count,
+        )
+
+        return ContractResponse(
+            document_id=doc_id,
+            title=contract.title,
+            file_format=ext,
+            parties=parties,
+            page_count=page_count,
+            word_count=word_count,
+            fact_count=len(extraction.facts),
+            clause_count=len(extraction.clauses),
+            binding_count=len(all_bindings),
+            status="indexed",
+        )
+    except Exception as e:
+        _log.exception("Sample load failed for '%s': %s", filename, e)
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {e}")
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+# ── Document-specific endpoints ───────────────────────────────────
 
 
 @router.get("/{document_id}", response_model=ContractResponse)
@@ -660,3 +822,114 @@ async def get_clause_gaps(
         )
         for s in missing_slots
     ]
+
+
+# ── Discovery Endpoint ─────────────────────────────────────────────
+
+
+class DiscoveredFactResponse(BaseModel):
+    """A single fact discovered by LLM analysis."""
+
+    type: str
+    claim: str
+    evidence: str = ""
+    risk_level: str = "medium"
+    explanation: str = ""
+
+
+class DiscoveryResponse(BaseModel):
+    """Response from the hidden fact discovery endpoint."""
+
+    discovered_facts: list[DiscoveredFactResponse] = Field(default_factory=list)
+    summary: str = ""
+    categories_found: str = ""
+    discovery_time_ms: int = 0
+    count: int = 0
+    confidence: ConfidenceDisplay | None = None
+
+
+@router.post("/{document_id}/discover", response_model=DiscoveryResponse)
+async def discover_facts(
+    document_id: str,
+    state: Annotated[AppState, Depends(get_state)],
+) -> DiscoveryResponse:
+    """Discover hidden facts, implicit obligations, and risks using LLM analysis.
+
+    This goes beyond deterministic pattern extraction to find:
+    - Implicit obligations not stated as "shall" or "must"
+    - Hidden risks: liability exposure, ambiguous terms, missing caps
+    - Unstated assumptions the contract relies on
+    - Cross-clause implications from combining provisions
+    - Missing standard protections (force majeure, IP, data protection)
+    - Ambiguous terms that could be interpreted multiple ways
+
+    Requires an active LLM provider (not mock).
+    """
+    contract = state.trust_graph.get_contract(document_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail=f"Contract {document_id} not found")
+
+    # Gather existing extraction data for context
+    facts = state.trust_graph.get_facts_by_document(document_id)
+    clauses = state.trust_graph.get_clauses_by_document(document_id)
+    bindings = state.trust_graph.get_bindings_by_document(document_id)
+
+    # Build summaries for the LLM
+    facts_summary = "\n".join(
+        f"- [{f.fact_id}] ({f.fact_type.value if hasattr(f.fact_type, 'value') else f.fact_type}) "
+        f'"{f.value[:100]}" @ {f.evidence.location_hint}'
+        for f in facts[:60]
+    )
+    if not facts_summary:
+        facts_summary = "(No facts extracted by pattern matching)"
+
+    clauses_summary = "\n".join(
+        f"- [{c.clause_id}] {c.clause_type.value if hasattr(c.clause_type, 'value') else c.clause_type}: "
+        f"{c.heading}"
+        for c in clauses
+    )
+    if not clauses_summary:
+        clauses_summary = "(No clauses classified)"
+
+    bindings_summary = "\n".join(
+        f'- "{b.term}" -> "{b.resolves_to}" ({b.binding_type.value if hasattr(b.binding_type, "value") else b.binding_type})'
+        for b in bindings
+    )
+    if not bindings_summary:
+        bindings_summary = "(No bindings resolved)"
+
+    # Reconstruct contract text from facts (since we don't store raw text)
+    # Use clause_text facts which contain the full body text
+    text_parts = []
+    for f in facts:
+        ft = f.fact_type.value if hasattr(f.fact_type, "value") else str(f.fact_type)
+        if ft == "clause_text" and f.value:
+            text_parts.append(f.value)
+    contract_text = "\n\n".join(text_parts) if text_parts else facts_summary
+
+    # Run LLM discovery
+    result = await discover_hidden_facts(
+        contract_text=contract_text,
+        existing_facts_summary=facts_summary,
+        clauses_summary=clauses_summary,
+        bindings_summary=bindings_summary,
+        llm=state.llm,
+    )
+
+    return DiscoveryResponse(
+        discovered_facts=[
+            DiscoveredFactResponse(
+                type=f.type,
+                claim=f.claim,
+                evidence=f.evidence,
+                risk_level=f.risk_level,
+                explanation=f.explanation,
+            )
+            for f in result.discovered_facts
+        ],
+        summary=result.summary,
+        categories_found=result.categories_found,
+        discovery_time_ms=result.discovery_time_ms,
+        count=len(result.discovered_facts),
+        confidence=confidence_label(0.75) if result.discovered_facts else confidence_label(0.3),
+    )

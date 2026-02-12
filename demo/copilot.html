@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ContractOS Copilot</title>
+
+  <!-- JSZip (required by docx-preview) -->
+  <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
+  <!-- docx-preview — global: window.docx -->
+  <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #242736;
+      --surface3: #2e3247;
+      --border: #2d3148;
+      --text: #e4e6f0;
+      --text-dim: #8b8fa3;
+      --accent: #6c5ce7;
+      --accent-glow: rgba(108, 92, 231, 0.3);
+      --green: #00d2d3;
+      --yellow: #feca57;
+      --red: #ff6b6b;
+      --orange: #ff9f43;
+      --copilot-width: 440px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 52px; flex-shrink: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .logo span { color: var(--text-dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .header-center { display: flex; align-items: center; gap: 12px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .file-info {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface2); padding: 6px 14px; border-radius: 8px;
+      font-size: 13px; color: var(--text-dim);
+    }
+    .file-info .name { color: var(--text); font-weight: 500; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn {
+      padding: 7px 16px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: all 0.2s;
+    }
+    .btn-outline { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--text); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.offline { background: var(--red); }
+
+    /* ── Main Layout ────────────────────────────────────── */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Document Viewer ────────────────────────────────── */
+    .doc-viewer {
+      flex: 1; overflow: auto; background: #2a2d3a; position: relative;
+    }
+    .doc-viewer.empty { display: flex; align-items: center; justify-content: center; }
+    .empty-state { text-align: center; max-width: 500px; padding: 40px; }
+    .empty-state .icon { font-size: 64px; margin-bottom: 20px; opacity: 0.6; }
+    .empty-state h2 { font-size: 22px; margin-bottom: 12px; }
+    .empty-state p { color: var(--text-dim); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 16px; padding: 40px;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .upload-zone:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .upload-zone input { display: none; }
+
+    /* ── Sample Contract Picker ──────────────────────────── */
+    .sample-divider {
+      display: flex; align-items: center; gap: 12px; margin: 28px 0 16px;
+      color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .sample-divider::before, .sample-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .sample-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      width: 100%; max-width: 520px; margin: 0 auto;
+    }
+    .sample-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px; cursor: pointer; transition: all 0.25s; text-align: left;
+      position: relative; overflow: hidden;
+    }
+    .sample-card:hover {
+      border-color: var(--accent); background: var(--surface3);
+      transform: translateY(-2px); box-shadow: 0 4px 16px rgba(108, 92, 231, 0.15);
+    }
+    .sample-card.loading {
+      pointer-events: none; opacity: 0.6;
+    }
+    .sample-card .sc-format {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 4px; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .sample-card .sc-format.pdf { background: rgba(255, 107, 107, 0.2); color: var(--red); }
+    .sample-card .sc-format.docx { background: rgba(0, 210, 211, 0.2); color: var(--green); }
+    .sample-card .sc-complexity {
+      display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 6px;
+      border-radius: 4px; margin-left: 4px; text-transform: uppercase;
+    }
+    .sample-card .sc-complexity.simple { background: rgba(0, 210, 211, 0.15); color: var(--green); }
+    .sample-card .sc-complexity.complex { background: rgba(255, 159, 67, 0.2); color: var(--orange); }
+    .sample-card .sc-title {
+      font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sample-card .sc-desc {
+      font-size: 11px; color: var(--text-dim); line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .sample-card .sc-tags {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+    }
+    .sample-card .sc-tag {
+      font-size: 9px; background: var(--surface3); color: var(--text-dim);
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .sample-card .sc-loading-bar {
+      position: absolute; bottom: 0; left: 0; height: 3px;
+      background: var(--accent); width: 0; transition: width 1.5s ease;
+    }
+    .sample-card.loading .sc-loading-bar { width: 100%; }
+
+    /* PDF */
+    #pdf-container { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    #pdf-container canvas { box-shadow: 0 4px 24px rgba(0,0,0,0.4); border-radius: 4px; }
+
+    /* DOCX */
+    #docx-container { padding: 20px; display: flex; justify-content: center; }
+    #docx-container .docx-wrapper {
+      background: #fff !important; border-radius: 8px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4); max-width: 900px; width: 100%;
+    }
+
+    /* Highlight overlay on document text */
+    .doc-highlight {
+      background: rgba(254, 202, 87, 0.45) !important;
+      outline: 2px solid var(--yellow) !important;
+      border-radius: 3px;
+      transition: background 0.3s;
+      scroll-margin-top: 80px;
+    }
+    .doc-highlight-flash {
+      animation: highlightFlash 2.5s ease;
+    }
+    @keyframes highlightFlash {
+      0%   { background: rgba(254,202,87,0.8) !important; outline-width: 3px; }
+      50%  { background: rgba(254,202,87,0.5) !important; }
+      100% { background: rgba(254,202,87,0.35) !important; }
+    }
+    /* Active highlight (currently selected from provenance) */
+    .doc-highlight-active {
+      background: rgba(108, 92, 231, 0.4) !important;
+      outline: 3px solid var(--accent) !important;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    /* ── Copilot Sidebar ────────────────────────────────── */
+    .copilot {
+      width: var(--copilot-width); background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s;
+    }
+    .copilot.collapsed { width: 0; overflow: hidden; border: none; }
+    .copilot-header {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .copilot-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .copilot-title .badge {
+      background: var(--accent); color: #fff; font-size: 10px; padding: 2px 8px;
+      border-radius: 10px; font-weight: 600;
+    }
+
+    /* Extraction summary */
+    .extraction-summary { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .extraction-summary .title { color: var(--text-dim); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .extraction-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .stat-item { display: flex; align-items: center; gap: 6px; background: var(--surface2); padding: 6px 10px; border-radius: 6px; }
+    .stat-item .num { font-weight: 700; color: var(--accent); font-size: 14px; }
+    .stat-item .label { color: var(--text-dim); font-size: 11px; }
+    /* Discovery badge */
+    .stat-item .discovered { color: var(--yellow); font-size: 9px; font-weight: 600; }
+
+    /* Chat area */
+    .chat-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .chat-msg {
+      max-width: 95%; padding: 10px 14px; border-radius: 12px;
+      font-size: 13px; line-height: 1.55; animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .chat-msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .chat-msg.assistant { align-self: flex-start; background: var(--surface2); color: var(--text); border-bottom-left-radius: 4px; }
+    .chat-msg.system { align-self: center; background: transparent; color: var(--text-dim); font-size: 12px; text-align: center; padding: 4px 12px; }
+
+    .msg-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
+    .msg-meta .confidence { padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; }
+    .confidence.very_high { background: rgba(108,92,231,0.2); color: var(--accent); }
+    .confidence.high { background: rgba(0,210,211,0.2); color: var(--green); }
+    .confidence.moderate { background: rgba(254,202,87,0.2); color: var(--yellow); }
+    .confidence.low, .confidence.speculative { background: rgba(255,107,107,0.2); color: var(--red); }
+
+    /* ── Reasoning Steps (Cursor-like) ──────────────────── */
+    .reasoning-container {
+      align-self: flex-start; max-width: 95%; animation: fadeIn 0.3s ease;
+    }
+    .reasoning-header {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+      background: var(--surface2); border-radius: 12px 12px 0 0;
+      border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-dim);
+    }
+    .reasoning-header .spinner {
+      width: 14px; height: 14px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .reasoning-header .check { color: var(--green); font-size: 14px; }
+    .reasoning-steps {
+      background: var(--surface2); border-radius: 0 0 12px 12px; overflow: hidden;
+      border-bottom-left-radius: 4px;
+    }
+    .reasoning-step {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 14px; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.04);
+      animation: stepFadeIn 0.4s ease;
+    }
+    @keyframes stepFadeIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    .reasoning-step .step-icon {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; font-size: 11px;
+      margin-top: 1px;
+    }
+    .step-icon.search { background: rgba(108,92,231,0.2); color: var(--accent); }
+    .step-icon.read { background: rgba(0,210,211,0.2); color: var(--green); }
+    .step-icon.think { background: rgba(254,202,87,0.2); color: var(--yellow); }
+    .step-icon.done { background: rgba(0,210,211,0.2); color: var(--green); }
+    .step-icon.graph { background: rgba(255,159,67,0.2); color: var(--orange); }
+    .step-icon.discover { background: rgba(254,202,87,0.2); color: var(--yellow); }
+    .reasoning-step .step-text { color: var(--text-dim); line-height: 1.5; }
+    .reasoning-step .step-text strong { color: var(--text); font-weight: 600; }
+    .reasoning-step .step-detail {
+      font-size: 11px; color: var(--text-dim); opacity: 0.7; margin-top: 2px;
+    }
+
+    /* ── Provenance Detail Panel ────────────────────────── */
+    .provenance-panel {
+      margin-top: 10px; background: rgba(0,0,0,0.25); border-radius: 10px;
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .prov-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: rgba(0,0,0,0.15);
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      cursor: pointer; user-select: none;
+    }
+    .prov-header:hover { color: var(--text); }
+    .prov-header .toggle { font-size: 10px; transition: transform 0.2s; }
+    .prov-header .toggle.open { transform: rotate(90deg); }
+    .prov-body { padding: 0; }
+    .prov-body.collapsed { display: none; }
+
+    .prov-fact {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.04);
+      font-size: 11px; cursor: pointer; transition: background 0.2s;
+    }
+    .prov-fact:first-child { border-top: none; }
+    .prov-fact:hover { background: rgba(108,92,231,0.15); }
+    .prov-fact.active-prov { background: rgba(108,92,231,0.2); }
+    .prov-fact .fact-icon {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; margin-top: 1px;
+    }
+    .fact-icon.fact { background: rgba(0,210,211,0.15); color: var(--green); }
+    .fact-icon.clause { background: rgba(255,159,67,0.15); color: var(--orange); }
+    .fact-icon.binding { background: rgba(108,92,231,0.15); color: var(--accent); }
+    .fact-icon.inference { background: rgba(254,202,87,0.15); color: var(--yellow); }
+    .fact-icon.discovered { background: rgba(254,202,87,0.25); color: var(--yellow); }
+    .prov-fact .fact-content { flex: 1; min-width: 0; }
+    .prov-fact .fact-type {
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .fact-type.fact { color: var(--green); }
+    .fact-type.clause { color: var(--orange); }
+    .fact-type.binding { color: var(--accent); }
+    .fact-type.inference { color: var(--yellow); }
+    .fact-type.discovered { color: var(--yellow); }
+    .prov-fact .fact-value {
+      color: var(--text); line-height: 1.4; word-break: break-word;
+    }
+    .prov-fact .fact-location {
+      font-size: 10px; color: var(--text-dim); margin-top: 3px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .prov-fact .fact-location .goto-link {
+      color: var(--accent); cursor: pointer; text-decoration: underline;
+      font-weight: 500;
+    }
+    .prov-fact .fact-location .goto-link:hover { color: #8b7cf7; }
+
+    /* ── Discovered Facts Section ───────────────────────── */
+    .discovered-section {
+      margin-top: 10px; background: rgba(254,202,87,0.08); border-radius: 10px;
+      border: 1px solid rgba(254,202,87,0.2); overflow: hidden;
+    }
+    .discovered-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: rgba(254,202,87,0.06);
+      font-size: 11px; font-weight: 600; color: var(--yellow);
+      cursor: pointer; user-select: none;
+    }
+    .discovered-header:hover { color: var(--text); }
+    .discovered-body { padding: 0; }
+    .discovered-body.collapsed { display: none; }
+    .discovered-fact {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 12px; border-top: 1px solid rgba(254,202,87,0.1);
+      font-size: 11px; cursor: pointer; transition: background 0.2s;
+    }
+    .discovered-fact:first-child { border-top: none; }
+    .discovered-fact:hover { background: rgba(254,202,87,0.1); }
+    .discovered-fact .disc-type {
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--yellow); margin-bottom: 2px;
+    }
+    .discovered-fact .disc-value { color: var(--text); line-height: 1.4; word-break: break-word; }
+    .discovered-fact .disc-evidence {
+      font-size: 10px; color: var(--text-dim); margin-top: 3px; font-style: italic;
+    }
+
+    /* Quick actions */
+    .quick-actions { padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick-btn {
+      padding: 5px 10px; border-radius: 16px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-dim); font-size: 11px;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .quick-btn:hover { border-color: var(--accent); color: var(--text); background: var(--accent-glow); }
+    .quick-btn.discover-btn { border-color: rgba(254,202,87,0.4); color: var(--yellow); }
+    .quick-btn.discover-btn:hover { border-color: var(--yellow); background: rgba(254,202,87,0.1); }
+
+    /* Input */
+    .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); }
+    .chat-input-wrap { display: flex; gap: 8px; align-items: flex-end; }
+    .chat-input {
+      flex: 1; padding: 10px 14px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 13px; font-family: inherit;
+      resize: none; min-height: 42px; max-height: 120px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .chat-input:focus { border-color: var(--accent); }
+    .chat-input::placeholder { color: var(--text-dim); }
+    .send-btn {
+      width: 42px; height: 42px; border-radius: 12px; border: none;
+      background: var(--accent); color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; transition: background 0.2s; flex-shrink: 0;
+    }
+    .send-btn:hover { background: #5a4bd4; }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Zoom controls */
+    .zoom-controls {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 4px; background: var(--surface); border-radius: 10px;
+      padding: 4px; border: 1px solid var(--border); z-index: 10;
+    }
+    .zoom-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: none;
+      background: transparent; color: var(--text-dim); cursor: pointer;
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+    }
+    .zoom-btn:hover { background: var(--surface2); color: var(--text); }
+    .zoom-label { font-size: 12px; color: var(--text-dim); padding: 0 8px; display: flex; align-items: center; }
+
+    @media (max-width: 900px) {
+      .copilot { width: 100%; position: absolute; right: 0; top: 52px; bottom: 0; z-index: 50; }
+      .copilot.collapsed { width: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">ContractOS <span>Copilot</span></div>
+    </div>
+    <div class="header-center">
+      <div class="file-info" id="fileInfo" style="display:none">
+        <span id="fileIcon">📄</span>
+        <span class="name" id="fileName"></span>
+        <span id="fileSize" style="font-size:11px"></span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText" style="font-size:12px; color:var(--text-dim)">Checking...</span>
+      <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border:none" onclick="document.getElementById('fileInput').click()">📤 Upload Contract</button>
+      <button class="btn btn-outline btn-sm" onclick="toggleCopilot()" id="copilotToggle">Hide Copilot</button>
+      <a href="/demo/" class="btn btn-outline btn-sm" style="text-decoration:none">API Console</a>
+      <a href="/demo/graph.html" class="btn btn-outline btn-sm" style="text-decoration:none">TrustGraph</a>
+    </div>
+  </div>
+
+  <!-- Hidden file input — lives outside docViewer so it survives viewer.innerHTML = '' -->
+  <input type="file" id="fileInput" accept=".docx,.pdf" onchange="handleFileUpload(event)" style="display:none">
+
+  <!-- Main -->
+  <div class="main">
+    <div class="doc-viewer empty" id="docViewer">
+      <div class="empty-state">
+        <div class="icon">📑</div>
+        <h2>ContractOS Document Copilot</h2>
+        <p>Upload a contract (.docx or .pdf) to view it with an AI-powered Copilot sidebar.
+          Ask questions, get grounded answers with provenance, and click any cited fact to jump to it in the document.</p>
+        <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+          <p style="font-size:15px; margin-bottom:8px">Drop a contract here or click to browse</p>
+          <p style="font-size:12px; color:var(--text-dim)">Supports .docx and .pdf</p>
+        </div>
+        <div class="sample-divider">or try a sample contract</div>
+        <div class="sample-grid" id="sampleGrid">
+          <div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); font-size: 12px; padding: 12px;">
+            Loading sample contracts...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Copilot Sidebar -->
+    <div class="copilot" id="copilotPanel">
+      <div class="copilot-header">
+        <div class="copilot-title">🤖 Copilot <span class="badge">AI</span></div>
+        <button class="btn btn-outline btn-sm" onclick="clearChat()">Clear</button>
+      </div>
+      <div class="extraction-summary" id="extractionSummary" style="display:none">
+        <div class="title">Extraction Summary</div>
+        <div class="extraction-stats" id="extractionStats"></div>
+      </div>
+      <div class="quick-actions" id="quickActions" style="display:none">
+        <button class="quick-btn" onclick="askQuick('Who are the parties to this agreement?')">Parties</button>
+        <button class="quick-btn" onclick="askQuick('What are the payment terms?')">Payment</button>
+        <button class="quick-btn" onclick="askQuick('What are the termination conditions?')">Termination</button>
+        <button class="quick-btn" onclick="askQuick('What confidentiality obligations exist?')">Confidentiality</button>
+        <button class="quick-btn" onclick="askQuick('What is the governing law?')">Governing Law</button>
+        <button class="quick-btn" onclick="askQuick('What is the liability cap?')">Liability</button>
+        <button class="quick-btn" onclick="askQuick('What are the key dates?')">Key Dates</button>
+        <button class="quick-btn" onclick="askQuick('Are there any compliance gaps?')">Gaps</button>
+        <button class="quick-btn discover-btn" onclick="discoverHiddenFacts()">🔍 Discover Hidden Facts</button>
+      </div>
+      <div class="chat-area" id="chatArea">
+        <div class="chat-msg system">Upload a contract to start asking questions</div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-wrap">
+          <textarea class="chat-input" id="chatInput" placeholder="Ask about this contract..." rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+            oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="zoom-controls" id="zoomControls" style="display:none">
+    <button class="zoom-btn" onclick="zoomOut()">−</button>
+    <span class="zoom-label" id="zoomLabel">100%</span>
+    <button class="zoom-btn" onclick="zoomIn()">+</button>
+    <button class="zoom-btn" onclick="zoomFit()">⊡</button>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+    let currentDocId = null;
+    let currentFile = null;
+    let currentFacts = [];
+    let discoveredFacts = [];
+    let pdfDoc = null;
+    let zoomLevel = 1.0;
+    let isAsking = false;
+    let currentSessionId = null;  // Tracks conversation context across Q&A turns
+
+    // ── Health ──────────────────────────────────────────────
+    async function checkHealth() {
+      try {
+        const r = await fetch(`${API}/health`);
+        if (r.ok) {
+          document.getElementById('statusDot').className = 'status-dot online';
+          document.getElementById('statusText').textContent = 'Connected';
+        } else throw 0;
+      } catch {
+        document.getElementById('statusDot').className = 'status-dot offline';
+        document.getElementById('statusText').textContent = 'Offline';
+      }
+    }
+    checkHealth(); setInterval(checkHealth, 15000);
+
+    function toggleCopilot() {
+      const p = document.getElementById('copilotPanel');
+      p.classList.toggle('collapsed');
+      document.getElementById('copilotToggle').textContent = p.classList.contains('collapsed') ? 'Show Copilot' : 'Hide Copilot';
+    }
+
+    // ── File Upload ─────────────────────────────────────────
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      // Reset input value so the same file can be re-selected
+      event.target.value = '';
+      currentFile = file;
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['docx','pdf'].includes(ext)) { alert('Upload .docx or .pdf'); return; }
+
+      document.getElementById('fileInfo').style.display = 'flex';
+      document.getElementById('fileIcon').textContent = ext === 'pdf' ? '📕' : '📘';
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileSize').textContent = `(${(file.size/1024).toFixed(0)} KB)`;
+
+      const viewer = document.getElementById('docViewer');
+      viewer.classList.remove('empty');
+      viewer.innerHTML = '';
+
+      if (ext === 'pdf') await renderPDF(file, viewer);
+      else await renderDOCX(file, viewer);
+
+      document.getElementById('zoomControls').style.display = 'flex';
+
+      addSystemMsg('Uploading and indexing contract...');
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const r = await fetch(`${API}/contracts/upload`, { method: 'POST', body: formData });
+        const data = await r.json();
+        if (r.ok) {
+          currentDocId = data.document_id;
+          currentSessionId = null;  // Reset conversation context for new document
+          document.getElementById('sendBtn').disabled = false;
+          document.getElementById('quickActions').style.display = 'flex';
+          showExtractionSummary(data);
+          loadFacts(data.document_id);
+
+          addAssistantMsg(
+            `Contract indexed successfully.\n\n` +
+            `**${data.title}** — ${data.word_count.toLocaleString()} words\n` +
+            `Extracted **${data.fact_count}** facts, **${data.clause_count}** clauses, **${data.binding_count}** bindings.\n\n` +
+            `Ask me anything about this contract. Click any cited fact to jump to it in the document.\n` +
+            `Try **"Discover Hidden Facts"** to let the AI find implicit obligations and risks.`
+          );
+        } else {
+          addAssistantMsg(`Upload failed: ${data.detail || JSON.stringify(data)}`);
+        }
+      } catch (e) {
+        addAssistantMsg(`Error: ${e.message}`);
+      }
+    }
+
+    // ── Load facts for highlighting ─────────────────────────
+    async function loadFacts(docId) {
+      try {
+        const r = await fetch(`${API}/contracts/${docId}/facts?limit=500`);
+        if (r.ok) currentFacts = await r.json();
+      } catch {}
+    }
+
+    // ── PDF Rendering ───────────────────────────────────────
+    async function renderPDF(file, container) {
+      const ab = await file.arrayBuffer();
+      const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs';
+      pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise;
+      const c = document.createElement('div'); c.id = 'pdf-container';
+      container.appendChild(c);
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const vp = page.getViewport({ scale: zoomLevel * 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        c.appendChild(canvas);
+      }
+    }
+
+    // ── DOCX Rendering ──────────────────────────────────────
+    async function renderDOCX(file, container) {
+      const ab = await file.arrayBuffer();
+      const c = document.createElement('div'); c.id = 'docx-container';
+      container.appendChild(c);
+      await window.docx.renderAsync(ab, c, null, {
+        className: 'docx-wrapper',
+        inWrapper: true,
+        ignoreWidth: false,
+        ignoreHeight: false,
+        ignoreFonts: false,
+        breakPages: true,
+        ignoreLastRenderedPageBreak: true,
+        experimental: true,
+      });
+    }
+
+    // ── Zoom ────────────────────────────────────────────────
+    function zoomIn() { zoomLevel = Math.min(zoomLevel + 0.2, 3.0); rerender(); }
+    function zoomOut() { zoomLevel = Math.max(zoomLevel - 0.2, 0.4); rerender(); }
+    function zoomFit() { zoomLevel = 1.0; rerender(); }
+    function rerender() {
+      document.getElementById('zoomLabel').textContent = `${Math.round(zoomLevel * 100)}%`;
+      if (!currentFile) return;
+      const v = document.getElementById('docViewer'); v.innerHTML = '';
+      const ext = currentFile.name.split('.').pop().toLowerCase();
+      if (ext === 'pdf') renderPDF(currentFile, v);
+      else renderDOCX(currentFile, v).then(() => {
+        const w = v.querySelector('.docx-wrapper');
+        if (w) { w.style.transform = `scale(${zoomLevel})`; w.style.transformOrigin = 'top center'; }
+      });
+    }
+
+    function showExtractionSummary(data) {
+      document.getElementById('extractionSummary').style.display = 'block';
+      document.getElementById('extractionStats').innerHTML = `
+        <div class="stat-item"><span class="num">${data.fact_count}</span><span class="label">Facts</span></div>
+        <div class="stat-item"><span class="num">${data.clause_count}</span><span class="label">Clauses</span></div>
+        <div class="stat-item"><span class="num">${data.binding_count}</span><span class="label">Bindings</span></div>
+        <div class="stat-item"><span class="num">${data.word_count.toLocaleString()}</span><span class="label">Words</span></div>
+      `;
+    }
+
+    function updateExtractionWithDiscovery(count) {
+      const stats = document.getElementById('extractionStats');
+      if (!stats) return;
+      // Append a discovered row if not already there
+      if (!document.getElementById('discoveredStat')) {
+        const d = document.createElement('div');
+        d.className = 'stat-item';
+        d.id = 'discoveredStat';
+        d.innerHTML = `<span class="num" style="color:var(--yellow)">${count}</span><span class="label">Discovered <span class="discovered">AI</span></span>`;
+        stats.appendChild(d);
+      } else {
+        document.getElementById('discoveredStat').querySelector('.num').textContent = count;
+      }
+    }
+
+    // ── Chat Helpers ────────────────────────────────────────
+    function scrollChat() { const a = document.getElementById('chatArea'); a.scrollTop = a.scrollHeight; }
+
+    function addUserMsg(text) {
+      const d = document.createElement('div'); d.className = 'chat-msg user'; d.textContent = text;
+      document.getElementById('chatArea').appendChild(d); scrollChat();
+    }
+    function addSystemMsg(text) {
+      const d = document.createElement('div'); d.className = 'chat-msg system'; d.textContent = text;
+      document.getElementById('chatArea').appendChild(d); scrollChat();
+    }
+
+    // ── Reasoning Steps (Cursor-like) ───────────────────────
+    function createReasoningContainer(label) {
+      const area = document.getElementById('chatArea');
+      const container = document.createElement('div');
+      container.className = 'reasoning-container';
+      container.id = 'activeReasoning';
+
+      const header = document.createElement('div');
+      header.className = 'reasoning-header';
+      header.innerHTML = `<div class="spinner"></div><span>${label || 'Reasoning...'}</span>`;
+      container.appendChild(header);
+
+      const steps = document.createElement('div');
+      steps.className = 'reasoning-steps';
+      steps.id = 'reasoningSteps';
+      container.appendChild(steps);
+
+      area.appendChild(container);
+      scrollChat();
+      return container;
+    }
+
+    function addReasoningStep(iconClass, iconText, html) {
+      const steps = document.getElementById('reasoningSteps');
+      if (!steps) return;
+      const step = document.createElement('div');
+      step.className = 'reasoning-step';
+      step.innerHTML = `
+        <div class="step-icon ${iconClass}">${iconText}</div>
+        <div class="step-text">${html}</div>
+      `;
+      steps.appendChild(step);
+      scrollChat();
+    }
+
+    function completeReasoning(timeMs) {
+      const header = document.querySelector('#activeReasoning .reasoning-header');
+      if (header) {
+        header.innerHTML = `<span class="check">✓</span><span>Reasoning complete</span><span style="margin-left:auto;font-size:10px;opacity:0.6">${(timeMs/1000).toFixed(1)}s</span>`;
+      }
+      const el = document.getElementById('activeReasoning');
+      if (el) el.id = '';
+    }
+
+    // ── Provenance Panel (FIXED: uses data-index for click handling) ──
+    function buildProvenancePanel(provenance) {
+      if (!provenance || !provenance.nodes || provenance.nodes.length === 0) return '';
+
+      const nodes = provenance.nodes;
+      // Store nodes globally for click handling (avoids escaping issues)
+      const panelId = 'prov-' + Date.now();
+      window._provPanels = window._provPanels || {};
+      window._provPanels[panelId] = nodes;
+
+      let html = `<div class="provenance-panel">`;
+      html += `<div class="prov-header" onclick="this.querySelector('.toggle').classList.toggle('open');this.nextElementSibling.classList.toggle('collapsed')">`;
+      html += `<span>📋 Provenance — ${provenance.node_count} sources${provenance.has_facts ? ' · has facts' : ''}${provenance.has_inferences ? ' · has inferences' : ''}</span>`;
+      html += `<span class="toggle open">▶</span></div>`;
+      html += `<div class="prov-body">`;
+
+      nodes.forEach((n, i) => {
+        const type = n.node_type || 'fact';
+        const iconClass = type === 'clause' ? 'clause' : type === 'binding' ? 'binding' : type === 'inference' ? 'inference' : 'fact';
+        const iconText = type === 'clause' ? '§' : type === 'binding' ? '↔' : type === 'inference' ? '💡' : '📌';
+        const loc = n.document_location || '';
+
+        // Use data attributes instead of inline onclick with escaped strings
+        html += `<div class="prov-fact" data-panel="${panelId}" data-idx="${i}" onclick="handleProvClick(this)" title="Click to find in document">`;
+        html += `<div class="fact-icon ${iconClass}">${iconText}</div>`;
+        html += `<div class="fact-content">`;
+        html += `<div class="fact-type ${iconClass}">${type}</div>`;
+        html += `<div class="fact-value">${escHtml(n.summary || n.display_label)}</div>`;
+        if (loc) {
+          html += `<div class="fact-location">📍 ${escHtml(loc)} <span class="goto-link">→ Go to source</span></div>`;
+        }
+        html += `</div></div>`;
+      });
+
+      html += `</div></div>`;
+      return html;
+    }
+
+    // Click handler for provenance facts — reads from stored data, not inline strings
+    function handleProvClick(el) {
+      const panelId = el.dataset.panel;
+      const idx = parseInt(el.dataset.idx);
+      const nodes = window._provPanels && window._provPanels[panelId];
+      if (!nodes || !nodes[idx]) return;
+
+      const node = nodes[idx];
+
+      // Mark this provenance item as active
+      document.querySelectorAll('.prov-fact.active-prov').forEach(e => e.classList.remove('active-prov'));
+      el.classList.add('active-prov');
+
+      highlightInDocument(node.summary || '', node.document_location || '', node.reference_id || '');
+    }
+
+    function escHtml(s) {
+      if (!s) return '';
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    // ── Highlight in Document (FIXED: multi-match support) ──
+    function highlightInDocument(summary, location, refId) {
+      // Clear only the active highlight, keep persistent ones
+      document.querySelectorAll('.doc-highlight-active').forEach(el => {
+        el.classList.remove('doc-highlight-active');
+      });
+      // Clear previous flash highlights
+      document.querySelectorAll('.doc-highlight').forEach(el => {
+        el.classList.remove('doc-highlight', 'doc-highlight-flash');
+      });
+
+      const viewer = document.getElementById('docViewer');
+
+      // Build multiple search phrases from the summary
+      // Strip the location prefix like 'heading: X:' or 'characters X-Y:'
+      let cleanSummary = summary;
+      // Remove common prefixes from provenance summaries
+      cleanSummary = cleanSummary.replace(/^(?:heading|clause|characters?\s*\d+[-–]\d+|table\s+row\s*\d+.*?col\s*\d+)\s*:\s*/i, '');
+      // Remove surrounding quotes
+      cleanSummary = cleanSummary.replace(/^["']|["']$/g, '').trim();
+
+      const searchPhrases = buildSearchPhrases(cleanSummary);
+
+      // Strategy 1: Search in rendered DOCX paragraphs
+      const docxWrapper = viewer.querySelector('.docx-wrapper');
+      if (docxWrapper) {
+        const found = findAndHighlightText(docxWrapper, searchPhrases);
+        if (found) return;
+      }
+
+      // Strategy 2: PDF — scroll to approximate position
+      const pdfContainer = viewer.querySelector('#pdf-container');
+      if (pdfContainer) {
+        // Try location hint first
+        if (location) {
+          const charMatch = location.match(/chars?\s*(\d+)/i) || location.match(/characters?\s*(\d+)/i);
+          if (charMatch) {
+            const charPos = parseInt(charMatch[1]);
+            const estimatedScroll = (charPos / 5) * 0.3;
+            viewer.scrollTo({ top: Math.min(estimatedScroll, pdfContainer.scrollHeight - 400), behavior: 'smooth' });
+            return;
+          }
+        }
+      }
+
+      // Strategy 3: Try matching by location hint text
+      if (location && docxWrapper) {
+        const hintPhrases = [];
+        const hintMatch = location.match(/heading:\s*(.+)/i);
+        if (hintMatch) hintPhrases.push(hintMatch[1].trim());
+        const secMatch = location.match(/section\s*[\d.]+/i);
+        if (secMatch) hintPhrases.push(secMatch[0]);
+        const clauseMatch = location.match(/clause:\s*(.+)/i);
+        if (clauseMatch) hintPhrases.push(clauseMatch[1].trim());
+        if (hintPhrases.length > 0) {
+          findAndHighlightText(docxWrapper, hintPhrases);
+        }
+      }
+    }
+
+    // Build multiple search phrases of varying lengths for robust matching
+    function buildSearchPhrases(text) {
+      if (!text || text.length < 3) return [];
+      const phrases = [];
+
+      // Full text (up to 120 chars)
+      if (text.length > 5) phrases.push(text.substring(0, 120));
+      // First sentence or clause
+      const firstSentence = text.split(/[.!?;]/)[0].trim();
+      if (firstSentence.length > 5 && firstSentence !== text.substring(0, 120)) {
+        phrases.push(firstSentence);
+      }
+      // Key fragment: middle portion (often most distinctive)
+      if (text.length > 30) {
+        phrases.push(text.substring(5, 50));
+      }
+      // Shorter fallback
+      if (text.length > 15) {
+        phrases.push(text.substring(0, 25));
+      }
+      // Very short fallback
+      if (text.length > 8) {
+        phrases.push(text.substring(0, 15));
+      }
+      return phrases;
+    }
+
+    function findAndHighlightText(root, searchPhrases) {
+      if (!searchPhrases || searchPhrases.length === 0) return false;
+
+      // Try each phrase in order (longest/most specific first)
+      for (const phrase of searchPhrases) {
+        if (!phrase || phrase.length < 3) continue;
+        const search = phrase.toLowerCase().trim();
+
+        // Walk all text-containing elements
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+        let node;
+        let bestMatch = null;
+        let bestMatchLen = 0;
+
+        while (node = walker.nextNode()) {
+          const text = node.textContent.toLowerCase();
+          // Try matching progressively shorter substrings
+          for (let len = Math.min(search.length, text.length); len >= Math.min(8, search.length); len--) {
+            const sub = search.substring(0, len);
+            if (text.includes(sub) && len > bestMatchLen) {
+              bestMatch = node;
+              bestMatchLen = len;
+              break;
+            }
+          }
+        }
+
+        if (bestMatch && bestMatchLen >= Math.min(8, search.length)) {
+          const parent = bestMatch.parentElement;
+          if (parent) {
+            parent.classList.add('doc-highlight', 'doc-highlight-flash', 'doc-highlight-active');
+            parent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Auto-remove flash after 10 seconds, keep highlight
+            setTimeout(() => {
+              parent.classList.remove('doc-highlight-flash');
+            }, 10000);
+            // Auto-remove all after 15 seconds
+            setTimeout(() => {
+              parent.classList.remove('doc-highlight', 'doc-highlight-active');
+            }, 15000);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // ── Full Assistant Message with Provenance ──────────────
+    function addAssistantMsg(text, meta) {
+      const area = document.getElementById('chatArea');
+      const div = document.createElement('div');
+      div.className = 'chat-msg assistant';
+
+      let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+      div.innerHTML = html;
+
+      if (meta) {
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'msg-meta';
+        if (meta.confidence) {
+          const label = meta.confidence.label || 'unknown';
+          metaDiv.innerHTML += `<span class="confidence ${label}">${label} (${meta.confidence.score})</span>`;
+        }
+        if (meta.retrieval_method) metaDiv.innerHTML += `<span>via ${meta.retrieval_method}</span>`;
+        if (meta.generation_time_ms) metaDiv.innerHTML += `<span>${(meta.generation_time_ms/1000).toFixed(1)}s</span>`;
+        div.appendChild(metaDiv);
+
+        // Detailed provenance panel
+        if (meta.provenance && meta.provenance.nodes && meta.provenance.nodes.length > 0) {
+          const provHtml = buildProvenancePanel(meta.provenance);
+          const provWrapper = document.createElement('div');
+          provWrapper.innerHTML = provHtml;
+          if (provWrapper.firstElementChild) {
+            div.appendChild(provWrapper.firstElementChild);
+          }
+        }
+
+        // Discovered facts section (if present)
+        if (meta.discovered_facts && meta.discovered_facts.length > 0) {
+          const discHtml = buildDiscoveredSection(meta.discovered_facts);
+          const discWrapper = document.createElement('div');
+          discWrapper.innerHTML = discHtml;
+          if (discWrapper.firstElementChild) {
+            div.appendChild(discWrapper.firstElementChild);
+          }
+        }
+      }
+
+      area.appendChild(div);
+      scrollChat();
+    }
+
+    // ── Discovered Facts Section ────────────────────────────
+    function buildDiscoveredSection(facts) {
+      if (!facts || facts.length === 0) return '';
+      let html = `<div class="discovered-section">`;
+      html += `<div class="discovered-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">`;
+      html += `<span>🔍 Discovered Hidden Facts — ${facts.length} found</span>`;
+      html += `<span class="toggle open" style="font-size:10px;transition:transform 0.2s">▶</span></div>`;
+      html += `<div class="discovered-body">`;
+
+      facts.forEach((f, i) => {
+        const searchText = f.evidence || f.claim || '';
+        html += `<div class="discovered-fact" onclick="highlightInDocument('${escHtml(searchText)}', '', '')" title="Click to find in document">`;
+        html += `<div class="fact-icon discovered">💡</div>`;
+        html += `<div class="fact-content">`;
+        html += `<div class="disc-type">${escHtml(f.type || 'hidden obligation')}</div>`;
+        html += `<div class="disc-value">${escHtml(f.claim)}</div>`;
+        if (f.evidence) {
+          html += `<div class="disc-evidence">Evidence: "${escHtml(f.evidence.substring(0, 150))}${f.evidence.length > 150 ? '...' : ''}"</div>`;
+        }
+        if (f.risk_level) {
+          const riskColor = f.risk_level === 'high' ? 'var(--red)' : f.risk_level === 'medium' ? 'var(--orange)' : 'var(--text-dim)';
+          html += `<div style="margin-top:3px;font-size:10px;color:${riskColor}">Risk: ${f.risk_level}</div>`;
+        }
+        html += `</div></div>`;
+      });
+
+      html += `</div></div>`;
+      return html;
+    }
+
+    // ── Discover Hidden Facts (LLM-powered) ─────────────────
+    async function discoverHiddenFacts() {
+      if (!currentDocId || isAsking) return;
+      isAsking = true;
+
+      addUserMsg('Discover hidden facts, implicit obligations, and risks in this contract');
+
+      createReasoningContainer('Discovering hidden facts...');
+
+      await sleep(200);
+      addReasoningStep('search', '🔍', `<strong>Loading extracted facts</strong><div class="step-detail">Reviewing ${currentFacts.length} deterministically extracted facts</div>`);
+
+      await sleep(300);
+      addReasoningStep('read', '📖', `<strong>Reading full contract context</strong><div class="step-detail">Sending contract text to LLM for deep analysis</div>`);
+
+      await sleep(300);
+      addReasoningStep('discover', '💡', `<strong>AI Discovery Mode</strong><div class="step-detail">Looking for: implicit obligations, hidden risks, unstated assumptions, missing protections, ambiguous terms</div>`);
+
+      const startTime = Date.now();
+
+      try {
+        const r = await fetch(`${API}/contracts/${currentDocId}/discover`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        const elapsed = Date.now() - startTime;
+
+        if (r.ok) {
+          const data = await r.json();
+          discoveredFacts = data.discovered_facts || [];
+
+          addReasoningStep('graph', '🔗', `<strong>Found ${discoveredFacts.length} hidden facts</strong><div class="step-detail">${data.categories_found || 'Implicit obligations, hidden risks, unstated assumptions'}</div>`);
+
+          await sleep(200);
+          addReasoningStep('done', '✓', `<strong>Discovery complete</strong><div class="step-detail">${discoveredFacts.length} facts discovered beyond pattern extraction · ${(elapsed/1000).toFixed(1)}s</div>`);
+
+          completeReasoning(elapsed);
+
+          updateExtractionWithDiscovery(discoveredFacts.length);
+
+          addAssistantMsg(data.summary || `Discovered **${discoveredFacts.length}** hidden facts that go beyond pattern-based extraction.`, {
+            confidence: data.confidence,
+            retrieval_method: 'llm_discovery',
+            generation_time_ms: elapsed,
+            discovered_facts: discoveredFacts,
+          });
+        } else {
+          completeReasoning(elapsed);
+          const err = await r.json().catch(() => ({}));
+          addAssistantMsg(`Discovery error: ${err.detail || r.statusText}`);
+        }
+      } catch (e) {
+        completeReasoning(Date.now() - startTime);
+        addAssistantMsg(`Connection error: ${e.message}`);
+      }
+
+      isAsking = false;
+    }
+
+    // ── Send Message with Reasoning Steps ───────────────────
+    async function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text || !currentDocId || isAsking) return;
+
+      isAsking = true;
+      input.value = '';
+      autoResize(input);
+      addUserMsg(text);
+
+      createReasoningContainer('Reasoning...');
+
+      await sleep(200);
+      addReasoningStep('search', '🔍', `<strong>Searching TrustGraph</strong> for relevant facts<div class="step-detail">FAISS semantic search across ${currentFacts.length || '...'} indexed facts</div>`);
+
+      await sleep(400);
+      addReasoningStep('read', '📖', `<strong>Reading contract context</strong><div class="step-detail">Retrieving top-k facts, clauses, and bindings for "${escHtml(text.substring(0, 40))}${text.length > 40 ? '...' : ''}"</div>`);
+
+      await sleep(300);
+      addReasoningStep('think', '🧠', `<strong>Reasoning with LLM</strong><div class="step-detail">Synthesizing answer from extracted evidence with provenance tracking</div>`);
+
+      const startTime = Date.now();
+
+      try {
+        const reqBody = { question: text, document_id: currentDocId };
+        if (currentSessionId) reqBody.session_id = currentSessionId;
+
+        const r = await fetch(`${API}/query/ask`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reqBody),
+        });
+
+        const elapsed = Date.now() - startTime;
+
+        if (r.ok) {
+          const data = await r.json();
+
+          // Track session_id for conversation continuity
+          if (data.session_id) currentSessionId = data.session_id;
+
+          const provCount = data.provenance ? data.provenance.node_count : 0;
+          addReasoningStep('graph', '🔗', `<strong>Built provenance chain</strong> — ${provCount} sources<div class="step-detail">Confidence: ${data.confidence?.label || 'N/A'} (${data.confidence?.score || '?'}) · Retrieval: ${data.retrieval_method || 'N/A'}</div>`);
+
+          await sleep(200);
+
+          addReasoningStep('done', '✓', `<strong>Answer ready</strong><div class="step-detail">${data.facts_referenced?.length || 0} facts referenced · ${(data.generation_time_ms/1000).toFixed(1)}s generation</div>`);
+
+          completeReasoning(data.generation_time_ms || elapsed);
+
+          addAssistantMsg(data.answer, {
+            confidence: data.confidence,
+            retrieval_method: data.retrieval_method,
+            generation_time_ms: data.generation_time_ms,
+            provenance: data.provenance,
+            facts_referenced: data.facts_referenced,
+          });
+        } else {
+          completeReasoning(elapsed);
+          const err = await r.json().catch(() => ({}));
+          addAssistantMsg(`Error: ${err.detail || r.statusText}`);
+        }
+      } catch (e) {
+        completeReasoning(Date.now() - startTime);
+        addAssistantMsg(`Connection error: ${e.message}`);
+      }
+
+      isAsking = false;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function askQuick(q) { document.getElementById('chatInput').value = q; sendMessage(); }
+
+    function clearChat() {
+      document.getElementById('chatArea').innerHTML = '';
+      currentSessionId = null;  // Reset conversation context on clear
+      addSystemMsg(currentDocId ? 'Chat cleared. Ask a new question.' : 'Upload a contract to start.');
+    }
+
+    function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+
+    // Drag & drop
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('drop', e => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) {
+        const input = document.getElementById('fileInput');
+        input.files = e.dataTransfer.files;
+        handleFileUpload({ target: input });
+      }
+    });
+
+    // ── Sample Contracts ─────────────────────────────────────
+    async function loadSampleContracts() {
+      const grid = document.getElementById('sampleGrid');
+      if (!grid) return;
+      try {
+        const r = await fetch(`${API}/contracts/samples`);
+        if (!r.ok) throw new Error('Failed to fetch samples');
+        const samples = await r.json();
+        if (!samples.length) {
+          grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-dim);font-size:12px;padding:12px;">No sample contracts available</div>';
+          return;
+        }
+        grid.innerHTML = '';
+        for (const s of samples) {
+          const card = document.createElement('div');
+          card.className = 'sample-card';
+          card.onclick = () => loadSample(s.filename, card);
+          const tagsHtml = (s.tags || []).slice(0, 3).map(t => `<span class="sc-tag">${t}</span>`).join('');
+          card.innerHTML = `
+            <span class="sc-format ${s.format}">${s.format}</span>
+            <span class="sc-complexity ${s.complexity}">${s.complexity}</span>
+            <div class="sc-title">${s.title}</div>
+            <div class="sc-desc">${s.description}</div>
+            <div class="sc-tags">${tagsHtml}</div>
+            <div class="sc-loading-bar"></div>
+          `;
+          grid.appendChild(card);
+        }
+      } catch (e) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-dim);font-size:12px;padding:12px;">Could not load samples</div>`;
+      }
+    }
+
+    async function loadSample(filename, card) {
+      if (card.classList.contains('loading')) return;
+      // Mark card as loading
+      card.classList.add('loading');
+
+      try {
+        // Step 1: Load the sample via API (extraction pipeline)
+        const r = await fetch(`${API}/contracts/samples/${encodeURIComponent(filename)}/load`, { method: 'POST' });
+        if (!r.ok) { throw new Error(`Load failed: ${r.status}`); }
+        const data = await r.json();
+
+        // Step 2: Fetch the actual file from demo/samples/ for rendering
+        const fileResp = await fetch(`/demo/samples/${encodeURIComponent(filename)}`);
+        if (!fileResp.ok) throw new Error('Could not fetch sample file for rendering');
+        const blob = await fileResp.blob();
+        const file = new File([blob], filename, { type: blob.type });
+
+        // Step 3: Render the document
+        const ext = filename.split('.').pop().toLowerCase();
+        currentFile = file;
+        currentDocId = data.document_id;
+        currentSessionId = null;
+
+        document.getElementById('fileInfo').style.display = 'flex';
+        document.getElementById('fileIcon').textContent = ext === 'pdf' ? '📕' : '📘';
+        document.getElementById('fileName').textContent = filename;
+        document.getElementById('fileSize').textContent = `(${(blob.size/1024).toFixed(0)} KB)`;
+
+        const viewer = document.getElementById('docViewer');
+        viewer.classList.remove('empty');
+        viewer.innerHTML = '';
+
+        if (ext === 'pdf') await renderPDF(file, viewer);
+        else await renderDOCX(file, viewer);
+
+        document.getElementById('zoomControls').style.display = 'flex';
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('quickActions').style.display = 'flex';
+        showExtractionSummary(data);
+        loadFacts(data.document_id);
+
+        addAssistantMsg(
+          `Sample contract loaded: **${data.title}** — ${data.word_count.toLocaleString()} words\n\n` +
+          `Extracted **${data.fact_count}** facts, **${data.clause_count}** clauses, **${data.binding_count}** bindings.\n\n` +
+          `Ask me anything about this contract. Try the quick-action buttons or **"Discover Hidden Facts"**.\n\n` +
+          `_When you're ready, upload your own contract using the upload button._`
+        );
+      } catch (e) {
+        card.classList.remove('loading');
+        addAssistantMsg(`Error loading sample: ${e.message}`);
+      }
+    }
+
+    // Load samples on page init
+    loadSampleContracts();
+  </script>
+</body>
+</html>

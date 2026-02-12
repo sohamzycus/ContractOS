@@ -22,7 +22,7 @@ from contractos.models.binding import Binding
 from contractos.models.fact import Fact
 from contractos.models.inference import Inference, InferenceType
 from contractos.models.provenance import ProvenanceChain, ProvenanceNode
-from contractos.models.query import Query, QueryResult, QueryScope
+from contractos.models.query import ChatTurn, Query, QueryResult, QueryScope
 from contractos.tools.binding_resolver import resolve_term
 
 logger = logging.getLogger(__name__)
@@ -46,6 +46,34 @@ Respond in JSON format:
   "inferences": [{"claim": "...", "type": "obligation|coverage|...", "supporting_facts": ["f-001"]}]
 }"""
 
+SYSTEM_PROMPT_CONVERSATION = """You are ContractOS, a contract intelligence system. You answer questions about contracts
+using ONLY the facts and bindings provided. You must:
+
+1. Ground every claim in specific facts (cite fact_ids)
+2. Resolve entity aliases using bindings
+3. Distinguish between facts (directly stated) and inferences (derived)
+4. Express confidence based on evidence strength
+5. Never fabricate information not in the provided context
+
+This is a multi-turn conversation. Prior questions and answers are provided for context.
+When the user refers to "it", "that", "the section", "this clause", or asks a follow-up
+question, use the prior conversation to understand what they are referring to.
+Maintain continuity — if the user previously asked about termination clauses and now asks
+"any reference to section 5b?", connect it to the prior discussion.
+
+Respond in JSON format:
+{
+  "answer": "Your answer text",
+  "answer_type": "fact" | "inference" | "not_found",
+  "confidence": 0.0-1.0,
+  "facts_referenced": ["f-001", "f-002"],
+  "reasoning_chain": "Step-by-step reasoning",
+  "inferences": [{"claim": "...", "type": "obligation|coverage|...", "supporting_facts": ["f-001"]}]
+}"""
+
+# Maximum number of prior Q&A turns to include in conversation context
+MAX_HISTORY_TURNS = 10
+
 
 class DocumentAgent:
     """Answers questions about a single contract document.
@@ -63,18 +91,28 @@ class DocumentAgent:
         self._llm = llm
         self._embedding_index = embedding_index
 
-    async def answer(self, query: Query) -> QueryResult:
+    async def answer(
+        self,
+        query: Query,
+        *,
+        chat_history: list[ChatTurn] | None = None,
+    ) -> QueryResult:
         """Answer a question about one or more contracts.
 
         Supports multi-document queries: retrieves facts from all target
         documents and merges them into a single context for the LLM.
 
+        When chat_history is provided, prior Q&A turns are included in the
+        LLM messages to enable multi-turn conversations (e.g., follow-up
+        questions that reference prior answers).
+
         Pipeline:
         1. For each document: FAISS semantic retrieval (or full-scan fallback)
         2. Merge facts + bindings across all documents
         3. Build context with document source labels
-        4. Send to LLM with system prompt
-        5. Parse response and build QueryResult with provenance
+        4. Build message list with optional chat history
+        5. Send to LLM with system prompt
+        6. Parse response and build QueryResult with provenance
         """
         start_time = time.monotonic()
 
@@ -144,14 +182,16 @@ class DocumentAgent:
             doc_titles=doc_titles if is_multi else None,
         )
 
-        # Send to LLM
-        messages = [
-            LLMMessage(role="user", content=context),
-        ]
+        # Build message list with optional chat history
+        has_history = bool(chat_history)
+        messages = self._build_messages(context, chat_history)
+
+        # Select system prompt based on whether we have conversation history
+        system_prompt = SYSTEM_PROMPT_CONVERSATION if has_history else SYSTEM_PROMPT
 
         try:
             llm_response = await self._llm.complete_json(
-                messages, system=SYSTEM_PROMPT, temperature=0.0
+                messages, system=system_prompt, temperature=0.0
             )
         except Exception as e:
             return self._error_result(query, str(e), start_time)
@@ -161,6 +201,30 @@ class DocumentAgent:
         result = self._build_result(query, llm_response, all_facts, elapsed_ms)
         result.retrieval_method = retrieval_method
         return result
+
+    def _build_messages(
+        self,
+        context: str,
+        chat_history: list[ChatTurn] | None = None,
+    ) -> list[LLMMessage]:
+        """Build the LLM message list, optionally including prior Q&A turns.
+
+        When chat_history is provided, prior turns are prepended as
+        user/assistant message pairs, with the current context + question
+        as the final user message. History is truncated to MAX_HISTORY_TURNS.
+        """
+        messages: list[LLMMessage] = []
+
+        if chat_history:
+            # Truncate to most recent turns
+            recent = chat_history[-MAX_HISTORY_TURNS:]
+            for turn in recent:
+                messages.append(LLMMessage(role="user", content=turn.question))
+                messages.append(LLMMessage(role="assistant", content=turn.answer))
+
+        # Current question with full context is always the last user message
+        messages.append(LLMMessage(role="user", content=context))
+        return messages
 
     def _build_context(
         self,
