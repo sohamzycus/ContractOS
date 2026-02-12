@@ -798,6 +798,51 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 
 ---
 
+## Phase 8d: Sample Contracts & Playground [COMPLETE]
+
+**Goal**: Allow users to explore ContractOS with pre-built sample contracts before uploading their own. Provides a frictionless onboarding experience with both simple and complex contracts in PDF and DOCX formats.
+
+### Sample Contract Library (T191–T193)
+
+- [X] T191: Create sample contract files in `demo/samples/` [Implementation]
+  - Copied existing test fixtures: `simple_nda.pdf`, `complex_procurement_framework.pdf`
+  - Generated DOCX fixtures: `simple_procurement.docx`, `complex_it_outsourcing.docx`
+  - Created `manifest.json` with metadata (title, description, format, complexity, tags)
+  - 4 sample contracts: 2 simple (NDA, MSA), 2 complex (procurement framework, IT outsourcing)
+  - Files: `demo/samples/manifest.json`, `demo/samples/*.pdf`, `demo/samples/*.docx`
+
+- [X] T192: Add `GET /contracts/samples` endpoint [TDD Red → Green]
+  - Returns structured metadata from `manifest.json`
+  - Includes filename, title, description, format, complexity, tags
+  - Route placed BEFORE `/{document_id}` to avoid path parameter collision
+  - File: `src/contractos/api/routes/contracts.py`
+
+- [X] T193: Add `POST /contracts/samples/{filename}/load` endpoint [TDD Red → Green]
+  - Reads sample file from `demo/samples/`
+  - Processes through full extraction pipeline (parse → extract → classify → resolve → FAISS index)
+  - Returns same `ContractResponse` as `/contracts/upload`
+  - Validates file extension, returns 404 for missing samples
+  - File: `src/contractos/api/routes/contracts.py`
+
+- [X] T194: Write unit tests for sample contracts — 7 tests [TDD Red → Green]
+  - Tests: list returns samples, required fields present, both formats included, load PDF, load DOCX, load nonexistent returns 404, loaded sample is queryable
+  - File: `tests/unit/test_sample_contracts.py`
+
+### Copilot UI Sample Picker (T195)
+
+- [X] T195: Add sample contract picker to copilot.html [Implementation]
+  - Added "or try a sample contract" divider below upload zone
+  - 2x2 grid of sample cards with format badge, complexity badge, title, description, tags
+  - One-click loading: fetches sample via API, renders document, shows extraction summary
+  - Loading animation with progress bar on card
+  - Added "Upload Contract" button in header for easy switching from sample to own contract
+  - CSS: `.sample-grid`, `.sample-card`, `.sc-format`, `.sc-complexity`, `.sc-title`, `.sc-desc`, `.sc-tags`
+  - File: `demo/copilot.html`
+
+**Checkpoint**: ✅ Sample contracts playground operational. Users can try 4 pre-built contracts (2 PDF, 2 DOCX) with one click. **666 tests total.**
+
+---
+
 ## Test Coverage Summary
 
 | Phase | Unit Tests | Integration Tests | Contract Tests | Total Tests |
@@ -811,16 +856,17 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 8 (Copilot) | 3 | 1 | 0 | 4 |
 | Phase 8b (Discovery) | 9 | 4 | 0 | 13 |
 | Phase 8c (Conversation Context) | 11 | 4 | 0 | 15 |
+| Phase 8d (Sample Contracts) | 7 | 0 | 0 | 7 |
 | Phase 9 (Polish) | 2 | 1 | 0 | 3 |
-| **Total** | **60** | **19** | **6** | **85** |
+| **Total** | **67** | **19** | **6** | **92** |
 
 ## Task Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 190 |
-| Test tasks | 104 (55%) |
-| Implementation tasks | 86 (45%) |
+| Total tasks | 195 |
+| Test tasks | 105 (54%) |
+| Implementation tasks | 90 (46%) |
 | Phase 1 (Setup) | 5 tasks |
 | Phase 2 (Foundation) | 35 tasks |
 | Phase 3–7 (User Stories) | 71 tasks |
@@ -828,9 +874,10 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 8a (Browser Copilot) | 3 tasks |
 | Phase 8b (Discovery + Highlighting Fix) | 6 tasks |
 | Phase 8c (Conversation Context) | 7 tasks |
+| Phase 8d (Sample Contracts) | 5 tasks |
 | Phase 8 (Word Add-in, superseded) | 16 tasks |
 | Phase 9 (Polish) | 11 tasks |
-| Total passing tests | 659 |
+| Total passing tests | 666 |
 | Real NDA documents tested | 50 (from ContractNLI) |
 | Deployment configs | 4 (Docker, Railway, Render, Procfile) |
 | Parallelizable tasks | 55 (29%) |

@@ -84,6 +84,63 @@
     .upload-zone:hover { border-color: var(--accent); background: var(--accent-glow); }
     .upload-zone input { display: none; }
 
+    /* ── Sample Contract Picker ──────────────────────────── */
+    .sample-divider {
+      display: flex; align-items: center; gap: 12px; margin: 28px 0 16px;
+      color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .sample-divider::before, .sample-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .sample-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      width: 100%; max-width: 520px; margin: 0 auto;
+    }
+    .sample-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px; cursor: pointer; transition: all 0.25s; text-align: left;
+      position: relative; overflow: hidden;
+    }
+    .sample-card:hover {
+      border-color: var(--accent); background: var(--surface3);
+      transform: translateY(-2px); box-shadow: 0 4px 16px rgba(108, 92, 231, 0.15);
+    }
+    .sample-card.loading {
+      pointer-events: none; opacity: 0.6;
+    }
+    .sample-card .sc-format {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 4px; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .sample-card .sc-format.pdf { background: rgba(255, 107, 107, 0.2); color: var(--red); }
+    .sample-card .sc-format.docx { background: rgba(0, 210, 211, 0.2); color: var(--green); }
+    .sample-card .sc-complexity {
+      display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 6px;
+      border-radius: 4px; margin-left: 4px; text-transform: uppercase;
+    }
+    .sample-card .sc-complexity.simple { background: rgba(0, 210, 211, 0.15); color: var(--green); }
+    .sample-card .sc-complexity.complex { background: rgba(255, 159, 67, 0.2); color: var(--orange); }
+    .sample-card .sc-title {
+      font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sample-card .sc-desc {
+      font-size: 11px; color: var(--text-dim); line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .sample-card .sc-tags {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+    }
+    .sample-card .sc-tag {
+      font-size: 9px; background: var(--surface3); color: var(--text-dim);
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .sample-card .sc-loading-bar {
+      position: absolute; bottom: 0; left: 0; height: 3px;
+      background: var(--accent); width: 0; transition: width 1.5s ease;
+    }
+    .sample-card.loading .sc-loading-bar { width: 100%; }
+
     /* PDF */
     #pdf-container { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
     #pdf-container canvas { box-shadow: 0 4px 24px rgba(0,0,0,0.4); border-radius: 4px; }
@@ -363,6 +420,7 @@
     <div class="header-right">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText" style="font-size:12px; color:var(--text-dim)">Checking...</span>
+      <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border:none" onclick="document.getElementById('fileInput').click()">📤 Upload Contract</button>
       <button class="btn btn-outline btn-sm" onclick="toggleCopilot()" id="copilotToggle">Hide Copilot</button>
       <a href="/demo/" class="btn btn-outline btn-sm" style="text-decoration:none">API Console</a>
       <a href="/demo/graph.html" class="btn btn-outline btn-sm" style="text-decoration:none">TrustGraph</a>
@@ -381,6 +439,12 @@
           <input type="file" id="fileInput" accept=".docx,.pdf" onchange="handleFileUpload(event)">
           <p style="font-size:15px; margin-bottom:8px">Drop a contract here or click to browse</p>
           <p style="font-size:12px; color:var(--text-dim)">Supports .docx and .pdf</p>
+        </div>
+        <div class="sample-divider">or try a sample contract</div>
+        <div class="sample-grid" id="sampleGrid">
+          <div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); font-size: 12px; padding: 12px;">
+            Loading sample contracts...
+          </div>
         </div>
       </div>
     </div>
@@ -1072,6 +1136,95 @@
         handleFileUpload({ target: input });
       }
     });
+
+    // ── Sample Contracts ─────────────────────────────────────
+    async function loadSampleContracts() {
+      const grid = document.getElementById('sampleGrid');
+      if (!grid) return;
+      try {
+        const r = await fetch(`${API}/contracts/samples`);
+        if (!r.ok) throw new Error('Failed to fetch samples');
+        const samples = await r.json();
+        if (!samples.length) {
+          grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-dim);font-size:12px;padding:12px;">No sample contracts available</div>';
+          return;
+        }
+        grid.innerHTML = '';
+        for (const s of samples) {
+          const card = document.createElement('div');
+          card.className = 'sample-card';
+          card.onclick = () => loadSample(s.filename, card);
+          const tagsHtml = (s.tags || []).slice(0, 3).map(t => `<span class="sc-tag">${t}</span>`).join('');
+          card.innerHTML = `
+            <span class="sc-format ${s.format}">${s.format}</span>
+            <span class="sc-complexity ${s.complexity}">${s.complexity}</span>
+            <div class="sc-title">${s.title}</div>
+            <div class="sc-desc">${s.description}</div>
+            <div class="sc-tags">${tagsHtml}</div>
+            <div class="sc-loading-bar"></div>
+          `;
+          grid.appendChild(card);
+        }
+      } catch (e) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-dim);font-size:12px;padding:12px;">Could not load samples</div>`;
+      }
+    }
+
+    async function loadSample(filename, card) {
+      if (card.classList.contains('loading')) return;
+      // Mark card as loading
+      card.classList.add('loading');
+
+      try {
+        // Step 1: Load the sample via API (extraction pipeline)
+        const r = await fetch(`${API}/contracts/samples/${encodeURIComponent(filename)}/load`, { method: 'POST' });
+        if (!r.ok) { throw new Error(`Load failed: ${r.status}`); }
+        const data = await r.json();
+
+        // Step 2: Fetch the actual file from demo/samples/ for rendering
+        const fileResp = await fetch(`/demo/samples/${encodeURIComponent(filename)}`);
+        if (!fileResp.ok) throw new Error('Could not fetch sample file for rendering');
+        const blob = await fileResp.blob();
+        const file = new File([blob], filename, { type: blob.type });
+
+        // Step 3: Render the document
+        const ext = filename.split('.').pop().toLowerCase();
+        currentFile = file;
+        currentDocId = data.document_id;
+        currentSessionId = null;
+
+        document.getElementById('fileInfo').style.display = 'flex';
+        document.getElementById('fileIcon').textContent = ext === 'pdf' ? '📕' : '📘';
+        document.getElementById('fileName').textContent = filename;
+        document.getElementById('fileSize').textContent = `(${(blob.size/1024).toFixed(0)} KB)`;
+
+        const viewer = document.getElementById('docViewer');
+        viewer.classList.remove('empty');
+        viewer.innerHTML = '';
+
+        if (ext === 'pdf') await renderPDF(file, viewer);
+        else await renderDOCX(file, viewer);
+
+        document.getElementById('zoomControls').style.display = 'flex';
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('quickActions').style.display = 'flex';
+        showExtractionSummary(data);
+        loadFacts(data.document_id);
+
+        addAssistantMsg(
+          `Sample contract loaded: **${data.title}** — ${data.word_count.toLocaleString()} words\n\n` +
+          `Extracted **${data.fact_count}** facts, **${data.clause_count}** clauses, **${data.binding_count}** bindings.\n\n` +
+          `Ask me anything about this contract. Try the quick-action buttons or **"Discover Hidden Facts"**.\n\n` +
+          `_When you're ready, upload your own contract using the upload button._`
+        );
+      } catch (e) {
+        card.classList.remove('loading');
+        addAssistantMsg(`Error loading sample: ${e.message}`);
+      }
+    }
+
+    // Load samples on page init
+    loadSampleContracts();
   </script>
 </body>
 </html>

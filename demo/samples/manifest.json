@@ -1,0 +1,34 @@
+[
+  {
+    "filename": "simple_nda.pdf",
+    "title": "Simple NDA",
+    "description": "Non-Disclosure Agreement between Gamma Inc and Delta LLC. Covers confidentiality obligations, 24-month term, key dates.",
+    "format": "pdf",
+    "complexity": "simple",
+    "tags": ["NDA", "confidentiality", "2 parties"]
+  },
+  {
+    "filename": "simple_procurement.docx",
+    "title": "Master Services Agreement",
+    "description": "IT maintenance services contract between Alpha Corp and Beta Services Ltd. $150K value, Net 90 payment, 60-day termination notice.",
+    "format": "docx",
+    "complexity": "simple",
+    "tags": ["MSA", "IT services", "procurement", "2 parties"]
+  },
+  {
+    "filename": "complex_procurement_framework.pdf",
+    "title": "Procurement Framework Agreement",
+    "description": "Multi-category procurement framework between Pinnacle Manufacturing (UK) and GlobalSource (Singapore). GBP 85M value, volume discounts, liquidated damages, ESG requirements, performance bonds.",
+    "format": "pdf",
+    "complexity": "complex",
+    "tags": ["procurement", "framework", "international", "ESG", "liquidated damages", "performance bond"]
+  },
+  {
+    "filename": "complex_it_outsourcing.docx",
+    "title": "IT Outsourcing Services Agreement",
+    "description": "5-year IT outsourcing between Meridian Global Holdings (US) and TechServe Solutions (India). $47.5M value, 350 FTEs, 12 locations, SLA framework with 5 severity levels, GDPR compliance.",
+    "format": "docx",
+    "complexity": "complex",
+    "tags": ["outsourcing", "IT services", "SLA", "GDPR", "multi-location", "international"]
+  }
+]

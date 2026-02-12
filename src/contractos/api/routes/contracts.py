@@ -306,6 +306,162 @@ async def clear_all_contracts(
     )
 
 
+# ── Sample Contracts ──────────────────────────────────────────────
+# IMPORTANT: These routes MUST be defined before /{document_id} routes
+# to avoid FastAPI matching "samples" as a document_id path parameter.
+
+# Resolve the demo/samples directory relative to the project root
+# __file__ = src/contractos/api/routes/contracts.py → 5 levels up = project root
+_SAMPLES_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "demo" / "samples"
+
+
+class SampleContractInfo(BaseModel):
+    """Metadata for a sample contract available for testing."""
+
+    filename: str
+    title: str
+    description: str
+    format: str
+    complexity: str
+    tags: list[str] = Field(default_factory=list)
+
+
+@router.get("/samples", response_model=list[SampleContractInfo])
+async def list_sample_contracts() -> list[SampleContractInfo]:
+    """List available sample contracts that users can load for testing.
+
+    Returns metadata from demo/samples/manifest.json describing each
+    pre-built contract available for one-click loading in the Copilot UI.
+    """
+    import json as _json
+
+    manifest_path = _SAMPLES_DIR / "manifest.json"
+    if not manifest_path.exists():
+        return []
+
+    try:
+        manifest = _json.loads(manifest_path.read_text())
+        return [SampleContractInfo(**entry) for entry in manifest]
+    except Exception:
+        return []
+
+
+@router.post("/samples/{filename}/load", response_model=ContractResponse, status_code=201)
+async def load_sample_contract(
+    filename: str,
+    state: Annotated[AppState, Depends(get_state)],
+) -> ContractResponse:
+    """Load a sample contract for testing — same as upload but from built-in samples.
+
+    This allows users to try ContractOS with pre-built contracts before
+    uploading their own. The sample is processed through the full extraction
+    pipeline (parsing, fact extraction, clause classification, binding
+    resolution, FAISS indexing).
+    """
+    sample_path = _SAMPLES_DIR / filename
+    if not sample_path.exists() or not sample_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Sample '{filename}' not found")
+
+    # Validate extension
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("docx", "pdf"):
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {ext}")
+
+    # Read the sample file and process it through the same pipeline as upload
+    content = sample_path.read_bytes()
+    file_hash = hashlib.sha256(content).hexdigest()
+    doc_id = f"doc-{uuid.uuid4().hex[:12]}"
+    now = datetime.now()
+
+    # Write to temp file for parsing
+    suffix = f".{ext}"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+
+    try:
+        extraction = extract_from_file(tmp_path, doc_id)
+
+        full_text = extraction.parsed_document.full_text if extraction.parsed_document else ""
+        all_bindings = resolve_bindings(
+            extraction.facts, extraction.bindings, full_text, doc_id
+        )
+
+        page_count = extraction.parsed_document.page_count if extraction.parsed_document else 0
+        word_count = extraction.parsed_document.word_count if extraction.parsed_document else 0
+        parties = [
+            f.value for f in extraction.facts
+            if (f.entity_type.value if hasattr(f.entity_type, "value") else str(f.entity_type or "")) == "party"
+        ]
+
+        contract = Contract(
+            document_id=doc_id,
+            title=filename.rsplit(".", 1)[0],
+            file_path=f"samples/{filename}",
+            file_format=ext,
+            file_hash=file_hash,
+            parties=parties,
+            page_count=page_count,
+            word_count=word_count,
+            indexed_at=now,
+            last_parsed_at=now,
+            extraction_version="1.0.0",
+        )
+        state.trust_graph.insert_contract(contract)
+        state.trust_graph.insert_facts(extraction.facts)
+        state.trust_graph.insert_clauses(extraction.clauses)
+        for b in all_bindings:
+            state.trust_graph.insert_binding(b)
+
+        chunks = build_chunks_from_extraction(
+            doc_id, extraction.facts, extraction.clauses, all_bindings
+        )
+        state.embedding_index.index_document(doc_id, chunks)
+
+        return ContractResponse(
+            document_id=doc_id,
+            title=contract.title,
+            file_format=ext,
+            parties=parties,
+            page_count=page_count,
+            word_count=word_count,
+            fact_count=len(extraction.facts),
+            clause_count=len(extraction.clauses),
+            binding_count=len(all_bindings),
+        )
+    except Exception as e:
+        contract = Contract(
+            document_id=doc_id,
+            title=filename.rsplit(".", 1)[0],
+            file_path=f"samples/{filename}",
+            file_format=ext,
+            file_hash=file_hash,
+            parties=[],
+            page_count=0,
+            word_count=0,
+            indexed_at=now,
+            last_parsed_at=now,
+            extraction_version="1.0.0",
+        )
+        state.trust_graph.insert_contract(contract)
+        return ContractResponse(
+            document_id=doc_id,
+            title=contract.title,
+            file_format=ext,
+            parties=[],
+            page_count=0,
+            word_count=0,
+            fact_count=0,
+            clause_count=0,
+            binding_count=0,
+        )
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+# ── Document-specific endpoints ───────────────────────────────────
+
+
 @router.get("/{document_id}", response_model=ContractResponse)
 async def get_contract(
     document_id: str,
