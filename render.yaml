@@ -4,8 +4,6 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: PORT
-        value: 8742
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_BASE_URL
@@ -13,4 +11,5 @@ services:
       - key: ANTHROPIC_MODEL
         sync: false
     healthCheckPath: /health
-    plan: starter
+    plan: free
+    branch: 001-single-contract-intelligence
