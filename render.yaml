@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: contractos
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8742
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_BASE_URL
+        sync: false
+      - key: ANTHROPIC_MODEL
+        sync: false
+    healthCheckPath: /health
+    plan: starter
