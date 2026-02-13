@@ -75,13 +75,18 @@ Every extracted entity is stored in a **typed, relational knowledge graph** (SQL
 │          WorkspaceStore · SessionStore · ContextMemory        │
 ├──────────────────────────────────────────────────────────────┤
 │              AGENT ORCHESTRATION LAYER                        │
-│                    DocumentAgent                              │
+│   DocumentAgent · ComplianceAgent · NDATriageAgent           │
+│   DraftAgent · ObligationExtractor · RiskMemoGenerator       │
 │         (FAISS retrieval → context building → LLM → answer)  │
+├──────────────────────────────────────────────────────────────┤
+│                   STREAMING LAYER (SSE)                       │
+│   Progressive reasoning · Parallel LLM batching              │
+│   Real-time step events · Report generation                  │
 ├──────────────────────────────────────────────────────────────┤
 │                    TOOLING LAYER                              │
 │   FactExtractor · BindingResolver · ClauseClassifier         │
 │   AliasDetector · CrossRefExtractor · FactDiscovery          │
-│   ConfidenceCalibrator · ProvenanceFormatter                 │
+│   PlaybookLoader · ConfidenceCalibrator · ProvenanceFormatter│
 ├──────────────────────────────────────────────────────────────┤
 │            CONTRACT INTELLIGENCE FABRIC                       │
 │       TrustGraph (SQLite) · EmbeddingIndex (FAISS)           │
@@ -105,24 +110,26 @@ Every extracted entity is stored in a **typed, relational knowledge graph** (SQL
 
 | Metric | Value |
 |--------|-------|
-| Python source modules | 42 |
-| Lines of production code | ~5,936 |
-| Test files | 51 |
-| Lines of test code | ~12,174 (2x production code) |
-| **Passing tests** | **666** |
-| API endpoints | 25 |
+| Python source modules | 45 |
+| Lines of production code | ~8,500 |
+| Test files | 53 |
+| Lines of test code | ~13,500 (1.6x production code) |
+| **Passing tests** | **691** |
+| API endpoints | 31 |
+| SSE streaming endpoints | 6 |
 | Demo UI pages | 3 |
 | Sample contracts | 4 (2 PDF, 2 DOCX) |
 | Real NDA documents tested | 50 (ContractNLI dataset, Stanford NLP) |
 | Deployment configs | Docker Compose, Railway, Render, Procfile |
 
-### API Surface (25 Endpoints)
+### API Surface (31 Endpoints)
 
 | Category | Endpoints | Key Operations |
 |----------|----------|----------------|
-| **Contracts** | 12 | Upload, list, clear, samples, facts, clauses, bindings, graph, gaps, discover |
+| **Contracts** | 14 | Upload, list, clear, samples, facts, clauses, bindings, graph, gaps, discover, review, triage |
 | **Query** | 3 | Ask (with conversation context), history, clear history |
 | **Workspaces** | 7 | Create, list, get, add/remove documents, check changes, sessions |
+| **Streaming** | 6 | SSE review, triage, discover, obligations, risk-memo, report download |
 | **Health** | 2 | Health check, configuration |
 
 ### Pydantic Model Layer
@@ -138,6 +145,11 @@ Every extracted entity is stored in a **typed, relational knowledge graph** (SQL
 | `QueryResult` | Answer with confidence, provenance, retrieval method |
 | `ChatTurn` | Single Q&A pair for multi-turn conversation context |
 | `Workspace` + `ReasoningSession` | Persistent workspace and session state |
+| `ReviewFinding` + `ReviewResult` | Playbook review findings with severity, risk score, redlines |
+| `RedlineSuggestion` | Proposed alternative language with rationale and fallback |
+| `RiskProfile` + `RiskScore` | Severity × likelihood risk matrix with tier distribution |
+| `TriageResult` + `ChecklistResult` | NDA triage classification and per-item results |
+| `PlaybookConfig` + `PlaybookPosition` | Configurable playbook with positions and acceptable ranges |
 
 ---
 
@@ -172,15 +184,51 @@ Click any cited fact in the Copilot sidebar to:
 - Highlight the source text with a visual flash animation
 - Multi-strategy text matching for reliable highlighting across document structures
 
-### 5. Cursor-Like Reasoning Steps
-Animated multi-step UI showing the AI's thought process:
-- Searching document index...
-- Reading relevant sections...
-- Reasoning with LLM...
-- Building provenance chain...
-- Answer ready (with timing and fact count)
+### 5. Playbook Review with Redline Generation
+Review any contract against a configurable playbook:
+- Clause-by-clause comparison with GREEN/YELLOW/RED classification
+- Automated redline suggestions (alternative language + rationale + fallback)
+- Risk profile with severity × likelihood matrix
+- Tier-based negotiation strategy (Must-have / Should-have / Nice-to-have)
+- Streaming progressive updates via SSE as each clause is analyzed
 
-### 6. TrustGraph Visualization
+### 6. NDA Triage Screening
+Automated 10-point NDA checklist with hybrid evaluation:
+- Pattern-based checks (carveouts, term duration, governing law, problematic provisions)
+- LLM verification for nuanced items (receiving party obligations, remedies)
+- GREEN/YELLOW/RED routing with timeline recommendations
+- Real-time streaming of each checklist item result
+
+### 7. Obligation Extraction
+Extract all contractual obligations for each party:
+- Affirmative (must do), Negative (must not do), Conditional (if X then Y)
+- Deadlines, clause references, and breach consequences
+- Streaming progressive results as obligations are discovered
+
+### 8. Risk Memo Generation
+Structured risk assessment with:
+- Executive summary and overall risk rating
+- Key risks with severity/likelihood scoring and mitigation strategies
+- Missing protections identification
+- Prioritized recommendations with owners
+- Escalation items requiring senior counsel
+
+### 9. Cursor-Like Progressive Reasoning (SSE Streaming)
+Real-time streaming UI showing the AI's actual thought process:
+- Server-Sent Events (SSE) deliver each reasoning step as it happens
+- Intermediate results shown progressively (e.g., GREEN/YELLOW/RED counts update live)
+- Each step loads after the previous completes — no fake delays
+- Pulsing animation on active steps, checkmark on completion
+- Parallel LLM calls in batches for 3-4x speed improvement
+
+### 10. Report Download
+Download comprehensive HTML reports for any analysis:
+- Playbook Review Report (findings, redlines, risk profile, negotiation strategy)
+- NDA Triage Report (classification, checklist results, key issues)
+- Discovery Report (hidden facts with evidence and risk levels)
+- Professional dark-theme styling with print-friendly CSS
+
+### 11. TrustGraph Visualization
 Interactive D3.js force-directed graph showing the full knowledge graph — contracts, clauses, facts, bindings, and cross-references as connected nodes with typed edges.
 
 ### 7. Sample Contract Playground
@@ -201,7 +249,8 @@ Create workspaces containing multiple contracts. Ask cross-document questions wi
 | **Vector Search** | FAISS IndexFlatIP (inner product on L2-normalized = cosine similarity) |
 | **Storage** | SQLite with WAL mode, foreign keys |
 | **Document Parsing** | python-docx (DOCX), PyMuPDF + pdfplumber (PDF) |
-| **Frontend** | Vanilla JS, docx-preview.js, PDF.js, D3.js |
+| **Streaming** | Server-Sent Events (SSE) via FastAPI StreamingResponse |
+| **Frontend** | Vanilla JS, EventSource API, docx-preview.js, PDF.js, D3.js |
 | **Testing** | pytest, pytest-asyncio, httpx (async), respx, factory-boy |
 | **Deployment** | Docker Compose (production), Railway, Render |
 | **Configuration** | YAML + env var overrides, Pydantic settings |
@@ -214,11 +263,11 @@ The entire system was built TDD — tests written before code:
 
 | Category | Tests | Description |
 |----------|------:|-------------|
-| Unit Tests | ~480 | Models, tools, storage, agents, FAISS, query persistence |
-| Integration Tests | ~120 | Full API pipeline (upload → extract → query → answer) |
+| Unit Tests | ~524 | Models, tools, storage, agents, FAISS, query persistence, JSON parser |
+| Integration Tests | ~156 | Full API pipeline, SSE streams, obligation/risk-memo extraction |
 | Contract Tests | ~27 | API contract tests via AsyncClient |
-| Benchmark Tests | ~39 | LegalBench contract_nli, definition extraction |
-| **Total** | **666** | **All passing** |
+| Benchmark Tests | ~61 | LegalBench contract_nli, definition extraction |
+| **Total** | **691** | **All passing** |
 
 - **50 real NDA documents** from ContractNLI (Stanford NLP) tested end-to-end
 - **~12K lines of test code** — 2x the production code
@@ -264,7 +313,9 @@ docker compose up --build -d
 | Phase 8b | Provenance Highlighting + LLM Discovery | 13 |
 | Phase 8c | Conversation Context Retention | 15 |
 | Phase 8d | Sample Contracts & Playground | 7 |
-| **Total** | **195 tasks, 666 tests** | **666** |
+| Phase 10 | Playbook Intelligence & Risk Framework | 80+ |
+| Phase 12 | SSE Streaming, Expanded Legal Analysis, Reports | 36 |
+| **Total** | **256 tasks** | **691** |
 
 ---
 
@@ -284,4 +335,13 @@ ContractOS:
 
 The user didn't search. They didn't read 40 pages. They asked a question and got a **grounded, explainable, auditable answer**.
 
-That is ContractOS.
+Then they click **"Review Against Playbook"** — and watch in real-time as ContractOS:
+1. Loads the organization's standard positions
+2. Compares each clause (progress streaming live: "5/17 positions evaluated — 3 GREEN, 1 YELLOW, 1 RED")
+3. Generates redline suggestions for deviations
+4. Builds a risk profile and negotiation strategy
+5. Offers a downloadable HTML report
+
+They click **"Risk Memo"** and get a structured assessment with severity/likelihood scoring, missing protections, prioritized recommendations, and escalation items — all streamed progressively as the AI reasons.
+
+That is ContractOS — the operating system for contract intelligence.

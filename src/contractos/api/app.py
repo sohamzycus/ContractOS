@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from contractos.api.deps import init_state, shutdown_state
-from contractos.api.routes import contracts, health, query, workspace
+from contractos.api.routes import contracts, health, query, stream, workspace
 from contractos.config import ContractOSConfig
 
 
@@ -57,6 +57,7 @@ def create_app(config: ContractOSConfig | None = None) -> FastAPI:
     app.include_router(contracts.router)
     app.include_router(query.router)
     app.include_router(workspace.router)
+    app.include_router(stream.router)
 
     # Serve the demo console at /demo
     import os as _os

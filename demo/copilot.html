@@ -175,21 +175,71 @@
       box-shadow: 0 0 12px var(--accent-glow);
     }
 
+    /* ── Resize Handle ────────────────────────────────────── */
+    .resize-handle {
+      width: 5px; cursor: col-resize; background: transparent;
+      flex-shrink: 0; position: relative; z-index: 20;
+      transition: background 0.2s;
+    }
+    .resize-handle::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 3px; height: 40px; border-radius: 3px;
+      background: var(--border); transition: all 0.2s;
+    }
+    .resize-handle:hover { background: rgba(108,92,231,0.1); }
+    .resize-handle:hover::after,
+    .resize-handle.dragging::after {
+      background: var(--accent); height: 60px; width: 4px;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    .resize-handle.dragging { background: rgba(108,92,231,0.15); }
+
     /* ── Copilot Sidebar ────────────────────────────────── */
     .copilot {
       width: var(--copilot-width); background: var(--surface);
       border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s;
+      display: flex; flex-direction: column; flex-shrink: 0;
+      transition: width 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+      min-width: 0;
     }
-    .copilot.collapsed { width: 0; overflow: hidden; border: none; }
+    .copilot.collapsed { width: 0; overflow: hidden; border: none; opacity: 0; }
+    .copilot.no-transition { transition: none; }
+
+    /* Floating / detached mode */
+    .copilot.floating {
+      position: fixed; z-index: 1000;
+      border-radius: 16px; border: 1px solid var(--border);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(108,92,231,0.15);
+      resize: both; overflow: hidden;
+      min-width: 360px; min-height: 400px;
+    }
+    .copilot.floating .copilot-header {
+      cursor: move;
+    }
+
     .copilot-header {
-      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
     }
     .copilot-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
     .copilot-title .badge {
       background: var(--accent); color: #fff; font-size: 10px; padding: 2px 8px;
       border-radius: 10px; font-weight: 600;
+    }
+    .copilot-header-actions { display: flex; align-items: center; gap: 4px; }
+    .copilot-header-actions .icon-btn {
+      width: 28px; height: 28px; border-radius: 6px; border: none;
+      background: transparent; color: var(--text-dim); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; transition: all 0.15s;
+    }
+    .copilot-header-actions .icon-btn:hover {
+      background: var(--surface2); color: var(--text);
+    }
+    .copilot-header-actions .icon-btn[title]:hover::after {
+      /* tooltip handled by native title */
     }
 
     /* Extraction summary */
@@ -262,6 +312,23 @@
     .reasoning-step .step-detail {
       font-size: 11px; color: var(--text-dim); opacity: 0.7; margin-top: 2px;
     }
+    .reasoning-step.running .step-icon {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+    .step-progress {
+      display: flex; gap: 6px; margin-top: 4px; font-size: 10px; font-weight: 600;
+    }
+    .step-progress .sp-green { color: var(--green); }
+    .step-progress .sp-yellow { color: var(--yellow); }
+    .step-progress .sp-red { color: var(--red); }
+    .download-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface3); color: var(--text-dim); font-size: 11px;
+      cursor: pointer; transition: all 0.2s; margin-top: 6px;
+    }
+    .download-btn:hover { border-color: var(--accent); color: var(--text); background: var(--accent-glow); }
 
     /* ── Provenance Detail Panel ────────────────────────── */
     .provenance-panel {
@@ -352,7 +419,30 @@
     }
 
     /* Quick actions */
-    .quick-actions { padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick-actions {
+      padding: 0; border-bottom: 1px solid var(--border);
+      max-height: 300px; overflow-y: auto;
+    }
+    .qa-group {
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .qa-group:last-child { border-bottom: none; }
+    .qa-group-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px; cursor: pointer; user-select: none;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--text-dim);
+      transition: color 0.2s;
+    }
+    .qa-group-header:hover { color: var(--text); }
+    .qa-group-header .qa-chevron {
+      font-size: 8px; transition: transform 0.2s;
+    }
+    .qa-group-header .qa-chevron.open { transform: rotate(90deg); }
+    .qa-group-body {
+      padding: 0 12px 8px; display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .qa-group-body.collapsed { display: none; }
     .quick-btn {
       padding: 5px 10px; border-radius: 16px; border: 1px solid var(--border);
       background: transparent; color: var(--text-dim); font-size: 11px;
@@ -365,6 +455,18 @@
     .quick-btn.review-btn:hover { border-color: var(--accent); background: rgba(0,210,211,0.1); }
     .quick-btn.triage-btn { border-color: rgba(85,239,196,0.4); color: #55efc4; }
     .quick-btn.triage-btn:hover { border-color: #55efc4; background: rgba(85,239,196,0.1); }
+
+    /* Scroll-to-bottom fab */
+    .scroll-bottom-btn {
+      position: absolute; bottom: 80px; right: 20px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: #fff; border: none;
+      cursor: pointer; display: none; align-items: center; justify-content: center;
+      font-size: 14px; box-shadow: 0 4px 12px rgba(108,92,231,0.4);
+      z-index: 10; transition: all 0.2s;
+    }
+    .scroll-bottom-btn:hover { transform: scale(1.1); }
+    .scroll-bottom-btn.visible { display: flex; }
 
     /* Review Findings */
     .review-findings { margin-top: 12px; }
@@ -452,25 +554,45 @@
     .strategy-text { font-size: 12px; color: var(--text); line-height: 1.5; white-space: pre-wrap; }
 
     /* Input */
-    .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); }
-    .chat-input-wrap { display: flex; gap: 8px; align-items: flex-end; }
-    .chat-input {
-      flex: 1; padding: 10px 14px; border-radius: 12px;
-      border: 1px solid var(--border); background: var(--surface2);
-      color: var(--text); font-size: 13px; font-family: inherit;
-      resize: none; min-height: 42px; max-height: 120px;
-      outline: none; transition: border-color 0.2s;
+    .chat-input-area {
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      background: var(--surface);
     }
-    .chat-input:focus { border-color: var(--accent); }
+    .chat-input-wrap {
+      display: flex; gap: 8px; align-items: flex-end;
+      background: var(--surface2); border-radius: 14px;
+      border: 1px solid var(--border); padding: 4px 4px 4px 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .chat-input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,92,231,0.15);
+    }
+    .chat-input {
+      flex: 1; padding: 8px 0; border-radius: 0;
+      border: none; background: transparent;
+      color: var(--text); font-size: 13px; font-family: inherit;
+      resize: none; min-height: 36px; max-height: 120px;
+      outline: none;
+    }
     .chat-input::placeholder { color: var(--text-dim); }
     .send-btn {
-      width: 42px; height: 42px; border-radius: 12px; border: none;
+      width: 36px; height: 36px; border-radius: 10px; border: none;
       background: var(--accent); color: #fff; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; transition: background 0.2s; flex-shrink: 0;
+      font-size: 16px; transition: all 0.2s; flex-shrink: 0;
     }
-    .send-btn:hover { background: #5a4bd4; }
-    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn:hover { background: #5a4bd4; transform: scale(1.05); }
+    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .input-hint {
+      font-size: 10px; color: var(--text-dim); margin-top: 4px;
+      display: flex; justify-content: space-between; padding: 0 4px;
+      opacity: 0.6;
+    }
+    .input-hint kbd {
+      background: var(--surface3); padding: 1px 5px; border-radius: 3px;
+      font-family: inherit; font-size: 9px; border: 1px solid var(--border);
+    }
 
     /* Zoom controls */
     .zoom-controls {
@@ -511,6 +633,7 @@
       <span id="statusText" style="font-size:12px; color:var(--text-dim)">Checking...</span>
       <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border:none" onclick="document.getElementById('fileInput').click()">📤 Upload Contract</button>
       <button class="btn btn-outline btn-sm" onclick="toggleCopilot()" id="copilotToggle">Hide Copilot</button>
+      <span style="width:1px;height:24px;background:var(--border);margin:0 4px"></span>
       <a href="/demo/" class="btn btn-outline btn-sm" style="text-decoration:none">API Console</a>
       <a href="/demo/graph.html" class="btn btn-outline btn-sm" style="text-decoration:none">TrustGraph</a>
     </div>
@@ -540,31 +663,59 @@
       </div>
     </div>
 
+    <!-- Resize Handle -->
+    <div class="resize-handle" id="resizeHandle"></div>
+
     <!-- Copilot Sidebar -->
     <div class="copilot" id="copilotPanel">
-      <div class="copilot-header">
+      <div class="copilot-header" id="copilotHeader">
         <div class="copilot-title">🤖 Copilot <span class="badge">AI</span></div>
-        <button class="btn btn-outline btn-sm" onclick="clearChat()">Clear</button>
+        <div class="copilot-header-actions">
+          <button class="icon-btn" onclick="clearChat()" title="Clear chat">🗑</button>
+          <button class="icon-btn" id="detachBtn" onclick="toggleFloating()" title="Detach panel">⧉</button>
+          <button class="icon-btn" onclick="toggleCopilot()" title="Close panel">✕</button>
+        </div>
       </div>
       <div class="extraction-summary" id="extractionSummary" style="display:none">
         <div class="title">Extraction Summary</div>
         <div class="extraction-stats" id="extractionStats"></div>
       </div>
       <div class="quick-actions" id="quickActions" style="display:none">
-        <button class="quick-btn" onclick="askQuick('Who are the parties to this agreement?')">Parties</button>
-        <button class="quick-btn" onclick="askQuick('What are the payment terms?')">Payment</button>
-        <button class="quick-btn" onclick="askQuick('What are the termination conditions?')">Termination</button>
-        <button class="quick-btn" onclick="askQuick('What confidentiality obligations exist?')">Confidentiality</button>
-        <button class="quick-btn" onclick="askQuick('What is the governing law?')">Governing Law</button>
-        <button class="quick-btn" onclick="askQuick('What is the liability cap?')">Liability</button>
-        <button class="quick-btn" onclick="askQuick('What are the key dates?')">Key Dates</button>
-        <button class="quick-btn" onclick="askQuick('Are there any compliance gaps?')">Gaps</button>
-        <button class="quick-btn discover-btn" onclick="discoverHiddenFacts()">🔍 Discover Hidden Facts</button>
-        <button class="quick-btn review-btn" onclick="reviewAgainstPlaybook()">📋 Review Against Playbook</button>
-        <button class="quick-btn triage-btn" onclick="triageNDA()">🏷️ Triage NDA</button>
+        <!-- Deep Analysis -->
+        <div class="qa-group">
+          <div class="qa-group-header" onclick="toggleQAGroup(this)">
+            <span>🔬 Deep Analysis</span>
+            <span class="qa-chevron open">▶</span>
+          </div>
+          <div class="qa-group-body">
+            <button class="quick-btn discover-btn" onclick="discoverHiddenFacts()">🔍 Discover Hidden Facts</button>
+            <button class="quick-btn review-btn" onclick="reviewAgainstPlaybook()">📋 Review Against Playbook</button>
+            <button class="quick-btn" onclick="extractObligations()" style="background:rgba(108,92,231,0.15);color:var(--accent)">📋 Extract Obligations</button>
+            <button class="quick-btn" onclick="generateRiskMemo()" style="background:rgba(255,159,67,0.15);color:var(--orange)">⚠️ Risk Memo</button>
+            <button class="quick-btn triage-btn" onclick="triageNDA()">🏷️ Triage NDA</button>
+          </div>
+        </div>
+        <!-- Quick Questions -->
+        <div class="qa-group">
+          <div class="qa-group-header" onclick="toggleQAGroup(this)">
+            <span>💬 Quick Questions</span>
+            <span class="qa-chevron">▶</span>
+          </div>
+          <div class="qa-group-body collapsed">
+            <button class="quick-btn" onclick="askQuick('Who are the parties to this agreement?')">Parties</button>
+            <button class="quick-btn" onclick="askQuick('What are the payment terms?')">Payment</button>
+            <button class="quick-btn" onclick="askQuick('What are the termination conditions?')">Termination</button>
+            <button class="quick-btn" onclick="askQuick('What confidentiality obligations exist?')">Confidentiality</button>
+            <button class="quick-btn" onclick="askQuick('What is the governing law?')">Governing Law</button>
+            <button class="quick-btn" onclick="askQuick('What is the liability cap?')">Liability</button>
+            <button class="quick-btn" onclick="askQuick('What are the key dates?')">Key Dates</button>
+            <button class="quick-btn" onclick="askQuick('Are there any compliance gaps?')">Gaps</button>
+          </div>
+        </div>
       </div>
-      <div class="chat-area" id="chatArea">
+      <div class="chat-area" id="chatArea" style="position:relative">
         <div class="chat-msg system">Upload a contract to start asking questions</div>
+        <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollChat()">↓</button>
       </div>
       <div class="chat-input-area">
         <div class="chat-input-wrap">
@@ -572,6 +723,10 @@
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
             oninput="autoResize(this)"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
+        </div>
+        <div class="input-hint">
+          <span><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for newline</span>
+          <span><kbd>⌘K</kbd> focus</span>
         </div>
       </div>
     </div>
@@ -619,11 +774,179 @@
     }
     checkHealth(); setInterval(checkHealth, 15000);
 
+    // ── Copilot Panel Toggle ────────────────────────────────
     function toggleCopilot() {
       const p = document.getElementById('copilotPanel');
-      p.classList.toggle('collapsed');
+      const handle = document.getElementById('resizeHandle');
+      if (p.classList.contains('floating')) {
+        // If floating, just hide/show
+        p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+      } else {
+        p.classList.toggle('collapsed');
+        handle.style.display = p.classList.contains('collapsed') ? 'none' : '';
+      }
       document.getElementById('copilotToggle').textContent = p.classList.contains('collapsed') ? 'Show Copilot' : 'Hide Copilot';
     }
+
+    // ── Floating / Detach Mode ──────────────────────────────
+    function toggleFloating() {
+      const p = document.getElementById('copilotPanel');
+      const handle = document.getElementById('resizeHandle');
+      const btn = document.getElementById('detachBtn');
+
+      if (p.classList.contains('floating')) {
+        // Re-dock
+        p.classList.remove('floating');
+        p.style.cssText = '';
+        handle.style.display = '';
+        btn.textContent = '⧉';
+        btn.title = 'Detach panel';
+      } else {
+        // Detach
+        const rect = p.getBoundingClientRect();
+        p.classList.add('floating');
+        p.style.top = '80px';
+        p.style.right = '20px';
+        p.style.width = '440px';
+        p.style.height = (window.innerHeight - 120) + 'px';
+        handle.style.display = 'none';
+        btn.textContent = '⊞';
+        btn.title = 'Dock panel';
+        // Make header draggable
+        initFloatingDrag();
+      }
+    }
+
+    function initFloatingDrag() {
+      const header = document.getElementById('copilotHeader');
+      const panel = document.getElementById('copilotPanel');
+      let isDragging = false, startX, startY, startLeft, startTop;
+
+      function onMouseDown(e) {
+        if (!panel.classList.contains('floating')) return;
+        if (e.target.closest('.icon-btn')) return; // Don't drag when clicking buttons
+        isDragging = true;
+        startX = e.clientX; startY = e.clientY;
+        const rect = panel.getBoundingClientRect();
+        startLeft = rect.left; startTop = rect.top;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        e.preventDefault();
+      }
+      function onMouseMove(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        panel.style.left = (startLeft + dx) + 'px';
+        panel.style.top = (startTop + dy) + 'px';
+        panel.style.right = 'auto';
+      }
+      function onMouseUp() {
+        isDragging = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      }
+      header.addEventListener('mousedown', onMouseDown);
+    }
+
+    // ── Resize Handle ───────────────────────────────────────
+    (function initResize() {
+      const handle = document.getElementById('resizeHandle');
+      const panel = document.getElementById('copilotPanel');
+      let isResizing = false;
+      let startX, startWidth;
+
+      handle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = panel.offsetWidth;
+        handle.classList.add('dragging');
+        panel.classList.add('no-transition');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const dx = startX - e.clientX;
+        const newWidth = Math.max(300, Math.min(800, startWidth + dx));
+        panel.style.width = newWidth + 'px';
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        isResizing = false;
+        handle.classList.remove('dragging');
+        panel.classList.remove('no-transition');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      });
+    })();
+
+    // ── QA Group Toggle ─────────────────────────────────────
+    function toggleQAGroup(header) {
+      const body = header.nextElementSibling;
+      const chevron = header.querySelector('.qa-chevron');
+      body.classList.toggle('collapsed');
+      chevron.classList.toggle('open');
+    }
+
+    // ── Scroll-to-Bottom Button ─────────────────────────────
+    (function initScrollBtn() {
+      const chatArea = document.getElementById('chatArea');
+      const btn = document.getElementById('scrollBottomBtn');
+      chatArea.addEventListener('scroll', () => {
+        const distFromBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+        btn.classList.toggle('visible', distFromBottom > 100);
+      });
+    })();
+
+    // ── Keyboard Shortcuts ──────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      // Cmd+K or Ctrl+K → focus chat input
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const input = document.getElementById('chatInput');
+        input.focus();
+        const panel = document.getElementById('copilotPanel');
+        if (panel.classList.contains('collapsed')) toggleCopilot();
+      }
+      // Escape → close copilot if floating
+      if (e.key === 'Escape') {
+        const panel = document.getElementById('copilotPanel');
+        if (panel.classList.contains('floating')) {
+          toggleFloating();
+        }
+      }
+    });
+
+    // ── Drag & Drop on Document Viewer ─────────────────────
+    (function initDragDrop() {
+      const viewer = document.getElementById('docViewer');
+      viewer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        viewer.style.outline = '2px dashed var(--accent)';
+        viewer.style.outlineOffset = '-4px';
+      });
+      viewer.addEventListener('dragleave', () => {
+        viewer.style.outline = '';
+        viewer.style.outlineOffset = '';
+      });
+      viewer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        viewer.style.outline = '';
+        viewer.style.outlineOffset = '';
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          const ext = file.name.split('.').pop().toLowerCase();
+          if (['docx', 'pdf'].includes(ext)) {
+            processFileUpload(file);
+          }
+        }
+      });
+    })();
 
     // ── File Upload ─────────────────────────────────────────
     async function handleFileUpload(event) {
@@ -631,6 +954,10 @@
       if (!file) return;
       // Reset input value so the same file can be re-selected
       event.target.value = '';
+      processFileUpload(file);
+    }
+
+    async function processFileUpload(file) {
       currentFile = file;
       const ext = file.name.split('.').pop().toLowerCase();
       if (!['docx','pdf'].includes(ext)) { alert('Upload .docx or .pdf'); return; }
@@ -797,11 +1124,11 @@
       return container;
     }
 
-    function addReasoningStep(iconClass, iconText, html) {
+    function addReasoningStep(iconClass, iconText, html, isRunning) {
       const steps = document.getElementById('reasoningSteps');
       if (!steps) return;
       const step = document.createElement('div');
-      step.className = 'reasoning-step';
+      step.className = 'reasoning-step' + (isRunning ? ' running' : '');
       step.innerHTML = `
         <div class="step-icon ${iconClass}">${iconText}</div>
         <div class="step-text">${html}</div>
@@ -810,13 +1137,38 @@
       scrollChat();
     }
 
+    function updateLastReasoningStep(html, markDone) {
+      const steps = document.getElementById('reasoningSteps');
+      if (!steps || !steps.lastElementChild) return;
+      const last = steps.lastElementChild;
+      const textEl = last.querySelector('.step-text');
+      if (textEl) textEl.innerHTML = html;
+      if (markDone) last.classList.remove('running');
+    }
+
     function completeReasoning(timeMs) {
       const header = document.querySelector('#activeReasoning .reasoning-header');
       if (header) {
         header.innerHTML = `<span class="check">✓</span><span>Reasoning complete</span><span style="margin-left:auto;font-size:10px;opacity:0.6">${(timeMs/1000).toFixed(1)}s</span>`;
       }
+      // Remove running animation from all steps
+      const runningSteps = document.querySelectorAll('#activeReasoning .reasoning-step.running');
+      runningSteps.forEach(s => s.classList.remove('running'));
+      const steps = document.getElementById('reasoningSteps');
+      if (steps) steps.id = '';
       const el = document.getElementById('activeReasoning');
       if (el) el.id = '';
+    }
+
+    function downloadReport(reportType) {
+      if (!currentDocId) return;
+      const url = `${API}/stream/${currentDocId}/report?report_type=${reportType}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
 
     // ── Provenance Panel (FIXED: uses data-index for click handling) ──
@@ -1093,54 +1445,51 @@
       isAsking = true;
 
       addUserMsg('Discover hidden facts, implicit obligations, and risks in this contract');
-
       createReasoningContainer('Discovering hidden facts...');
 
-      await sleep(200);
-      addReasoningStep('search', '🔍', `<strong>Loading extracted facts</strong><div class="step-detail">Reviewing ${currentFacts.length} deterministically extracted facts</div>`);
-
-      await sleep(300);
-      addReasoningStep('read', '📖', `<strong>Reading full contract context</strong><div class="step-detail">Sending contract text to LLM for deep analysis</div>`);
-
-      await sleep(300);
-      addReasoningStep('discover', '💡', `<strong>AI Discovery Mode</strong><div class="step-detail">Looking for: implicit obligations, hidden risks, unstated assumptions, missing protections, ambiguous terms</div>`);
-
-      const startTime = Date.now();
+      const shownSteps = new Set();
 
       try {
-        const r = await fetch(`${API}/contracts/${currentDocId}/discover`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        let finalData = null;
+
+        await streamSSE(`${API}/stream/${currentDocId}/discover`, {
+          onStep(ev) {
+            const [iconCls, iconTxt] = stepIcon(ev.step);
+
+            if (ev.step === 'discovered_fact') {
+              // Each discovered fact gets its own step
+              const riskEmoji = ev.label.includes('HIGH') ? '🚨' : ev.label.includes('MEDIUM') ? '⚠️' : '💡';
+              addReasoningStep('discover', riskEmoji, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
+            } else if (!shownSteps.has(ev.step + '_' + ev.status)) {
+              shownSteps.add(ev.step + '_' + ev.status);
+              const isRunning = ev.status === 'running';
+              addReasoningStep(iconCls, iconTxt, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`, isRunning);
+            }
+            scrollChat();
+          },
+          onResult(data) { finalData = data; },
+          onError(err) { addAssistantMsg(`Stream error: ${err.message || 'Unknown'}`); },
+          onDone(d) {
+            completeReasoning(d.elapsed_ms || 0);
+
+            if (!finalData) return;
+            const data = finalData;
+            discoveredFacts = data.discovered_facts || [];
+            updateExtractionWithDiscovery(discoveredFacts.length);
+
+            let msgHtml = data.summary || `Discovered **${discoveredFacts.length}** hidden facts.`;
+            msgHtml += `<br><button class="download-btn" onclick="downloadReport('discover')">📥 Download Discovery Report</button>`;
+
+            addAssistantMsg(msgHtml, {
+              confidence: data.confidence,
+              retrieval_method: 'llm_discovery',
+              generation_time_ms: data.discovery_time_ms,
+              discovered_facts: discoveredFacts,
+            });
+          },
         });
-
-        const elapsed = Date.now() - startTime;
-
-        if (r.ok) {
-          const data = await safeJson(r);
-          discoveredFacts = data.discovered_facts || [];
-
-          addReasoningStep('graph', '🔗', `<strong>Found ${discoveredFacts.length} hidden facts</strong><div class="step-detail">${data.categories_found || 'Implicit obligations, hidden risks, unstated assumptions'}</div>`);
-
-          await sleep(200);
-          addReasoningStep('done', '✓', `<strong>Discovery complete</strong><div class="step-detail">${discoveredFacts.length} facts discovered beyond pattern extraction · ${(elapsed/1000).toFixed(1)}s</div>`);
-
-          completeReasoning(elapsed);
-
-          updateExtractionWithDiscovery(discoveredFacts.length);
-
-          addAssistantMsg(data.summary || `Discovered **${discoveredFacts.length}** hidden facts that go beyond pattern-based extraction.`, {
-            confidence: data.confidence,
-            retrieval_method: 'llm_discovery',
-            generation_time_ms: elapsed,
-            discovered_facts: discoveredFacts,
-          });
-        } else {
-          completeReasoning(elapsed);
-          const err = await safeJson(r).catch(() => ({}));
-          addAssistantMsg(`Discovery error: ${err.detail || r.statusText}`);
-        }
       } catch (e) {
-        completeReasoning(Date.now() - startTime);
+        completeReasoning(0);
         addAssistantMsg(`Connection error: ${e.message}`);
       }
 
@@ -1330,105 +1679,168 @@
       }
     }
 
-    // ── Review Against Playbook ─────────────────────────────
+    // ── SSE Stream Helper ────────────────────────────────────
+    function streamSSE(url, { onStep, onResult, onError, onDone }) {
+      return new Promise((resolve, reject) => {
+        const es = new EventSource(url);
+        es.addEventListener('step', e => { try { onStep(JSON.parse(e.data)); } catch(err) { console.error('step parse error', err); } });
+        es.addEventListener('result', e => { try { onResult(JSON.parse(e.data)); } catch(err) { console.error('result parse error', err); } });
+        es.addEventListener('error', e => {
+          if (es.readyState === EventSource.CLOSED) return;
+          try { onError(JSON.parse(e.data)); } catch { onError({ message: 'Stream error' }); }
+          es.close(); reject(new Error('Stream error'));
+        });
+        es.addEventListener('done', e => {
+          const d = JSON.parse(e.data);
+          es.close();
+          if (onDone) onDone(d);
+          resolve(d);
+        });
+        es.onerror = () => { es.close(); reject(new Error('SSE connection failed')); };
+      });
+    }
+
+    // Map step names to icons
+    const STEP_ICONS = {
+      load_playbook: ['search', '📋'], classify_clauses: ['read', '⚖️'],
+      risk_profile: ['graph', '📊'], generate_redlines: ['think', '✏️'],
+      negotiation_strategy: ['done', '🤝'],
+      load_checklist: ['search', '📝'], evaluate: ['think', '🧠'],
+      item_result: ['read', ''], classify: ['graph', '🚦'],
+      gather_context: ['search', '🔍'], build_prompt: ['read', '📖'],
+      llm_analysis: ['discover', '💡'], discovered_fact: ['graph', '🔗'],
+      gather: ['search', '📦'], extract: ['think', '📋'],
+      obligation: ['read', '📋'], analyze: ['think', '🧠'],
+      risk_item: ['graph', '⚠️'], missing: ['read', '🔓'],
+    };
+
+    function stepIcon(step, fallback) {
+      const m = STEP_ICONS[step];
+      return m || [fallback || 'think', '⚙️'];
+    }
+
+    // ── Review Against Playbook (SSE Streaming) ──────────────
     async function reviewAgainstPlaybook() {
       if (!currentDocId || isAsking) return;
       isAsking = true;
 
       addUserMsg('Review this contract against the standard playbook');
-
       createReasoningContainer('Reviewing against playbook...');
-      addReasoningStep('Loading playbook positions...');
-      await sleep(400);
-      addReasoningStep('Comparing clauses against standard positions...');
-      await sleep(600);
-      addReasoningStep('Classifying deviations (GREEN/YELLOW/RED)...');
-      await sleep(500);
-      addReasoningStep('Computing risk profile...');
+
+      // Track which steps we've shown to avoid duplicates
+      const shownSteps = new Set();
+      let lastStepEl = null;
 
       try {
-        const r = await fetch(`${API}/contracts/${currentDocId}/review`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ generate_redlines: true }),
-        });
-        const data = await safeJson(r);
+        let finalData = null;
 
-        addReasoningStep('Building negotiation strategy...');
-        await sleep(300);
-        completeReasoning(`Review complete: ${data.findings?.length || 0} findings`);
+        await streamSSE(`${API}/stream/${currentDocId}/review?user_side=buyer`, {
+          onStep(ev) {
+            const [iconCls, iconTxt] = stepIcon(ev.step);
+            const isRunning = ev.status === 'running';
 
-        // Build review results HTML
-        let html = '';
-
-        // Summary bar
-        html += `<div class="review-summary">
-          <div class="review-count"><span class="dot green"></span> ${data.green_count || 0} GREEN</div>
-          <div class="review-count"><span class="dot yellow"></span> ${data.yellow_count || 0} YELLOW</div>
-          <div class="review-count"><span class="dot red"></span> ${data.red_count || 0} RED</div>
-        </div>`;
-
-        // Risk profile
-        if (data.risk_profile) {
-          const rp = data.risk_profile;
-          html += `<div style="font-size:12px; color:var(--text-dim); margin-bottom:8px">
-            Overall Risk: <strong style="color:var(--text)">${(rp.overall_level || 'unknown').toUpperCase()}</strong>
-            (score: ${rp.overall_score || 0})
-            — Tier 1: ${rp.tier_1_issues || 0}, Tier 2: ${rp.tier_2_issues || 0}
-          </div>`;
-
-          // Mini risk matrix
-          if (rp.risk_distribution) {
-            const dist = rp.risk_distribution;
-            html += `<div style="display:flex; gap:6px; margin-bottom:10px; font-size:11px">`;
-            for (const [level, count] of Object.entries(dist)) {
-              if (count > 0) {
-                const cls = level === 'critical' ? 'red' : level;
-                html += `<span class="severity-badge ${cls}">${level}: ${count}</span>`;
+            // For running steps, create a new element; for done, update or create
+            if (isRunning && !shownSteps.has(ev.step)) {
+              shownSteps.add(ev.step);
+              addReasoningStep(iconCls, iconTxt, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`, isRunning);
+            } else {
+              // Update the last step or add a new one
+              if (ev.step === 'classify_clauses' && ev.progress) {
+                // Update progress inline
+                updateLastReasoningStep(`<strong>${ev.label}</strong><div class="step-detail">${ev.detail}</div><div class="step-progress"><span class="sp-green">${ev.progress.green} GREEN</span><span class="sp-yellow">${ev.progress.yellow} YELLOW</span><span class="sp-red">${ev.progress.red} RED</span></div>`, !isRunning);
+              } else if (ev.step === 'item_result') {
+                // Each triage item gets its own step
+                const itemIcon = ev.label.startsWith('✅') ? 'done' : ev.label.startsWith('❌') ? 'read' : 'think';
+                const itemEmoji = ev.label.startsWith('✅') ? '✅' : ev.label.startsWith('❌') ? '❌' : '🔍';
+                addReasoningStep(itemIcon, itemEmoji, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
+              } else if (!shownSteps.has(ev.step + '_done') || ev.status === 'done') {
+                shownSteps.add(ev.step + '_done');
+                addReasoningStep(iconCls, iconTxt, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
               }
             }
-            html += `</div>`;
-          }
-        }
+            scrollChat();
+          },
+          onResult(data) { finalData = data; },
+          onError(err) { addAssistantMsg(`Stream error: ${err.message || 'Unknown'}`); },
+          onDone(d) {
+            completeReasoning(d.elapsed_ms || 0);
 
-        // Findings
-        if (data.findings && data.findings.length > 0) {
-          html += `<div class="review-findings">`;
-          for (const f of data.findings) {
-            const sev = f.severity || 'yellow';
-            html += `<div class="review-finding severity-${sev}" onclick="highlightFinding('${(f.current_language || '').replace(/'/g, "\\'")}')">
-              <div class="finding-header">
-                <span class="severity-badge ${sev}">${sev}</span>
-                <span class="finding-heading">${f.clause_heading || f.clause_type}</span>
-              </div>
-              <div class="finding-desc">${f.deviation_description || ''}</div>
-              ${f.business_impact ? `<div class="finding-impact">Impact: ${f.business_impact}</div>` : ''}
-              ${f.redline ? `<div class="redline-section">
-                <div class="redline-label">Suggested Redline</div>
-                <div class="redline-text">${f.redline.proposed_language || ''}</div>
-                ${f.redline.rationale ? `<div style="font-size:11px; color:var(--text-dim); margin-top:4px">Rationale: ${f.redline.rationale}</div>` : ''}
-              </div>` : ''}
+            if (!finalData) return;
+            const data = finalData;
+
+            let html = '';
+
+            // Summary bar
+            html += `<div class="review-summary">
+              <div class="review-count"><span class="dot green"></span> ${data.green_count || 0} GREEN</div>
+              <div class="review-count"><span class="dot yellow"></span> ${data.yellow_count || 0} YELLOW</div>
+              <div class="review-count"><span class="dot red"></span> ${data.red_count || 0} RED</div>
             </div>`;
-          }
-          html += `</div>`;
-        }
 
-        // Negotiation strategy
-        if (data.negotiation_strategy) {
-          html += `<div class="strategy-section">
-            <div class="strategy-label">Negotiation Strategy</div>
-            <div class="strategy-text">${data.negotiation_strategy}</div>
-          </div>`;
-        }
+            // Risk profile
+            if (data.risk_profile) {
+              const rp = data.risk_profile;
+              html += `<div style="font-size:12px; color:var(--text-dim); margin-bottom:8px">
+                Overall Risk: <strong style="color:var(--text)">${(rp.overall_level || 'unknown').toUpperCase()}</strong>
+                (score: ${rp.overall_score || 0})
+                — Tier 1: ${rp.tier_1_issues || 0}, Tier 2: ${rp.tier_2_issues || 0}
+              </div>`;
+              if (rp.risk_distribution) {
+                const dist = rp.risk_distribution;
+                html += `<div style="display:flex; gap:6px; margin-bottom:10px; font-size:11px">`;
+                for (const [level, count] of Object.entries(dist)) {
+                  if (count > 0) {
+                    const cls = level === 'critical' ? 'red' : level;
+                    html += `<span class="severity-badge ${cls}">${level}: ${count}</span>`;
+                  }
+                }
+                html += `</div>`;
+              }
+            }
 
-        // Summary
-        if (data.summary) {
-          html += `<div style="margin-top:8px; font-size:12px; color:var(--text-dim); font-style:italic">${data.summary}</div>`;
-        }
+            // Findings
+            if (data.findings && data.findings.length > 0) {
+              html += `<div class="review-findings">`;
+              for (const f of data.findings) {
+                const sev = f.severity || 'yellow';
+                html += `<div class="review-finding severity-${sev}" onclick="highlightFinding('${(f.current_language || '').replace(/'/g, "\\'")}')">
+                  <div class="finding-header">
+                    <span class="severity-badge ${sev}">${sev}</span>
+                    <span class="finding-heading">${f.clause_heading || f.clause_type}</span>
+                  </div>
+                  <div class="finding-desc">${f.deviation_description || ''}</div>
+                  ${f.business_impact ? `<div class="finding-impact">Impact: ${f.business_impact}</div>` : ''}
+                  ${f.redline ? `<div class="redline-section">
+                    <div class="redline-label">Suggested Redline</div>
+                    <div class="redline-text">${f.redline.proposed_language || ''}</div>
+                    ${f.redline.rationale ? `<div style="font-size:11px; color:var(--text-dim); margin-top:4px">Rationale: ${f.redline.rationale}</div>` : ''}
+                    ${f.redline.fallback_language ? `<div style="font-size:11px; color:var(--orange); margin-top:4px">Fallback: ${f.redline.fallback_language}</div>` : ''}
+                  </div>` : ''}
+                </div>`;
+              }
+              html += `</div>`;
+            }
 
-        addAssistantMsg(html);
+            // Negotiation strategy
+            if (data.negotiation_strategy) {
+              html += `<div class="strategy-section">
+                <div class="strategy-label">Negotiation Strategy</div>
+                <div class="strategy-text">${data.negotiation_strategy}</div>
+              </div>`;
+            }
+
+            if (data.summary) {
+              html += `<div style="margin-top:8px; font-size:12px; color:var(--text-dim); font-style:italic">${data.summary}</div>`;
+            }
+
+            // Download button
+            html += `<button class="download-btn" onclick="downloadReport('review')">📥 Download Review Report</button>`;
+
+            addAssistantMsg(html);
+          },
+        });
       } catch (e) {
-        completeReasoning('Review failed');
+        completeReasoning(0);
         addAssistantMsg(`Error during playbook review: ${e.message}`);
       }
       isAsking = false;
@@ -1439,88 +1851,275 @@
       findAndHighlightText(text.substring(0, 80));
     }
 
-    // ── NDA Triage ──────────────────────────────────────────
+    // ── NDA Triage (SSE Streaming) ──────────────────────────
     async function triageNDA() {
       if (!currentDocId || isAsking) return;
       isAsking = true;
 
       addUserMsg('Run NDA triage screening on this contract');
-
       createReasoningContainer('Running NDA triage...');
-      addReasoningStep('Loading 10-point NDA checklist...');
-      await sleep(400);
-      addReasoningStep('Running automated checks (carveouts, term, governing law)...');
-      await sleep(600);
-      addReasoningStep('LLM verification of hybrid items...');
-      await sleep(500);
-      addReasoningStep('Computing classification...');
+
+      const shownSteps = new Set();
 
       try {
-        const r = await fetch(`${API}/contracts/${currentDocId}/triage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-        const data = await safeJson(r);
+        let finalData = null;
 
-        completeReasoning(`Triage complete: ${data.classification?.level?.toUpperCase() || 'UNKNOWN'}`);
+        await streamSSE(`${API}/stream/${currentDocId}/triage`, {
+          onStep(ev) {
+            const [iconCls, iconTxt] = stepIcon(ev.step);
 
-        let html = '';
+            if (ev.step === 'item_result') {
+              // Each checklist item gets its own step with pass/fail icon
+              const itemEmoji = ev.label.startsWith('✅') ? '✅' : ev.label.startsWith('❌') ? '❌' : '🔍';
+              const itemCls = ev.label.startsWith('✅') ? 'done' : ev.label.startsWith('❌') ? 'read' : 'think';
+              addReasoningStep(itemCls, itemEmoji, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
+            } else if (ev.step === 'evaluate' && ev.status === 'running') {
+              if (!shownSteps.has('evaluate')) {
+                shownSteps.add('evaluate');
+                addReasoningStep('think', '🧠', `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`, true);
+              } else {
+                updateLastReasoningStep(`<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`, false);
+              }
+            } else if (!shownSteps.has(ev.step)) {
+              shownSteps.add(ev.step);
+              addReasoningStep(iconCls, iconTxt, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
+            }
+            scrollChat();
+          },
+          onResult(data) { finalData = data; },
+          onError(err) { addAssistantMsg(`Stream error: ${err.message || 'Unknown'}`); },
+          onDone(d) {
+            completeReasoning(d.elapsed_ms || 0);
 
-        // Classification badge
-        if (data.classification) {
-          const c = data.classification;
-          const level = c.level || 'yellow';
-          const icon = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
-          html += `<div style="text-align:center; margin-bottom:12px">
-            <div class="triage-badge ${level}">
-              <span class="triage-icon">${icon}</span>
-              ${level.toUpperCase()}
-            </div>
-            <div style="font-size:12px; color:var(--text-dim); margin-top:8px">${c.routing || ''}</div>
-            <div style="font-size:11px; color:var(--text-dim)">Timeline: ${c.timeline || 'N/A'}</div>
-          </div>`;
-        }
+            if (!finalData) return;
+            const data = finalData;
 
-        // Checklist results
-        if (data.checklist_results && data.checklist_results.length > 0) {
-          html += `<div style="margin-top:10px">`;
-          for (const cr of data.checklist_results) {
-            const icon = cr.status === 'pass' ? '✅' : cr.status === 'fail' ? '❌' : cr.status === 'n/a' ? '➖' : '🔍';
-            html += `<div class="checklist-item">
-              <span class="checklist-icon">${icon}</span>
-              <span class="checklist-name">${cr.name}</span>
-              <span class="checklist-finding" title="${(cr.finding || '').replace(/"/g, '&quot;')}">${cr.finding || ''}</span>
+            let html = '';
+
+            // Classification badge
+            if (data.classification) {
+              const c = data.classification;
+              const level = c.level || 'yellow';
+              const icon = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+              html += `<div style="text-align:center; margin-bottom:12px">
+                <div class="triage-badge ${level}">
+                  <span class="triage-icon">${icon}</span>
+                  ${level.toUpperCase()}
+                </div>
+                <div style="font-size:12px; color:var(--text-dim); margin-top:8px">${c.routing || ''}</div>
+                <div style="font-size:11px; color:var(--text-dim)">Timeline: ${c.timeline || 'N/A'}</div>
+              </div>`;
+            }
+
+            // Checklist results
+            if (data.checklist_results && data.checklist_results.length > 0) {
+              html += `<div style="margin-top:10px">`;
+              for (const cr of data.checklist_results) {
+                const icon = cr.status === 'pass' ? '✅' : cr.status === 'fail' ? '❌' : cr.status === 'n/a' ? '➖' : '🔍';
+                html += `<div class="checklist-item">
+                  <span class="checklist-icon">${icon}</span>
+                  <span class="checklist-name">${cr.name}</span>
+                  <span class="checklist-finding" title="${(cr.finding || '').replace(/"/g, '&quot;')}">${cr.finding || ''}</span>
+                </div>`;
+              }
+              html += `</div>`;
+            }
+
+            // Key issues
+            if (data.key_issues && data.key_issues.length > 0) {
+              html += `<div style="margin-top:10px; padding:8px; background:rgba(225,112,85,0.08); border-radius:8px; border:1px solid rgba(225,112,85,0.2)">
+                <div style="font-size:11px; color:#e17055; font-weight:600; margin-bottom:4px">KEY ISSUES</div>`;
+              for (const issue of data.key_issues) {
+                html += `<div style="font-size:12px; color:var(--text); margin-bottom:2px">• ${issue}</div>`;
+              }
+              html += `</div>`;
+            }
+
+            if (data.summary) {
+              html += `<div style="margin-top:8px; font-size:12px; color:var(--text-dim); font-style:italic">${data.summary}</div>`;
+            }
+
+            html += `<div style="margin-top:8px; font-size:11px; color:var(--text-dim)">
+              ${data.pass_count || 0} passed · ${data.fail_count || 0} failed · ${data.review_count || 0} needs review
+              · ${data.triage_time_ms || 0}ms
             </div>`;
-          }
-          html += `</div>`;
-        }
 
-        // Key issues
-        if (data.key_issues && data.key_issues.length > 0) {
-          html += `<div style="margin-top:10px; padding:8px; background:rgba(225,112,85,0.08); border-radius:8px; border:1px solid rgba(225,112,85,0.2)">
-            <div style="font-size:11px; color:#e17055; font-weight:600; margin-bottom:4px">KEY ISSUES</div>`;
-          for (const issue of data.key_issues) {
-            html += `<div style="font-size:12px; color:var(--text); margin-bottom:2px">• ${issue}</div>`;
-          }
-          html += `</div>`;
-        }
+            // Download button
+            html += `<button class="download-btn" onclick="downloadReport('triage')">📥 Download Triage Report</button>`;
 
-        // Summary
-        if (data.summary) {
-          html += `<div style="margin-top:8px; font-size:12px; color:var(--text-dim); font-style:italic">${data.summary}</div>`;
-        }
-
-        // Counts
-        html += `<div style="margin-top:8px; font-size:11px; color:var(--text-dim)">
-          ${data.pass_count || 0} passed · ${data.fail_count || 0} failed · ${data.review_count || 0} needs review
-          · ${data.triage_time_ms || 0}ms
-        </div>`;
-
-        addAssistantMsg(html);
+            addAssistantMsg(html);
+          },
+        });
       } catch (e) {
-        completeReasoning('Triage failed');
+        completeReasoning(0);
         addAssistantMsg(`Error during NDA triage: ${e.message}`);
+      }
+      isAsking = false;
+    }
+
+    // ── Extract Obligations (SSE Streaming) ─────────────────
+    async function extractObligations() {
+      if (!currentDocId || isAsking) return;
+      isAsking = true;
+
+      addUserMsg('Extract all contractual obligations from this contract');
+      createReasoningContainer('Extracting obligations...');
+
+      const shownSteps = new Set();
+
+      try {
+        let finalData = null;
+
+        await streamSSE(`${API}/stream/${currentDocId}/obligations`, {
+          onStep(ev) {
+            const [iconCls, iconTxt] = stepIcon(ev.step);
+            if (ev.step === 'obligation') {
+              const emoji = ev.label.startsWith('📋') ? '📋' : ev.label.startsWith('🚫') ? '🚫' : '⚡';
+              addReasoningStep('read', emoji, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
+            } else if (!shownSteps.has(ev.step + '_' + ev.status)) {
+              shownSteps.add(ev.step + '_' + ev.status);
+              addReasoningStep(iconCls, iconTxt, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`, ev.status === 'running');
+            }
+            scrollChat();
+          },
+          onResult(data) { finalData = data; },
+          onError(err) { addAssistantMsg(`Stream error: ${err.message || 'Unknown'}`); },
+          onDone(d) {
+            completeReasoning(d.elapsed_ms || 0);
+            if (!finalData) return;
+            const data = finalData;
+
+            let html = `<div style="font-size:13px;color:var(--text);margin-bottom:10px">${data.summary}</div>`;
+            html += `<div style="display:flex;gap:12px;margin-bottom:10px;font-size:12px">
+              <span style="color:var(--green)">📋 ${data.total_affirmative || 0} Affirmative</span>
+              <span style="color:var(--red)">🚫 ${data.total_negative || 0} Negative</span>
+              <span style="color:var(--yellow)">⚡ ${data.total_conditional || 0} Conditional</span>
+            </div>`;
+
+            if (data.obligations && data.obligations.length > 0) {
+              html += `<div style="margin-top:8px">`;
+              for (const ob of data.obligations) {
+                const typeIcon = ob.type === 'affirmative' ? '📋' : ob.type === 'negative' ? '🚫' : '⚡';
+                const typeColor = ob.type === 'affirmative' ? 'var(--green)' : ob.type === 'negative' ? 'var(--red)' : 'var(--yellow)';
+                html += `<div style="padding:8px;margin-bottom:6px;background:var(--surface3);border-radius:6px;border-left:3px solid ${typeColor}">
+                  <div style="font-size:12px;font-weight:600;color:var(--text)">${typeIcon} [${ob.party || '?'}] ${ob.description || ''}</div>
+                  ${ob.deadline ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px">⏰ ${ob.deadline}</div>` : ''}
+                  ${ob.clause_reference ? `<div style="font-size:11px;color:var(--accent);margin-top:2px">§ ${ob.clause_reference}</div>` : ''}
+                  ${ob.risk_if_breached ? `<div style="font-size:11px;color:var(--orange);margin-top:2px">Risk: ${ob.risk_if_breached}</div>` : ''}
+                </div>`;
+              }
+              html += `</div>`;
+            }
+
+            html += `<div style="margin-top:6px;font-size:11px;color:var(--text-dim)">${data.elapsed_ms || 0}ms</div>`;
+            addAssistantMsg(html);
+          },
+        });
+      } catch (e) {
+        completeReasoning(0);
+        addAssistantMsg(`Error extracting obligations: ${e.message}`);
+      }
+      isAsking = false;
+    }
+
+    // ── Risk Memo (SSE Streaming) ─────────────────────────────
+    async function generateRiskMemo() {
+      if (!currentDocId || isAsking) return;
+      isAsking = true;
+
+      addUserMsg('Generate a comprehensive risk memo for this contract');
+      createReasoningContainer('Generating risk memo...');
+
+      const shownSteps = new Set();
+
+      try {
+        let finalData = null;
+
+        await streamSSE(`${API}/stream/${currentDocId}/risk-memo`, {
+          onStep(ev) {
+            const [iconCls, iconTxt] = stepIcon(ev.step);
+            if (ev.step === 'risk_item') {
+              addReasoningStep('graph', ev.label.charAt(0), `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
+            } else if (ev.step === 'missing') {
+              addReasoningStep('read', '🔓', `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`);
+            } else if (!shownSteps.has(ev.step + '_' + ev.status)) {
+              shownSteps.add(ev.step + '_' + ev.status);
+              addReasoningStep(iconCls, iconTxt, `<strong>${ev.label}</strong><div class="step-detail">${ev.detail || ''}</div>`, ev.status === 'running');
+            }
+            scrollChat();
+          },
+          onResult(data) { finalData = data; },
+          onError(err) { addAssistantMsg(`Stream error: ${err.message || 'Unknown'}`); },
+          onDone(d) {
+            completeReasoning(d.elapsed_ms || 0);
+            if (!finalData) return;
+            const data = finalData;
+
+            const ratingColor = data.overall_risk_rating === 'critical' ? 'var(--red)' :
+              data.overall_risk_rating === 'high' ? 'var(--orange)' :
+              data.overall_risk_rating === 'medium' ? 'var(--yellow)' : 'var(--green)';
+
+            let html = `<div style="text-align:center;margin-bottom:12px">
+              <span style="display:inline-block;padding:8px 20px;background:${ratingColor}20;border:2px solid ${ratingColor};border-radius:8px;font-weight:700;color:${ratingColor};font-size:16px">
+                ${(data.overall_risk_rating || 'N/A').toUpperCase()} RISK
+              </span>
+            </div>`;
+
+            html += `<div style="font-size:13px;color:var(--text);margin-bottom:12px;padding:10px;background:var(--surface3);border-radius:8px">${data.executive_summary || ''}</div>`;
+
+            // Key risks
+            if (data.key_risks && data.key_risks.length > 0) {
+              html += `<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px">Key Risks</div>`;
+              for (const risk of data.key_risks) {
+                const sev = risk.severity || 3;
+                const color = sev >= 4 ? 'var(--red)' : sev >= 3 ? 'var(--orange)' : 'var(--yellow)';
+                html += `<div style="padding:8px;margin-bottom:4px;background:var(--surface3);border-radius:6px;border-left:3px solid ${color}">
+                  <div style="font-size:12px;font-weight:600;color:var(--text)">${risk.risk || ''}</div>
+                  <div style="font-size:11px;color:var(--text-dim);margin-top:2px">Severity: ${sev}/5 · Likelihood: ${risk.likelihood || '?'}/5 · ${risk.category || ''}</div>
+                  ${risk.mitigation ? `<div style="font-size:11px;color:var(--green);margin-top:2px">Mitigation: ${risk.mitigation}</div>` : ''}
+                </div>`;
+              }
+            }
+
+            // Missing protections
+            if (data.missing_protections && data.missing_protections.length > 0) {
+              html += `<div style="margin-top:10px;padding:8px;background:rgba(255,107,107,0.08);border-radius:8px;border:1px solid rgba(255,107,107,0.2)">
+                <div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">MISSING PROTECTIONS</div>`;
+              for (const m of data.missing_protections) {
+                html += `<div style="font-size:12px;color:var(--text);margin-bottom:2px">• ${m}</div>`;
+              }
+              html += `</div>`;
+            }
+
+            // Recommendations
+            if (data.recommendations && data.recommendations.length > 0) {
+              html += `<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Recommendations</div>`;
+              for (const rec of data.recommendations) {
+                const pColor = rec.priority === 'high' ? 'var(--red)' : rec.priority === 'medium' ? 'var(--yellow)' : 'var(--green)';
+                html += `<div style="font-size:12px;color:var(--text);margin-bottom:3px">
+                  <span style="color:${pColor};font-weight:600">[${(rec.priority || '').toUpperCase()}]</span> ${rec.action || ''}
+                  ${rec.owner ? `<span style="color:var(--text-dim);font-size:11px"> → ${rec.owner}</span>` : ''}
+                </div>`;
+              }
+            }
+
+            // Escalation items
+            if (data.escalation_items && data.escalation_items.length > 0) {
+              html += `<div style="margin-top:10px;padding:8px;background:rgba(255,159,67,0.08);border-radius:8px;border:1px solid rgba(255,159,67,0.2)">
+                <div style="font-size:11px;color:var(--orange);font-weight:600;margin-bottom:4px">ESCALATION REQUIRED</div>`;
+              for (const esc of data.escalation_items) {
+                html += `<div style="font-size:12px;color:var(--text);margin-bottom:2px">🚨 ${esc}</div>`;
+              }
+              html += `</div>`;
+            }
+
+            html += `<div style="margin-top:6px;font-size:11px;color:var(--text-dim)">${data.elapsed_ms || 0}ms</div>`;
+            addAssistantMsg(html);
+          },
+        });
+      } catch (e) {
+        completeReasoning(0);
+        addAssistantMsg(`Error generating risk memo: ${e.message}`);
       }
       isAsking = false;
     }

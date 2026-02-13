@@ -1086,6 +1086,88 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 
 ---
 
+## Phase 12: SSE Streaming, Expanded Legal Analysis, Reports & Bug Fixes [COMPLETE]
+
+**Goal**: Real-time progressive reasoning via Server-Sent Events, expanded legal analysis (obligation extraction, risk memo generation), HTML report downloads, performance improvements via parallel LLM batching, and bug fixes for JSON parsing of truncated LLM responses.
+
+**Tests**: 36 new tests (691 total passing)
+
+### Streaming Endpoints (T243–T248)
+
+- [x] T243 Create SSE streaming infrastructure in `src/contractos/api/routes/stream.py`:
+  - `_sse_event()` helper for formatting Server-Sent Events
+  - Event types: `step` (intermediate progress), `result` (final payload), `error`, `done`
+  - All endpoints use `StreamingResponse` with `text/event-stream` media type
+- [x] T244 `GET /stream/{document_id}/review` — progressive playbook review:
+  - Streams clause-by-clause analysis with parallel LLM batching (batch_size=3)
+  - Step events: `load_playbook`, `classify` (per batch), `redline` (parallel), `aggregate`
+  - Result event: full `ReviewResult` with findings, risk profile, strategy
+- [x] T245 `GET /stream/{document_id}/triage` — progressive NDA triage:
+  - Streams per-checklist-item evaluation with parallel batching
+  - Step events: `load_checklist`, `evaluate` (per batch), `classify`
+  - Result event: full `TriageResult` with classification, routing
+- [x] T246 `GET /stream/{document_id}/discover` — progressive hidden fact discovery:
+  - Step events: `gather_context`, `build_prompt`, `llm_analysis`, per-fact `discovered_fact`
+  - Result event: full `DiscoveryResult` with confidence
+- [x] T247 `GET /stream/{document_id}/obligations` — obligation extraction:
+  - LLM-powered extraction of affirmative, negative, and conditional obligations
+  - System prompt limits to top 15 obligations with concise fields
+  - `max_tokens=16384` to handle complex contracts
+  - Step events: `gather`, `extract`, per-obligation `obligation`
+- [x] T248 `GET /stream/{document_id}/risk-memo` — risk memo generation:
+  - LLM-powered structured risk assessment
+  - System prompt: executive summary, key risks (max 8), missing protections, recommendations
+  - Step events: `gather`, `analyze`, per-risk `risk_item`, `missing`, `recommendation`
+
+### Report Download (T249)
+
+- [x] T249 `GET /stream/{document_id}/report?type=review|triage|discovery` — HTML report generation:
+  - Professional dark-theme HTML reports with print-friendly CSS
+  - Three report types: review (findings + redlines), triage (classification + checklist), discovery (hidden facts)
+  - `_report_template()` base HTML + `_generate_review_report()`, `_generate_triage_report()`, `_generate_discovery_report()`
+
+### Bug Fixes (T250–T252)
+
+- [x] T250 Fix `ConfidenceDisplay.score` → `ConfidenceDisplay.value` attribute error in discovery stream
+- [x] T251 Fix truncated LLM JSON parsing for obligations — generic `_salvage_array_objects()` helper:
+  - Walks character-by-character through truncated JSON arrays
+  - Handles escaped quotes, nested objects, strings containing braces
+  - Salvageable keys: `discovered_facts`, `obligations`, `key_risks`, `recommendations`, `missing_protections`, `escalation_items`
+  - Extracts scalar fields (summary, totals) from text before the truncated array
+- [x] T252 Update obligation system prompt to limit to top 15 obligations and place summary before array to survive truncation
+
+### Copilot UI Updates (T253–T256)
+
+- [x] T253 `streamSSE()` helper function in copilot.html — generic EventSource consumer
+- [x] T254 Progressive reasoning steps with `isRunning` animation:
+  - `addReasoningStep(iconClass, iconText, html, isRunning)` — supports running/done states
+  - `updateLastReasoningStep(html, markDone)` — update active step details
+  - `completeReasoning(timeMs)` — clears both `activeReasoning` and `reasoningSteps` IDs (fixes DOM collision bug)
+- [x] T255 New quick-action buttons: "Extract Obligations" and "Generate Risk Memo"
+- [x] T256 `downloadReport(reportType)` — client-side report download trigger
+
+### Tests (T257–T260)
+
+- [x] T257 Unit tests for lenient JSON parser (`tests/unit/test_lenient_json_parser.py`) — 19 tests:
+  - `TestParseLenientJsonBaseline` (6): valid JSON, arrays, markdown fenced, surrounding text, trailing commas
+  - `TestSalvageArrayObjects` (8): complete arrays, truncated arrays, empty, nested, string braces, escaped quotes, mid-string truncation
+  - `TestParseLenientJsonObligations` (2): truncated obligations salvaged, complete obligations parsed
+  - `TestParseLenientJsonRiskMemo` (2): truncated key_risks salvaged, complete risk memo parsed
+  - `TestParseLenientJsonDiscoveredFacts` (1): backward-compat truncated discovered_facts
+- [x] T258 Integration tests for SSE streaming endpoints (`tests/integration/test_stream_endpoints.py`) — 17 tests:
+  - `TestStreamEndpoints404` (6): all 6 streaming endpoints return 404 for missing documents
+  - `TestObligationStream` (2): full obligation stream with events, truncated response handling
+  - `TestRiskMemoStream` (1): risk memo stream with events
+  - `TestReviewStream` (1): review stream returns 200 with SSE events
+  - `TestTriageStream` (1): triage stream returns 200 with SSE events
+  - `TestDiscoverStream` (1): discover stream with result events
+  - `TestReportDownload` (3): report requires type, review/triage/discovery HTML reports
+  - `TestSSEEventFormat` (1): verify event/data structure
+
+**Checkpoint**: ✅ SSE streaming operational. Obligation extraction and risk memo working. Truncated JSON salvage generic. Progressive UI. Report downloads. **691 tests total.**
+
+---
+
 ## Test Coverage Summary
 
 | Phase | Unit Tests | Integration Tests | Contract Tests | Total Tests |
@@ -1105,15 +1187,16 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 10b (ComplianceAgent) | 1 | 1 | 0 | 2 |
 | Phase 10c (DraftAgent) | 1 | 1 | 0 | 2 |
 | Phase 10d (NDA Triage) | 2 | 1 | 0 | 3 |
-| **Total** | **74** | **22** | **6** | **102** |
+| Phase 12 (SSE Streaming + Bug Fixes) | 19 | 17 | 0 | 36 |
+| **Total** | **93** | **39** | **6** | **138** |
 
 ## Task Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 238 |
-| Test tasks | 115 (48%) |
-| Implementation tasks | 123 (52%) |
+| Total tasks | 256 |
+| Test tasks | 119 (46%) |
+| Implementation tasks | 137 (54%) |
 | Phase 1 (Setup) | 5 tasks |
 | Phase 2 (Foundation) | 35 tasks |
 | Phase 3–7 (User Stories) | 71 tasks |
@@ -1130,13 +1213,15 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | **Phase 10d (NDA Triage)** | **10 tasks** |
 | **Phase 10e (Copilot UI)** | **5 tasks** |
 | **Phase 10f (Polish)** | **5 tasks** |
-| Total passing tests | 743 |
+| **Phase 12 (SSE Streaming)** | **18 tasks** |
+| Total passing tests | 691 |
 | Real NDA documents tested | 50 (from ContractNLI) |
 | Deployment configs | 4 (Docker, Railway, Render, Procfile) |
 | Parallelizable tasks | 72 (30%) |
 | MVP scope (through Phase 5) | 86 tasks |
 | Full scope (through Phase 8d) | 195 tasks |
 | Phase 10 scope | 43 tasks (T200–T242) |
+| Phase 12 scope | 18 tasks (T243–T260) |
 
 ---
 

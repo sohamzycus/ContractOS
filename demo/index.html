@@ -401,6 +401,17 @@ const ENDPOINTS = [
     body: JSON.stringify({ user_side: "buyer", generate_redlines: true }, null, 2) },
   { name: "Triage NDA", method: "POST", path: "/contracts/{document_id}/triage",
     body: JSON.stringify({}, null, 2) },
+  { name: "Discover Hidden Facts", method: "POST", path: "/contracts/{document_id}/discover", body: null },
+
+  { section: "SSE Streaming (Progressive)" },
+  { name: "Stream Review (SSE)", method: "GET", path: "/stream/{document_id}/review?user_side=buyer", body: null },
+  { name: "Stream Triage (SSE)", method: "GET", path: "/stream/{document_id}/triage", body: null },
+  { name: "Stream Discovery (SSE)", method: "GET", path: "/stream/{document_id}/discover", body: null },
+  { name: "Stream Obligations (SSE)", method: "GET", path: "/stream/{document_id}/obligations", body: null },
+  { name: "Stream Risk Memo (SSE)", method: "GET", path: "/stream/{document_id}/risk-memo", body: null },
+  { name: "Download Review Report", method: "GET", path: "/stream/{document_id}/report?report_type=review", body: null },
+  { name: "Download Triage Report", method: "GET", path: "/stream/{document_id}/report?report_type=triage", body: null },
+  { name: "Download Discovery Report", method: "GET", path: "/stream/{document_id}/report?report_type=discover", body: null },
 
   { section: "Workspaces" },
   { name: "Create Workspace", method: "POST", path: "/workspaces",
