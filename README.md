@@ -112,6 +112,12 @@ curl -X POST http://127.0.0.1:8742/query/ask \
 | `DELETE` | `/workspaces/{id}/documents/{doc_id}` | Remove document from workspace |
 | `GET` | `/workspaces/{id}/sessions` | Session history for workspace |
 | `GET` | `/workspaces/{id}/documents/{doc_id}/check` | Document change detection |
+| `GET` | `/stream/{id}/review` | **SSE Stream** — progressive playbook review |
+| `GET` | `/stream/{id}/triage` | **SSE Stream** — progressive NDA triage |
+| `GET` | `/stream/{id}/discover` | **SSE Stream** — progressive hidden fact discovery |
+| `GET` | `/stream/{id}/obligations` | **SSE Stream** — obligation extraction |
+| `GET` | `/stream/{id}/risk-memo` | **SSE Stream** — risk memo generation |
+| `GET` | `/stream/{id}/report?type=` | **Report download** — HTML report (review/triage/discovery) |
 
 ### Example: Full Pipeline
 
@@ -391,7 +397,7 @@ npm install -g newman newman-reporter-htmlextra
 ### Run the Full Suite
 
 ```bash
-# All 743 tests
+# All 691 tests
 python -m pytest tests/
 
 # Verbose output
@@ -477,7 +483,7 @@ python -m pytest tests/integration/test_real_nda_documents.py -v
 
 ## Test Report
 
-**743 tests, all passing** (Python 3.14.2, pytest 9.0.2)
+**691 tests, all passing** (Python 3.14.2, pytest 9.0.2)
 
 ### Test Breakdown by Module
 
@@ -534,16 +540,18 @@ python -m pytest tests/integration/test_real_nda_documents.py -v
 | `test_review_endpoint.py` (integration) | 4 | Integration — playbook review API |
 | `test_discovery_endpoint.py` (integration) | 4 | Integration — hidden fact discovery API |
 | `test_conversation_context_endpoint.py` (integration) | 4 | Integration — conversation context API |
+| `test_lenient_json_parser.py` | 19 | Unit — truncated JSON salvage for obligations, risk memo |
+| `test_stream_endpoints.py` (integration) | 17 | Integration — SSE streaming, obligations, risk memo, reports |
 | `test_triage_endpoint.py` (integration) | 3 | Integration — NDA triage API |
 | `test_workspace_persistence.py` (integration) | 3 | Integration — persistence across restart |
-| **Total** | **743** | |
+| **Total** | **691** | |
 
 ### Test Breakdown by Category
 
 | Category | Tests | Description |
 |----------|------:|-------------|
-| Unit Tests | 505 | Models, tools, storage, agents, FAISS, playbook, risk, triage, compliance |
-| Integration Tests | 139 | API pipeline, LegalBench extraction, multi-doc, real NDA, review, triage |
+| Unit Tests | 524 | Models, tools, storage, agents, FAISS, playbook, risk, triage, compliance, JSON parser |
+| Integration Tests | 156 | API pipeline, LegalBench, multi-doc, real NDA, review, triage, SSE streams |
 | Contract Tests | 27 | API contract tests via TestClient |
 | Benchmark Tests | 61 | LegalBench contract_nli, definition extraction, contract QA |
 | **Total** | **743** | **All passing** |

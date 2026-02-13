@@ -111,6 +111,54 @@ class DiscoveryResult:
         }
 
 
+def _salvage_array_objects(text: str, arr_content_start: int) -> list[dict[str, Any]]:
+    """Extract complete JSON objects from a (possibly truncated) array.
+
+    Walks character-by-character starting at ``arr_content_start``
+    (which should point just past the opening ``[``) and collects every
+    complete ``{ … }`` block it can parse.
+    """
+    items: list[dict[str, Any]] = []
+    depth = 0
+    obj_start: int | None = None
+    in_string = False
+    escape_next = False
+
+    for i in range(arr_content_start, len(text)):
+        ch = text[i]
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\':
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            if depth == 0:
+                obj_start = i
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0 and obj_start is not None:
+                obj_text = text[obj_start : i + 1]
+                try:
+                    items.append(json.loads(obj_text))
+                except json.JSONDecodeError:
+                    cleaned = re.sub(r",\s*([}\]])", r"\1", obj_text)
+                    try:
+                        items.append(json.loads(cleaned))
+                    except json.JSONDecodeError:
+                        pass
+                obj_start = None
+        elif ch == ']' and depth == 0:
+            break
+    return items
+
+
 def _parse_lenient_json(text: str) -> dict[str, Any]:
     """Parse JSON from LLM response with lenient handling.
 
@@ -155,55 +203,38 @@ def _parse_lenient_json(text: str) -> dict[str, Any]:
             pass
 
     # Handle truncated JSON (response cut off by max_tokens)
-    # Try to salvage partial discovered_facts array
+    # Try to salvage partial arrays from known keys
     if brace_start >= 0:
         partial = text[brace_start:]
-        # Find the discovered_facts array
-        arr_match = re.search(r'"discovered_facts"\s*:\s*\[', partial)
-        if arr_match:
-            arr_start = arr_match.end()
-            # Find complete objects within the array
-            facts = []
-            depth = 0
-            obj_start = None
-            for i in range(arr_start, len(partial)):
-                ch = partial[i]
-                if ch == '{':
-                    if depth == 0:
-                        obj_start = i
-                    depth += 1
-                elif ch == '}':
-                    depth -= 1
-                    if depth == 0 and obj_start is not None:
-                        obj_text = partial[obj_start : i + 1]
-                        try:
-                            obj = json.loads(obj_text)
-                            facts.append(obj)
-                        except json.JSONDecodeError:
-                            # Try fixing trailing commas
-                            obj_cleaned = re.sub(r",\s*([}\]])", r"\1", obj_text)
-                            try:
-                                obj = json.loads(obj_cleaned)
-                                facts.append(obj)
-                            except json.JSONDecodeError:
-                                pass
-                        obj_start = None
-                elif ch == ']' and depth == 0:
-                    break
 
-            if facts:
-                logger.info("Salvaged %d discovered facts from truncated JSON", len(facts))
-                # Try to extract summary and categories
-                summary_match = re.search(r'"summary"\s*:\s*"([^"]*)"', partial)
-                cats_match = re.search(r'"categories_found"\s*:\s*"([^"]*)"', partial)
-                return {
-                    "discovered_facts": facts,
-                    "summary": summary_match.group(1) if summary_match else f"Discovered {len(facts)} hidden facts",
-                    "categories_found": cats_match.group(1) if cats_match else "",
-                }
+        # Generic array salvage: try each known array key
+        salvageable_keys = ["discovered_facts", "obligations", "key_risks",
+                            "recommendations", "missing_protections", "escalation_items"]
+        for array_key in salvageable_keys:
+            arr_match = re.search(rf'"{array_key}"\s*:\s*\[', partial)
+            if arr_match:
+                arr_start = arr_match.end()
+                items = _salvage_array_objects(partial, arr_start)
+                if items:
+                    logger.info("Salvaged %d items from truncated '%s' array", len(items), array_key)
+                    # Try to extract scalar fields that appeared before the array
+                    result: dict[str, Any] = {array_key: items}
+                    # Extract common scalar fields from the partial text before the array
+                    pre_array = partial[:arr_match.start()]
+                    for scalar_key in ["summary", "categories_found", "executive_summary",
+                                       "overall_risk_rating", "total_affirmative",
+                                       "total_negative", "total_conditional"]:
+                        str_match = re.search(rf'"{scalar_key}"\s*:\s*"([^"]*)"', pre_array)
+                        if str_match:
+                            result[scalar_key] = str_match.group(1)
+                            continue
+                        num_match = re.search(rf'"{scalar_key}"\s*:\s*(\d+)', pre_array)
+                        if num_match:
+                            result[scalar_key] = int(num_match.group(1))
+                    return result
 
     # Last resort: return empty structure
-    logger.warning("Could not parse LLM discovery response as JSON: %s...", text[:200])
+    logger.warning("Could not parse LLM response as JSON: %s...", text[:200])
     return {"discovered_facts": [], "summary": "Could not parse LLM response", "categories_found": ""}
 
 

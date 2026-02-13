@@ -1,25 +1,25 @@
 # ContractOS Q&A Test Report
 
-**Generated**: 2026-02-13  
+**Generated**: 2026-02-13 (updated)  
 **Model**: `claude-sonnet-4-5-global` (via LiteLLM proxy)  
-**Total Automated Tests**: 743 (all passing)  
+**Total Automated Tests**: 691 (all passing)  
 **Total Live LLM Queries**: 34 (10 simple MSA + 7 simple NDA + 10 complex ITO + 7 complex PFA)  
 **Real NDA Documents Tested**: 50 (from ContractNLI dataset, Stanford NLP)  
 **Raw JSON**: [`qa_report_procurement_msa.json`](qa_report_procurement_msa.json), [`qa_report_nda.json`](qa_report_nda.json), [`qa_report_complex_it_outsourcing.json`](qa_report_complex_it_outsourcing.json), [`qa_report_complex_procurement_framework.json`](qa_report_complex_procurement_framework.json)
 
 ---
 
-## Automated Test Summary (743 Tests)
+## Automated Test Summary (691 Tests)
 
 ### Test Breakdown
 
 | Category | Tests | Description |
 |----------|------:|-------------|
-| Unit Tests | 505 | Models, tools, storage, agents, FAISS, playbook, risk, triage, compliance |
-| Integration Tests | 139 | API pipeline, LegalBench extraction, multi-doc, real NDA, review, triage |
+| Unit Tests | 524 | Models, tools, storage, agents, FAISS, playbook, risk, triage, compliance, JSON parser |
+| Integration Tests | 156 | API pipeline, LegalBench, multi-doc, real NDA, review, triage, SSE streams, obligations, risk memo |
 | Contract Tests | 27 | API contract tests via TestClient |
 | Benchmark Tests | 61 | LegalBench contract_nli, definition extraction, contract QA |
-| **Total** | **743** | **All passing** |
+| **Total** | **691** | **All passing** |
 
 ### Real NDA Document Tests (Phase 7f — 54 tests)
 
@@ -89,6 +89,19 @@
 | Test Suite | Tests | What It Validates |
 |-----------|------:|-------------------|
 | Sample Contracts | 7 | Sample listing, loading, format detection, queryability |
+
+### Phase 12: SSE Streaming, Obligations & Risk Memo (36 tests)
+
+| Test Suite | Tests | What It Validates |
+|-----------|------:|-------------------|
+| Lenient JSON Parser (unit) | 19 | Truncated JSON salvage for obligations, risk memo, discovered_facts arrays; markdown fences; trailing commas; nested objects; escaped quotes |
+| SSE Stream Endpoints (integration) | 17 | 404s for all 6 endpoints; obligation stream events + truncated response; risk memo stream events; review/triage/discover streams; report HTML downloads; SSE event format |
+
+**Key Bug Fixes:**
+- `ConfidenceDisplay.score` → `ConfidenceDisplay.value` attribute error in discovery stream
+- Generic `_salvage_array_objects()` replaces `discovered_facts`-only salvage — now handles `obligations`, `key_risks`, `recommendations`, `missing_protections`, `escalation_items`
+- Obligation system prompt updated: top 15 obligations, concise fields, summary before array for truncation resilience
+- `max_tokens` increased from 8192 to 16384 for obligation and risk memo LLM calls
 
 ### FAISS Vector Indexing Tests (Phase 7c — 18 tests)
 
