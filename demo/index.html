@@ -396,6 +396,12 @@ const ENDPOINTS = [
   { name: "Ask Across All Docs", method: "POST", path: "/query/ask",
     body: JSON.stringify({ question: "Compare the termination clauses across these contracts", document_ids: ["{document_id}", "{document_id_2}"] }, null, 2) },
 
+  { section: "Playbook Review & Risk" },
+  { name: "Review Against Playbook", method: "POST", path: "/contracts/{document_id}/review",
+    body: JSON.stringify({ user_side: "buyer", generate_redlines: true }, null, 2) },
+  { name: "Triage NDA", method: "POST", path: "/contracts/{document_id}/triage",
+    body: JSON.stringify({}, null, 2) },
+
   { section: "Workspaces" },
   { name: "Create Workspace", method: "POST", path: "/workspaces",
     body: JSON.stringify({ name: "Procurement Review", settings: { confidence_threshold: 0.7 } }, null, 2) },

@@ -574,6 +574,17 @@
 
     <hr class="section-divider">
 
+    <!-- 2c. Playbook Review & NDA Triage -->
+    <h3>Playbook Analysis</h3>
+    <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+      <button class="ask-btn" id="reviewBtn" onclick="runPlaybookReview()" disabled style="background: linear-gradient(135deg, #6c5ce7, #a29bfe); font-size: 10px; padding: 6px 10px;">Review Against Playbook</button>
+      <button class="ask-btn" id="triageBtn" onclick="runNDATriage()" disabled style="background: linear-gradient(135deg, #00b894, #55efc4); color: #1a1d2e; font-size: 10px; padding: 6px 10px;">Triage NDA</button>
+    </div>
+    <div id="reviewPanel" style="display: none;"></div>
+    <div id="triagePanel" style="display: none;"></div>
+
+    <hr class="section-divider">
+
     <!-- 3. Node Inspector -->
     <div id="nodeDetail">
       <h3>Node Inspector</h3>
@@ -708,6 +719,8 @@ async function uploadAndVisualize() {
         ? `${uploadedDocIds.length} docs loaded`
         : data.document_id;
       document.getElementById('askBtn').disabled = false;
+      document.getElementById('reviewBtn').disabled = false;
+      document.getElementById('triageBtn').disabled = false;
       // Update scope selector
       if (uploadedDocIds.length > 1) {
         document.getElementById('queryScope').querySelector('option[value="all"]').textContent =
@@ -734,6 +747,8 @@ async function loadExistingGraph() {
   document.getElementById('docBadge').style.display = 'inline';
   document.getElementById('docBadge').textContent = docId;
   document.getElementById('askBtn').disabled = false;
+  document.getElementById('reviewBtn').disabled = false;
+  document.getElementById('triageBtn').disabled = false;
   await loadGraph(docId);
   loadChatHistory();
 }
@@ -1091,7 +1106,11 @@ async function clearAllData() {
     graphData = null;
     document.getElementById('docBadge').style.display = 'none';
     document.getElementById('askBtn').disabled = true;
+    document.getElementById('reviewBtn').disabled = true;
+    document.getElementById('triageBtn').disabled = true;
     document.getElementById('answerPanel').style.display = 'none';
+    document.getElementById('reviewPanel').style.display = 'none';
+    document.getElementById('triagePanel').style.display = 'none';
     document.getElementById('graphSvg').style.display = 'none';
     document.getElementById('emptyState').style.display = 'flex';
     document.getElementById('statsBar').style.display = 'none';
@@ -1462,6 +1481,233 @@ function dragended(event, d) {
   if (!event.active) simulation.alphaTarget(0);
   d.fx = null;
   d.fy = null;
+}
+
+// ── Playbook Review & NDA Triage ────────────────────────────────
+
+async function runPlaybookReview() {
+  if (!currentDocumentId) { alert('Upload a document first.'); return; }
+  const btn = document.getElementById('reviewBtn');
+  const panel = document.getElementById('reviewPanel');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Reviewing...';
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="padding: 8px; text-align: center; font-size: 11px; color: var(--text2);"><span class="spinner"></span> Running playbook compliance review...</div>';
+
+  try {
+    const resp = await fetch(BASE + '/contracts/' + currentDocumentId + '/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_side: 'buyer', generate_redlines: true }),
+    });
+    if (!resp.ok) throw new Error('Review failed: ' + resp.status);
+    const data = await resp.json();
+    renderReviewResults(data);
+    // Highlight findings on graph
+    if (data.findings && data.findings.length > 0) {
+      highlightReviewOnGraph(data.findings);
+    }
+  } catch (err) {
+    panel.innerHTML = `<div style="padding: 8px; color: var(--red); font-size: 11px;">Error: ${err.message}</div>`;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Review Against Playbook';
+}
+
+function renderReviewResults(data) {
+  const panel = document.getElementById('reviewPanel');
+  const severityColors = { green: '#00b894', yellow: '#fdcb6e', red: '#d63031' };
+  const severityIcons = { green: '✅', yellow: '⚠️', red: '🚨' };
+
+  let findingsHTML = '';
+  if (data.findings && data.findings.length > 0) {
+    findingsHTML = data.findings.map(f => `
+      <div style="padding: 6px 8px; margin: 4px 0; border-left: 3px solid ${severityColors[f.severity] || '#8b90a0'}; background: ${severityColors[f.severity]}11; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 10px;"
+           onclick="highlightReviewFinding('${f.clause_id || ''}', '${f.finding_id}')">
+        <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+          <span>${severityIcons[f.severity] || '•'}</span>
+          <span style="color: ${severityColors[f.severity]}; font-weight: 600; text-transform: uppercase; font-size: 9px;">${f.severity}</span>
+          <span style="color: var(--text); font-weight: 500;">${f.clause_type}</span>
+        </div>
+        <div style="color: var(--text2); font-size: 9px; line-height: 1.4;">${f.deviation_description || f.business_impact || ''}</div>
+        ${f.redline ? `<div style="margin-top: 3px; padding: 3px 6px; background: var(--surface2); border-radius: 3px; font-size: 9px; color: var(--green);">Redline: ${f.redline.proposed_language.substring(0, 80)}...</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  // Risk profile summary
+  let riskHTML = '';
+  if (data.risk_profile) {
+    const rp = data.risk_profile;
+    const levelColors = { low: '#00b894', medium: '#fdcb6e', high: '#e17055', critical: '#d63031' };
+    riskHTML = `
+      <div style="padding: 6px 8px; margin: 4px 0; background: ${levelColors[rp.overall_level]}11; border: 1px solid ${levelColors[rp.overall_level]}33; border-radius: 4px; font-size: 10px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 14px; font-weight: 700; color: ${levelColors[rp.overall_level]};">${rp.overall_level.toUpperCase()}</span>
+          <span style="color: var(--text2);">Risk Score: ${rp.overall_score}</span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 4px; font-size: 9px; color: var(--text2);">
+          <span>T1: ${rp.tier_1_issues}</span>
+          <span>T2: ${rp.tier_2_issues}</span>
+          <span>T3: ${rp.tier_3_issues}</span>
+        </div>
+      </div>`;
+  }
+
+  panel.innerHTML = `
+    <div style="font-size: 10px; margin-bottom: 6px;">
+      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+        <span style="color: #00b894; font-weight: 600;">${data.green_count || 0} GREEN</span>
+        <span style="color: #fdcb6e; font-weight: 600;">${data.yellow_count || 0} YELLOW</span>
+        <span style="color: #d63031; font-weight: 600;">${data.red_count || 0} RED</span>
+      </div>
+      ${data.review_time_ms ? `<span style="color: var(--text2); font-size: 9px;">${data.review_time_ms}ms</span>` : ''}
+    </div>
+    ${riskHTML}
+    ${findingsHTML}
+    ${data.negotiation_strategy ? `<div style="margin-top: 6px; padding: 6px 8px; background: var(--surface2); border-radius: 4px; font-size: 9px; color: var(--text2); line-height: 1.4;"><b style="color: var(--accent2);">Strategy:</b> ${data.negotiation_strategy.substring(0, 200)}...</div>` : ''}
+  `;
+}
+
+function highlightReviewOnGraph(findings) {
+  if (!graphData || !currentNodeMap) return;
+  resetView();
+
+  // Collect clause IDs from findings
+  const clauseIds = new Set();
+  const factIds = new Set();
+  const severityMap = {};
+
+  findings.forEach(f => {
+    if (f.clause_id) {
+      clauseIds.add(f.clause_id);
+      severityMap[f.clause_id] = f.severity;
+    }
+    if (f.provenance_facts) {
+      f.provenance_facts.forEach(fid => {
+        factIds.add(fid);
+        severityMap[fid] = f.severity;
+      });
+    }
+  });
+
+  const highlightIds = new Set([...clauseIds, ...factIds]);
+  const severityColors = { green: '#00b894', yellow: '#fdcb6e', red: '#d63031' };
+
+  // Highlight relevant nodes
+  d3.selectAll('.nodes-group circle')
+    .attr('opacity', d => highlightIds.has(d.id) ? 1 : 0.15)
+    .attr('stroke', d => {
+      if (severityMap[d.id]) return severityColors[severityMap[d.id]] || '#fff';
+      return 'none';
+    })
+    .attr('stroke-width', d => highlightIds.has(d.id) ? 4 : 0);
+
+  d3.selectAll('.links-group line')
+    .attr('stroke-opacity', l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      return highlightIds.has(sid) || highlightIds.has(tid) ? 0.6 : 0.03;
+    });
+
+  d3.selectAll('.labels-group text')
+    .attr('opacity', d => highlightIds.has(d.id) ? 1 : 0.1);
+}
+
+function highlightReviewFinding(clauseId, findingId) {
+  if (!clauseId || !currentNodeMap) return;
+  // Zoom to the clause node
+  const n = currentNodeMap.get(clauseId);
+  if (n && n.x !== undefined) {
+    const container = document.getElementById('graph-container');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    svg.transition().duration(600).call(
+      zoom.transform,
+      d3.zoomIdentity.translate(width / 2 - n.x * 2, height / 2 - n.y * 2).scale(2)
+    );
+  }
+  // Highlight this specific node
+  d3.selectAll('.nodes-group circle')
+    .attr('stroke', d => d.id === clauseId ? '#ffeaa7' : 'none')
+    .attr('stroke-width', d => d.id === clauseId ? 5 : 0)
+    .attr('opacity', d => d.id === clauseId ? 1 : 0.15);
+
+  if (graphData) {
+    const node = graphData.nodes.find(n => n.id === clauseId);
+    if (node) showNodeDetail({ ...node, color: NODE_COLORS[node.type], radius: NODE_SIZES[node.type] });
+  }
+}
+
+async function runNDATriage() {
+  if (!currentDocumentId) { alert('Upload a document first.'); return; }
+  const btn = document.getElementById('triageBtn');
+  const panel = document.getElementById('triagePanel');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Triaging...';
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="padding: 8px; text-align: center; font-size: 11px; color: var(--text2);"><span class="spinner"></span> Running NDA triage checklist...</div>';
+
+  try {
+    const resp = await fetch(BASE + '/contracts/' + currentDocumentId + '/triage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!resp.ok) throw new Error('Triage failed: ' + resp.status);
+    const data = await resp.json();
+    renderTriageResults(data);
+  } catch (err) {
+    panel.innerHTML = `<div style="padding: 8px; color: var(--red); font-size: 11px;">Error: ${err.message}</div>`;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Triage NDA';
+}
+
+function renderTriageResults(data) {
+  const panel = document.getElementById('triagePanel');
+  const levelColors = { green: '#00b894', yellow: '#fdcb6e', red: '#d63031' };
+  const statusIcons = { pass: '✅', fail: '❌', review: '⚠️', 'n/a': '➖' };
+
+  const cl = data.classification || {};
+  const level = cl.level || 'yellow';
+
+  let checklistHTML = '';
+  if (data.checklist_results && data.checklist_results.length > 0) {
+    checklistHTML = data.checklist_results.map(c => `
+      <div style="display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; font-size: 10px; border-bottom: 1px solid var(--border);">
+        <span style="flex-shrink: 0;">${statusIcons[c.status] || '•'}</span>
+        <div>
+          <span style="color: var(--text); font-weight: 500;">${c.name}</span>
+          ${c.finding ? `<div style="color: var(--text2); font-size: 9px; margin-top: 1px;">${c.finding.substring(0, 100)}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  let issuesHTML = '';
+  if (data.key_issues && data.key_issues.length > 0) {
+    issuesHTML = `<div style="margin-top: 6px; font-size: 10px;">
+      <b style="color: var(--red); font-size: 9px;">KEY ISSUES:</b>
+      ${data.key_issues.map(i => `<div style="color: var(--text2); padding: 2px 0 2px 8px; border-left: 2px solid var(--red); margin: 2px 0; font-size: 9px;">${i}</div>`).join('')}
+    </div>`;
+  }
+
+  panel.innerHTML = `
+    <div style="text-align: center; padding: 8px; margin: 4px 0; background: ${levelColors[level]}22; border: 2px solid ${levelColors[level]}; border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 700; color: ${levelColors[level]};">${level.toUpperCase()}</div>
+      <div style="font-size: 10px; color: var(--text2); margin-top: 2px;">${cl.routing || ''}</div>
+      <div style="font-size: 9px; color: var(--text2);">${cl.timeline || ''}</div>
+    </div>
+    <div style="display: flex; gap: 8px; margin: 6px 0; font-size: 10px;">
+      <span style="color: #00b894;">${data.pass_count || 0} pass</span>
+      <span style="color: #d63031;">${data.fail_count || 0} fail</span>
+      <span style="color: #fdcb6e;">${data.review_count || 0} review</span>
+      ${data.triage_time_ms ? `<span style="color: var(--text2); font-size: 9px;">${data.triage_time_ms}ms</span>` : ''}
+    </div>
+    ${checklistHTML}
+    ${issuesHTML}
+  `;
 }
 </script>
 </body>

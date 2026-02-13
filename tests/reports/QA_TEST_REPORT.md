@@ -1,25 +1,25 @@
 # ContractOS Q&A Test Report
 
-**Generated**: 2026-02-11  
+**Generated**: 2026-02-13  
 **Model**: `claude-sonnet-4-5-global` (via LiteLLM proxy)  
-**Total Automated Tests**: 622 (all passing)  
+**Total Automated Tests**: 743 (all passing)  
 **Total Live LLM Queries**: 34 (10 simple MSA + 7 simple NDA + 10 complex ITO + 7 complex PFA)  
 **Real NDA Documents Tested**: 50 (from ContractNLI dataset, Stanford NLP)  
 **Raw JSON**: [`qa_report_procurement_msa.json`](qa_report_procurement_msa.json), [`qa_report_nda.json`](qa_report_nda.json), [`qa_report_complex_it_outsourcing.json`](qa_report_complex_it_outsourcing.json), [`qa_report_complex_procurement_framework.json`](qa_report_complex_procurement_framework.json)
 
 ---
 
-## Automated Test Summary (622 Tests)
+## Automated Test Summary (743 Tests)
 
 ### Test Breakdown
 
 | Category | Tests | Description |
 |----------|------:|-------------|
-| Unit Tests | 428 | Models, tools, storage, agents, FAISS, query persistence, chat history |
-| Integration Tests | 111 | API pipeline, LegalBench extraction, multi-doc, real NDA documents |
+| Unit Tests | 505 | Models, tools, storage, agents, FAISS, playbook, risk, triage, compliance |
+| Integration Tests | 139 | API pipeline, LegalBench extraction, multi-doc, real NDA, review, triage |
 | Contract Tests | 27 | API contract tests via TestClient |
 | Benchmark Tests | 61 | LegalBench contract_nli, definition extraction, contract QA |
-| **Total** | **622** | **All passing** |
+| **Total** | **743** | **All passing** |
 
 ### Real NDA Document Tests (Phase 7f — 54 tests)
 
@@ -55,6 +55,40 @@
 | Master Services Agreement | GlobalTech ↔ Meridian | $2.4M/yr | 13 sections |
 | Software License Agreement | CloudVault ↔ Pacific Rim | $750K/yr | 8 sections |
 | Supply Chain Agreement | Apex ↔ NovaTech | EUR 18.5M/yr | 9 sections |
+
+### Phase 10: Playbook Intelligence & Risk Framework (77 tests)
+
+| Test Suite | Tests | What It Validates |
+|-----------|------:|-------------------|
+| Playbook Models | 16 | PlaybookConfig, PlaybookPosition, AcceptableRange, NegotiationTier |
+| Risk Models | 18 | RiskScore (5×5 matrix), RiskLevel derivation, RiskProfile |
+| Triage Models | 9 | TriageResult, ChecklistResult, TriageClassification, AutomationLevel |
+| Playbook Loader | 8 | YAML parsing, validation, default playbook loading |
+| ComplianceAgent | 8 | Hybrid classification, escalation triggers, missing clauses, risk profiles |
+| DraftAgent | 5 | Redline generation, LLM prompt, priority mapping, fallback language |
+| NDATriageAgent | 6 | 10-point checklist, auto-checks, classification, routing |
+| Review Endpoint | 4 | POST /contracts/{id}/review — 200, risk profile, 404, custom params |
+| Triage Endpoint | 3 | POST /contracts/{id}/triage — 200, 404, classification |
+
+### Hidden Fact Discovery Tests (Phase 8b — 13 tests)
+
+| Test Suite | Tests | What It Validates |
+|-----------|------:|-------------------|
+| Fact Discovery Unit | 9 | LLM-powered fact discovery, prompt construction, response parsing |
+| Discovery Endpoint | 4 | POST /contracts/{id}/discover — API integration |
+
+### Conversation Context Tests (Phase 8c — 15 tests)
+
+| Test Suite | Tests | What It Validates |
+|-----------|------:|-------------------|
+| Conversation Context Unit | 11 | Session retention, history injection, multi-turn context |
+| Context Endpoint | 4 | Session-based follow-up queries via API |
+
+### Sample Contracts Tests (Phase 8d — 7 tests)
+
+| Test Suite | Tests | What It Validates |
+|-----------|------:|-------------------|
+| Sample Contracts | 7 | Sample listing, loading, format detection, queryability |
 
 ### FAISS Vector Indexing Tests (Phase 7c — 18 tests)
 

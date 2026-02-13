@@ -1,0 +1,163 @@
+# ContractOS Default Playbook — Standard Commercial Positions
+# This playbook defines an organization's standard positions for common
+# contract clause types. Used by ComplianceAgent for playbook-based review.
+
+playbook:
+  name: "Standard Commercial Playbook"
+  version: "1.0"
+  positions:
+
+    limitation_of_liability:
+      clause_type: "limitation_of_liability"
+      standard_position: "Mutual cap at 12 months of fees paid or payable"
+      acceptable_range:
+        min_position: "6 months of fees"
+        max_position: "24 months of fees"
+        description: "Standard liability cap range for commercial agreements"
+      escalation_triggers:
+        - "Uncapped liability"
+        - "No consequential damages exclusion"
+        - "Asymmetric liability carveouts"
+        - "Unlimited indemnification"
+      review_guidance: "Check for mutual vs. unilateral caps, carveouts for IP/confidentiality, consequential damages exclusion"
+      priority: "tier_1"
+      required: true
+
+    indemnification:
+      clause_type: "indemnification"
+      standard_position: "Mutual indemnification for IP infringement and data breach"
+      acceptable_range:
+        min_position: "Indemnification limited to third-party IP claims"
+        max_position: "Mutual indemnification for all material breaches"
+        description: "Scope of indemnification obligations"
+      escalation_triggers:
+        - "Unilateral indemnification obligations"
+        - "Uncapped indemnification"
+        - "Indemnification for 'any breach'"
+        - "Indemnification survives termination indefinitely"
+      review_guidance: "Verify mutual obligations, check for carve-outs, ensure cap applies"
+      priority: "tier_1"
+      required: true
+
+    ip_ownership:
+      clause_type: "ip_rights"
+      standard_position: "Customer retains ownership of pre-existing IP; vendor retains ownership of pre-existing and general-purpose tools; work product IP assigned to customer"
+      acceptable_range:
+        min_position: "Customer gets perpetual license to work product"
+        max_position: "Full IP assignment of all work product to customer"
+        description: "IP ownership and licensing terms"
+      escalation_triggers:
+        - "Vendor retains all IP rights"
+        - "No license to pre-existing IP"
+        - "IP assignment without compensation"
+      review_guidance: "Distinguish pre-existing IP from work product, verify license scope"
+      priority: "tier_1"
+      required: false
+
+    data_protection:
+      clause_type: "data_protection"
+      standard_position: "Compliance with applicable data protection laws; data processing agreement for personal data; breach notification within 72 hours"
+      acceptable_range:
+        min_position: "General data protection compliance commitment"
+        max_position: "Full GDPR/CCPA DPA with sub-processor controls"
+        description: "Data protection and privacy obligations"
+      escalation_triggers:
+        - "No data protection obligations"
+        - "No breach notification requirement"
+        - "Unlimited data retention"
+        - "No sub-processor restrictions"
+      review_guidance: "Check for DPA, breach notification timeline, data retention, sub-processors"
+      priority: "tier_1"
+      required: true
+
+    confidentiality:
+      clause_type: "confidentiality"
+      standard_position: "Mutual confidentiality with standard carve-outs; 3-year survival post-termination"
+      acceptable_range:
+        min_position: "1-year post-termination confidentiality"
+        max_position: "5-year post-termination confidentiality"
+        description: "Duration and scope of confidentiality obligations"
+      escalation_triggers:
+        - "No confidentiality obligations"
+        - "Unilateral confidentiality"
+        - "Perpetual confidentiality without carve-outs"
+      review_guidance: "Verify mutual obligations, standard carve-outs (public knowledge, prior possession, independent development, legal compulsion, third-party receipt)"
+      priority: "tier_2"
+      required: true
+
+    termination:
+      clause_type: "termination"
+      standard_position: "Either party may terminate for convenience with 30 days written notice; immediate termination for material breach with 30-day cure period"
+      acceptable_range:
+        min_position: "Termination for cause only with 15-day cure"
+        max_position: "Termination for convenience with 90-day notice"
+        description: "Termination rights and notice periods"
+      escalation_triggers:
+        - "No termination for convenience"
+        - "Unilateral termination rights"
+        - "No cure period for breach"
+        - "Auto-renewal without opt-out"
+      review_guidance: "Check for mutual termination rights, cure periods, effect on payment obligations"
+      priority: "tier_2"
+      required: true
+
+    governing_law:
+      clause_type: "governing_law"
+      standard_position: "Governed by the laws of the state of Delaware; disputes resolved by binding arbitration"
+      acceptable_range:
+        min_position: "Any US state governing law"
+        max_position: "Delaware or New York governing law with arbitration"
+        description: "Jurisdiction and dispute resolution"
+      escalation_triggers:
+        - "Foreign jurisdiction governing law"
+        - "Exclusive jurisdiction in vendor's home court"
+        - "Waiver of jury trial without arbitration"
+      review_guidance: "Verify governing law jurisdiction, dispute resolution mechanism, venue"
+      priority: "tier_2"
+      required: false
+
+    force_majeure:
+      clause_type: "force_majeure"
+      standard_position: "Mutual force majeure with standard events; 90-day termination right if event persists"
+      acceptable_range:
+        min_position: "Basic force majeure with natural disasters and war"
+        max_position: "Comprehensive force majeure including pandemics, cyber attacks, supply chain disruption"
+        description: "Scope of force majeure events and remedies"
+      escalation_triggers:
+        - "No force majeure clause"
+        - "Unilateral force majeure"
+        - "Force majeure includes economic hardship"
+      review_guidance: "Check for mutual application, defined events, notification requirements, termination right"
+      priority: "tier_3"
+      required: false
+
+    assignment:
+      clause_type: "assignment"
+      standard_position: "Neither party may assign without prior written consent; consent not to be unreasonably withheld; exception for affiliates and M&A"
+      acceptable_range:
+        min_position: "No assignment without consent"
+        max_position: "Free assignment to affiliates; consent required for third parties"
+        description: "Assignment and transfer restrictions"
+      escalation_triggers:
+        - "Unrestricted assignment rights"
+        - "Assignment without notice"
+        - "No anti-assignment clause"
+      review_guidance: "Check for mutual restrictions, affiliate exceptions, change of control provisions"
+      priority: "tier_3"
+      required: false
+
+    payment_terms:
+      clause_type: "payment"
+      standard_position: "Net 30 from invoice date; invoices issued monthly in arrears"
+      acceptable_range:
+        min_position: "Net 15 from invoice date"
+        max_position: "Net 60 from invoice date"
+        description: "Payment timing and invoicing terms"
+      escalation_triggers:
+        - "Payment due on receipt"
+        - "Prepayment required"
+        - "Late payment interest exceeding 1.5% per month"
+        - "No right to dispute invoices"
+      review_guidance: "Check payment timing, invoicing frequency, late payment penalties, dispute mechanism"
+      priority: "tier_2"
+      required: false
