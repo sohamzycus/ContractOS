@@ -1,286 +1,278 @@
-# Research: Single-Contract Intelligence
+# Research: Phase 9 — Playbook Intelligence & Risk Framework
 
-**Phase 0 — Technology Decisions**
+**Phase 0 Output** — Resolves all design decisions before implementation.
 
-## 1. Document Parsing: Word (.docx)
+---
 
-### Decision: python-docx + custom table extractor
+## R1: Playbook Schema Design
 
-**Options evaluated:**
-- **python-docx** — mature, well-maintained, handles paragraphs, tables,
-  headers, styles. Does NOT handle embedded images or complex formatting.
-- **docx2python** — extracts nested structures but less control over offsets.
-- **mammoth** — converts to HTML; lossy for structural analysis.
+### Question
+What schema should `playbook.yaml` use to define organizational positions, acceptable ranges, and escalation triggers per clause type?
 
-**Decision rationale**: python-docx gives us direct access to the document XML
-structure, which is essential for character offset tracking and structural path
-generation. We need precise `char_start` / `char_end` for every fact.
+### Research
 
-**Custom work needed**: Table extraction with row/column metadata. python-docx
-handles tables but we need to normalize multi-row headers, merged cells, and
-nested tables into flat fact structures.
+Anthropic's legal plugin uses a free-form markdown file (`legal.local.md`) with nested sections per clause type. Each section defines:
+- **Standard position**: The organization's preferred terms
+- **Acceptable range**: What can be agreed without escalation
+- **Escalation trigger**: Terms requiring senior review
 
-## 2. Document Parsing: PDF
+This is human-readable but not machine-parseable. ContractOS needs a **structured YAML schema** that can be validated with Pydantic and compared programmatically against extracted clauses.
 
-### Decision: PyMuPDF (fitz) primary + pdfplumber for tables
+### Decision
 
-**Options evaluated:**
-- **PyMuPDF (fitz)** — fast, precise character positions, handles most PDFs.
-  Table extraction is basic.
-- **pdfplumber** — excellent table extraction, based on pdfminer. Slower but
-  more accurate for tabular data.
-- **camelot** — table-focused. Dependency-heavy (Ghostscript, OpenCV).
-- **unstructured** — high-level, opinionated. Good for "just works" but less
-  control over offsets.
-
-**Decision rationale**: Use PyMuPDF for text extraction with character offsets,
-and pdfplumber specifically for table extraction. This combination gives us
-both speed and table accuracy.
-
-**Known limitation**: Scanned PDFs (image-only) will not work. Phase 1 returns
-a clear error message. OCR support is deferred to a future release.
-
-## 3. Named Entity Recognition
-
-### Decision: spaCy (en_core_web_lg) + custom contract patterns
-
-**Options evaluated:**
-- **spaCy** — fast, local, good base NER. Needs customization for contract
-  entities (clause types, legal terms).
-- **Stanza (Stanford NLP)** — more accurate in benchmarks but slower.
-- **LLM-based extraction** — highest accuracy but expensive for bulk
-  extraction and non-deterministic.
-
-**Decision rationale**: spaCy for base NER (ORG, PERSON, DATE, MONEY, GPE)
-plus custom pattern matchers for contract-specific entities (clause headings,
-defined terms, section references). This keeps extraction deterministic and
-fast, per FR-013.
-
-**Custom patterns needed**:
-- Definition clause patterns: `"X" shall mean Y`, `"X" refers to Y`
-- Section reference patterns: `§12.1`, `Section 12.1`, `Article XII`
-- Duration patterns: `thirty (30) days`, `ninety (90) calendar days`
-- Renewal/termination patterns: specific clause type signatures
-
-## 4. Clause Structure Analysis
-
-### Decision: Hybrid pattern matching + LLM classification with configurable type registry
-
-Contracts are not flat text — they are structured into clauses, and each
-clause has internal structure: cross-references to other sections, mandatory
-facts (e.g., a termination clause should have a notice period), and entity
-aliasing patterns.
-
-**Clause identification approach**:
-1. **Heading-based detection** (deterministic): Parse section headings and
-   numbering patterns (§12.1, Article XII, Section 3.2.1) to identify clause
-   boundaries. This is the primary method and covers ~80% of clauses.
-2. **LLM-assisted classification** (non-deterministic): For clauses with
-   ambiguous headings or no headings, use LLM to classify the clause type
-   based on content. Confidence score attached.
-
-**Cross-reference extraction approach**:
-- Regex patterns for section references: `§\d+(\.\d+)*`, `Section \d+`,
-  `clause \d+(\.\d+)*(\([a-z]\))?`, `Appendix [A-Z]`, `Schedule [A-Z0-9]+`
-- Resolution: Match extracted references to known clause section_numbers
-  within the same document. Unresolvable references flagged but not guessed.
-- Effect classification: LLM-assisted — given the surrounding context, what
-  is the effect of this reference? (modifies, overrides, conditions, etc.)
-
-**Entity aliasing detection**:
-- Regex patterns for common alias introductions:
-  - `"(.+?),?\s+hereinafter\s+referred\s+to\s+as\s+'(.+?)'"`
-  - `"(.+?)\s+\(the\s+'(.+?)'\)"`
-  - `"(.+?),?\s+hereafter\s+'(.+?)'"`
-- These produce Binding records (same as definition resolution).
-
-**Mandatory fact extraction per clause type**:
-- The Clause Type Registry defines expected facts per type (see truth-model.md
-  §1b). After classifying a clause, the extractor searches within the clause
-  for the expected entity types.
-- Missing mandatory facts are flagged as completeness gaps (inferences, not
-  errors — the clause may intentionally omit them).
-
-**Registry configurability**:
-- Default registry ships with 14 clause types and their mandatory/optional
-  fact schemas (see truth-model.md).
-- Organizations can extend via `config/clause_types.yaml` — add custom types,
-  modify mandatory facts, add industry-specific clause types.
-
-**Open question resolved**: Should cross-reference resolution be eager or lazy?
-→ **Eager within the same document** (resolve all internal references during
-parsing). Lazy for cross-document references (deferred to Phase 2 when
-Contract Graph is available).
-
-## 5. LLM Integration
-
-### Decision: Claude (Anthropic SDK) as default; pluggable via interface
-
-**Architecture**:
-```python
-class LLMProvider(ABC):
-    @abstractmethod
-    async def generate(self, prompt: str, context: list[str]) -> str: ...
-    @abstractmethod
-    async def classify(self, text: str, categories: list[str]) -> str: ...
-
-class ClaudeProvider(LLMProvider):
-    # Uses anthropic SDK
-    # Model: claude-sonnet-4-20250514 (default, configurable)
-```
-
-**LLM is used for**:
-- Clause classification (given extracted text, what type of clause?)
-- Inference generation (given facts + bindings + query, what can we infer?)
-- Answer synthesis (given facts + inferences, generate human-readable answer)
-- Confidence scoring (given evidence strength, estimate confidence)
-
-**LLM is NOT used for**:
-- Fact extraction (deterministic tool)
-- Binding resolution (deterministic pattern matching)
-- Character offset computation (document parser)
-
-## 6. Storage: TrustGraph
-
-### Decision: SQLite with well-defined schema
-
-**Options evaluated:**
-- **SQLite** — zero-config, local, fast for single-user. Schema can be
-  migrated to PostgreSQL later.
-- **DuckDB** — analytical workloads, columnar storage. Overkill for Phase 1.
-- **PostgreSQL** — full-featured but requires server. Phase 1 is local.
-- **Neo4j/graph DB** — natural for TrustGraph but heavyweight for local.
-
-**Decision rationale**: SQLite is the right choice for Phase 1 (local
-deployment, single user). The schema uses explicit foreign keys and indexes
-that translate directly to PostgreSQL when we scale. We do NOT use SQLite's
-limited graph features — instead, facts, bindings, and inferences are stored
-as typed rows with explicit relationship columns.
-
-## 7. API Framework
-
-### Decision: FastAPI
-
-**Rationale**: Async-native, automatic OpenAPI docs, Pydantic integration
-(same models used in the API and in the backend), lightweight. The Word
-Add-in communicates with this server over localhost HTTP.
-
-## 8. Word Copilot
-
-### Decision: Office Web Add-in (taskpane) with React
-
-**Architecture**: A sidebar Add-in built with the Office JavaScript API.
-The sidebar communicates with the local FastAPI server over `localhost`.
-
-**Why not a VSTO add-in or COM add-in?**: Office Web Add-ins work across
-platforms (Windows + Mac), are easier to develop, and align with Microsoft's
-current direction.
-
-**Capabilities in Phase 1**:
-- Display Q&A interface in sidebar
-- Send current document context (filename, selection) to the backend
-- Display answers with provenance (expandable fact references)
-- Navigate to document locations (using Office JS API)
-
-**Deferred to Phase 2+**:
-- In-document annotations
-- Inline suggestions
-- Redline generation
-
-## 9. Configuration
-
-### Decision: YAML configuration with Pydantic validation
+Use a typed YAML schema with Pydantic validation:
 
 ```yaml
-# config/default.yaml
-contractos:
-  llm:
-    provider: "claude"
-    model: "claude-sonnet-4-20250514"
-    api_key_env: "ANTHROPIC_API_KEY"
-    max_tokens: 4096
-    temperature: 0.1
+# config/default_playbook.yaml
+playbook:
+  name: "Standard Commercial Playbook"
+  version: "1.0"
+  positions:
+    limitation_of_liability:
+      clause_type: "limitation_of_liability"
+      standard_position: "Mutual cap at 12 months of fees paid/payable"
+      acceptable_range:
+        min: "6 months of fees"
+        max: "24 months of fees"
+      escalation_triggers:
+        - "Uncapped liability"
+        - "No consequential damages exclusion"
+        - "Asymmetric carveouts"
+      review_guidance: "Check for mutual vs. unilateral, carveouts, consequential damages exclusion"
+      priority: "tier_1"  # must-have | should-have | nice-to-have
 
-  extraction:
-    pipeline:
-      - "docx_parser"
-      - "pdf_parser"
-    spacy_model: "en_core_web_lg"
+    indemnification:
+      clause_type: "indemnification"
+      standard_position: "Mutual indemnification for IP infringement and data breach"
+      acceptable_range:
+        min: "Indemnification limited to third-party claims"
+        max: "Mutual indemnification for all material breaches"
+      escalation_triggers:
+        - "Unilateral indemnification obligations"
+        - "Uncapped indemnification"
+        - "Indemnification for 'any breach'"
+      priority: "tier_1"
 
-  storage:
-    backend: "sqlite"
-    path: "~/.contractos/trustgraph.db"
-
-  workspace:
-    auto_persist: true
-    session_history_limit: 100
-
-  server:
-    host: "127.0.0.1"
-    port: 8742
-    cors_origins: ["https://localhost"]
-
-  clause_types:
-    registry: "config/clause_types.yaml"  # Configurable per organization
-    custom_types_enabled: true
-
-  logging:
-    level: "INFO"
-    audit_log: true
+    # ... more clause types
 ```
 
-## 10. Testing Strategy — TDD
+### Rationale
+- YAML is human-editable and version-controllable
+- Pydantic validation catches schema errors at load time
+- `clause_type` maps directly to our existing `ClauseTypeEnum`
+- `priority` enables negotiation strategy (Tier 1/2/3)
+- `escalation_triggers` are string patterns that the LLM can match against extracted clause text
 
-All development follows **Test-Driven Development (TDD)**: Red → Green →
-Refactor. Tests are written before implementation. No feature is complete
-until all its tests pass.
+---
 
-### Test Categories
+## R2: GREEN/YELLOW/RED Classification Logic
 
-| Category | Location | Scope | Dependencies |
-|----------|----------|-------|-------------|
-| **Unit tests** | `tests/unit/` | Single module in isolation | Mock all externals (LLM, DB, file system) |
-| **Integration tests** | `tests/integration/` | Multiple modules together | Real SQLite (in-memory), real parsers, mock LLM |
-| **Contract tests** | `tests/contract/` | API endpoints vs. spec | FastAPI TestClient, mock backend |
-| **Benchmark tests** | `tests/benchmark/` | Accuracy & performance | Real contracts, real LLM (on demand) |
+### Question
+How should the ComplianceAgent determine severity? Pure LLM judgment, rule-based, or hybrid?
 
-### Test Infrastructure
+### Research
 
-- **pytest** with pytest-asyncio, pytest-cov
-- **respx** for HTTP mocking (LLM API calls)
-- **factory-boy** for test data factories (Fact, Binding, Inference, etc.)
-- **Test fixtures**: Manually crafted contracts with known entities in
-  `tests/fixtures/`
-- **LLM mock**: Deterministic mock provider in `tests/mocks/llm_mock.py`
-  that returns known responses for known prompts
-- **Coverage threshold**: 90% enforced in CI
+Anthropic's plugin uses pure LLM judgment — the system prompt describes what GREEN/YELLOW/RED mean and the LLM classifies. This is fast but non-deterministic and non-auditable.
 
-### Test Counts (per tasks.md)
+### Decision
 
-| Phase | Unit | Integration | Contract | Total |
-|-------|------|------------|----------|-------|
-| Foundation | 14 | 0 | 1 | 15 |
-| US1: Extraction | 9 | 2 | 1 | 12 |
-| US2: Bindings | 2 | 1 | 1 | 4 |
-| US3: Q&A | 6 | 3 | 1 | 10 |
-| US4: Provenance | 2 | 1 | 1 | 4 |
-| US5: Workspace | 2 | 2 | 1 | 5 |
-| Copilot | 3 | 1 | 0 | 4 |
-| Polish | 2 | 1 | 0 | 3 |
-| **Total** | **40** | **11** | **6** | **57** |
+**Hybrid approach**:
 
-### Benchmark: COBench v0.1
+1. **Rule-based pre-classification** (deterministic):
+   - Clause type present in contract AND matches playbook → candidate for review
+   - Clause type missing from contract but required by playbook → automatic RED (missing clause)
+   - Clause type present but not in playbook → skip (no position defined)
 
-- 20 annotated procurement contracts
-- 100 questions with ground-truth answers
-- Measures: Precision@N, Recall@N, MRR, NDCG, confidence calibration
-- Not part of CI — run on demand and before releases
+2. **LLM-assisted classification** (grounded):
+   - For each candidate clause, send to LLM with:
+     - Extracted clause text (from TrustGraph, with char offsets)
+     - Playbook position (standard, acceptable range, escalation triggers)
+     - Extracted facts within the clause (monetary values, durations, parties)
+   - LLM returns: severity (GREEN/YELLOW/RED), deviation description, confidence
+   - Every classification includes provenance back to the extracted clause text
 
-## 11. Open Questions (Resolved)
+3. **Escalation trigger matching** (deterministic override):
+   - If any escalation trigger pattern matches the clause text → force RED regardless of LLM classification
+   - This ensures critical issues are never missed
 
-| Question | Resolution |
-|----------|-----------|
-| Should clause classification use LLM or rules? | Hybrid: spaCy patterns for detection, LLM for classification of ambiguous cases |
-| How to handle multi-page tables in PDF? | pdfplumber's table_settings with custom row merging |
-| What confidence does the inference engine assign to "not found"? | No confidence score — "not found" is a fact about the search, not an inference |
-| How does the Copilot handle slow responses (>5s)? | Streaming — partial results displayed as they arrive |
+### Rationale
+- Deterministic rules catch structural issues (missing clauses, missing facts)
+- LLM handles nuanced judgment (is this indemnification scope reasonable?)
+- Escalation triggers provide a safety net against LLM under-classification
+- Full provenance chain for every classification
+
+---
+
+## R3: Risk Scoring Framework
+
+### Question
+How should the 5×5 Severity × Likelihood matrix integrate with existing confidence scoring?
+
+### Research
+
+Anthropic's plugin defines a 5×5 matrix (Severity 1-5 × Likelihood 1-5 = Risk Score 1-25) with four risk levels:
+- GREEN (1-4), YELLOW (5-9), ORANGE (10-15), RED (16-25)
+
+ContractOS currently has `confidence_label()` returning `ConfidenceDisplay` with score (0.0-1.0) and label (high/medium/low).
+
+### Decision
+
+Extend the existing confidence system with a parallel risk scoring system:
+
+```python
+class RiskScore(BaseModel):
+    severity: int = Field(ge=1, le=5)        # Impact if risk materializes
+    likelihood: int = Field(ge=1, le=5)      # Probability of materialization
+    score: int                                # severity × likelihood (1-25)
+    level: RiskLevel                          # GREEN/YELLOW/ORANGE/RED
+    severity_rationale: str                   # Why this severity
+    likelihood_rationale: str                 # Why this likelihood
+```
+
+- **Severity** is derived from the playbook priority tier and deviation magnitude
+- **Likelihood** is derived from the clause specificity and market norms
+- Both are LLM-assessed but grounded in extracted facts
+- Risk scores are typed as **Inferences** (derived from facts + playbook)
+
+### Rationale
+- Keeps existing confidence system for Q&A answers
+- Adds risk scoring specifically for playbook review findings
+- Risk scores are Inferences (not Opinions) because they're grounded in extracted facts + playbook positions
+- 4-level system (GREEN/YELLOW/ORANGE/RED) matches Anthropic's framework and is intuitive for legal teams
+
+---
+
+## R4: NDA Triage Checklist Design
+
+### Question
+How should the NDA triage checklist be structured, and how much can be automated vs. requiring LLM?
+
+### Research
+
+Anthropic's plugin defines 10 screening sections with specific criteria. Many of these map to our existing extraction capabilities:
+
+| Checklist Item | Can We Automate? | How? |
+|---------------|-----------------|------|
+| Agreement structure (mutual/unilateral) | Partial | Clause classifier + LLM |
+| Definition scope | Yes | Binding resolver (count and scope of definitions) |
+| Standard carveouts | Partial | Pattern matching for known carveout phrases |
+| Permitted disclosures | Partial | Clause text search |
+| Term and duration | Yes | Fact extractor (duration patterns) |
+| Return/destruction | Partial | Clause classifier |
+| Remedies | LLM | Nuanced legal judgment |
+| Problematic provisions | LLM | Non-solicitation, non-compete detection |
+| Governing law | Yes | Fact extractor (jurisdiction patterns) |
+| Overall classification | LLM | Aggregate judgment |
+
+### Decision
+
+Use a YAML-configurable checklist with mixed automation:
+
+```yaml
+# config/nda_checklist.yaml
+checklist:
+  - id: "agreement_structure"
+    name: "Agreement Structure"
+    automation: "hybrid"  # auto | hybrid | llm_only
+    auto_checks:
+      - "mutual_nda_detected"  # from clause classifier
+      - "standalone_agreement"  # not embedded in larger contract
+    llm_prompt: "Is this NDA type appropriate for the business relationship?"
+
+  - id: "standard_carveouts"
+    name: "Standard Carveouts"
+    automation: "hybrid"
+    required_carveouts:
+      - "public_knowledge"
+      - "prior_possession"
+      - "independent_development"
+      - "third_party_receipt"
+      - "legal_compulsion"
+    auto_checks:
+      - pattern: "publicly available|public knowledge|publicly known"
+        carveout: "public_knowledge"
+      # ... more patterns
+```
+
+### Rationale
+- Maximizes deterministic automation (faster, reproducible)
+- LLM fills gaps where pattern matching is insufficient
+- YAML config allows organizations to customize the checklist
+- Tested against our 50 real NDAs from ContractNLI
+
+---
+
+## R5: Redline Generation Approach
+
+### Question
+How should the DraftAgent generate redline suggestions?
+
+### Decision
+
+The DraftAgent receives a `ReviewFinding` (YELLOW or RED) and generates:
+
+```python
+class RedlineSuggestion(BaseModel):
+    clause_id: str
+    current_language: str          # Exact text from TrustGraph
+    proposed_language: str         # LLM-generated alternative
+    rationale: str                 # Suitable for sharing with counterparty
+    priority: str                  # "must_have" | "should_have" | "nice_to_have"
+    fallback_language: str | None  # Alternative if primary is rejected
+```
+
+**LLM prompt structure**:
+1. System prompt: "You are a contract drafting assistant..."
+2. Context: current clause text, playbook position, deviation type, contract type, user's side
+3. Instruction: "Generate specific alternative language that brings this clause to the standard position"
+
+**Grounding**: The `current_language` is always the exact extracted text from TrustGraph (with char offsets). The LLM only generates the proposed alternative — it cannot misquote the original.
+
+---
+
+## R6: API Design for Review Endpoints
+
+### Question
+What should the new API endpoints look like?
+
+### Decision
+
+Two new endpoints on the existing `/contracts` router:
+
+```
+POST /contracts/{document_id}/review
+  Body: { "playbook_path": "config/default_playbook.yaml" }  (optional, uses default)
+  Response: ReviewResult (findings[], summary, risk_profile, negotiation_strategy)
+
+POST /contracts/{document_id}/triage
+  Body: { "checklist_path": "config/nda_checklist.yaml" }  (optional, uses default)
+  Response: TriageResult (classification, checklist_results[], routing, summary)
+```
+
+Both follow the existing pattern of `POST /contracts/{document_id}/discover`.
+
+---
+
+## R7: Copilot UI Integration
+
+### Question
+How should playbook review results be displayed in the Copilot?
+
+### Decision
+
+Add a new quick-action button "Review Against Playbook" alongside the existing "Discover Hidden Facts". Results display as:
+
+1. **Summary bar**: Overall risk profile (e.g., "3 RED, 5 YELLOW, 8 GREEN")
+2. **Clause-by-clause cards**: Each finding as a card with:
+   - Color-coded severity badge (GREEN/YELLOW/RED)
+   - Clause heading and section reference
+   - Deviation description
+   - Clickable to highlight source text in document
+   - Expandable redline suggestion (for YELLOW/RED)
+3. **Risk matrix**: Small 5×5 grid visualization showing where findings cluster
+4. **Negotiation strategy**: Tier 1/2/3 priority list
+
+For NDA triage, a simpler view:
+1. **Classification badge**: GREEN/YELLOW/RED with routing recommendation
+2. **Checklist**: 10-item checklist with pass/fail/review status per item
+3. **Key issues**: Specific findings for YELLOW/RED items
