@@ -361,6 +361,95 @@
     .quick-btn:hover { border-color: var(--accent); color: var(--text); background: var(--accent-glow); }
     .quick-btn.discover-btn { border-color: rgba(254,202,87,0.4); color: var(--yellow); }
     .quick-btn.discover-btn:hover { border-color: var(--yellow); background: rgba(254,202,87,0.1); }
+    .quick-btn.review-btn { border-color: rgba(0,210,211,0.4); color: var(--accent); }
+    .quick-btn.review-btn:hover { border-color: var(--accent); background: rgba(0,210,211,0.1); }
+    .quick-btn.triage-btn { border-color: rgba(85,239,196,0.4); color: #55efc4; }
+    .quick-btn.triage-btn:hover { border-color: #55efc4; background: rgba(85,239,196,0.1); }
+
+    /* Review Findings */
+    .review-findings { margin-top: 12px; }
+    .review-finding {
+      background: var(--surface2); border-radius: 10px; padding: 12px;
+      margin-bottom: 8px; border-left: 4px solid var(--border);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .review-finding:hover { background: var(--surface); }
+    .review-finding.severity-green { border-left-color: #00b894; }
+    .review-finding.severity-yellow { border-left-color: #fdcb6e; }
+    .review-finding.severity-red { border-left-color: #e17055; }
+    .severity-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 6px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .severity-badge.green { background: rgba(0,184,148,0.2); color: #00b894; }
+    .severity-badge.yellow { background: rgba(253,203,110,0.2); color: #fdcb6e; }
+    .severity-badge.red { background: rgba(225,112,85,0.2); color: #e17055; }
+    .finding-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .finding-type { font-size: 11px; color: var(--text-dim); }
+    .finding-heading { font-size: 13px; font-weight: 600; color: var(--text); }
+    .finding-desc { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+    .finding-impact { font-size: 11px; color: var(--text-dim); margin-top: 4px; font-style: italic; }
+    .redline-section {
+      margin-top: 8px; padding: 8px; background: rgba(0,210,211,0.05);
+      border-radius: 6px; border: 1px solid rgba(0,210,211,0.15);
+    }
+    .redline-label { font-size: 10px; color: var(--accent); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+    .redline-text { font-size: 12px; color: var(--text); line-height: 1.4; }
+
+    /* Risk Matrix */
+    .risk-matrix {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+      width: 120px; margin: 8px 0;
+    }
+    .risk-cell {
+      width: 22px; height: 22px; border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; color: #fff; font-weight: 700;
+    }
+    .risk-cell.low { background: rgba(0,184,148,0.3); }
+    .risk-cell.medium { background: rgba(253,203,110,0.4); }
+    .risk-cell.high { background: rgba(225,112,85,0.4); }
+    .risk-cell.critical { background: rgba(214,48,49,0.5); }
+
+    /* Review Summary Bar */
+    .review-summary {
+      display: flex; gap: 12px; align-items: center; padding: 10px 14px;
+      background: var(--surface2); border-radius: 10px; margin-bottom: 10px;
+    }
+    .review-count { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+    .review-count .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .review-count .dot.green { background: #00b894; }
+    .review-count .dot.yellow { background: #fdcb6e; }
+    .review-count .dot.red { background: #e17055; }
+
+    /* Triage Badge */
+    .triage-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 12px; font-size: 16px;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .triage-badge.green { background: rgba(0,184,148,0.15); color: #00b894; border: 2px solid #00b894; }
+    .triage-badge.yellow { background: rgba(253,203,110,0.15); color: #fdcb6e; border: 2px solid #fdcb6e; }
+    .triage-badge.red { background: rgba(225,112,85,0.15); color: #e17055; border: 2px solid #e17055; }
+    .triage-icon { font-size: 20px; }
+
+    /* Checklist */
+    .checklist-item {
+      display: flex; align-items: center; gap: 8px; padding: 6px 0;
+      border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-icon { font-size: 14px; }
+    .checklist-name { flex: 1; color: var(--text); }
+    .checklist-finding { color: var(--text-dim); font-size: 11px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Strategy Section */
+    .strategy-section {
+      margin-top: 10px; padding: 10px; background: var(--surface2);
+      border-radius: 8px; border: 1px solid var(--border);
+    }
+    .strategy-label { font-size: 11px; color: var(--accent); font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+    .strategy-text { font-size: 12px; color: var(--text); line-height: 1.5; white-space: pre-wrap; }
 
     /* Input */
     .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); }
@@ -471,6 +560,8 @@
         <button class="quick-btn" onclick="askQuick('What are the key dates?')">Key Dates</button>
         <button class="quick-btn" onclick="askQuick('Are there any compliance gaps?')">Gaps</button>
         <button class="quick-btn discover-btn" onclick="discoverHiddenFacts()">🔍 Discover Hidden Facts</button>
+        <button class="quick-btn review-btn" onclick="reviewAgainstPlaybook()">📋 Review Against Playbook</button>
+        <button class="quick-btn triage-btn" onclick="triageNDA()">🏷️ Triage NDA</button>
       </div>
       <div class="chat-area" id="chatArea">
         <div class="chat-msg system">Upload a contract to start asking questions</div>
@@ -1237,6 +1328,201 @@
         card.classList.remove('loading');
         addAssistantMsg(`Error loading sample: ${e.message}`);
       }
+    }
+
+    // ── Review Against Playbook ─────────────────────────────
+    async function reviewAgainstPlaybook() {
+      if (!currentDocId || isAsking) return;
+      isAsking = true;
+
+      addUserMsg('Review this contract against the standard playbook');
+
+      createReasoningContainer('Reviewing against playbook...');
+      addReasoningStep('Loading playbook positions...');
+      await sleep(400);
+      addReasoningStep('Comparing clauses against standard positions...');
+      await sleep(600);
+      addReasoningStep('Classifying deviations (GREEN/YELLOW/RED)...');
+      await sleep(500);
+      addReasoningStep('Computing risk profile...');
+
+      try {
+        const r = await fetch(`${API}/contracts/${currentDocId}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ generate_redlines: true }),
+        });
+        const data = await safeJson(r);
+
+        addReasoningStep('Building negotiation strategy...');
+        await sleep(300);
+        completeReasoning(`Review complete: ${data.findings?.length || 0} findings`);
+
+        // Build review results HTML
+        let html = '';
+
+        // Summary bar
+        html += `<div class="review-summary">
+          <div class="review-count"><span class="dot green"></span> ${data.green_count || 0} GREEN</div>
+          <div class="review-count"><span class="dot yellow"></span> ${data.yellow_count || 0} YELLOW</div>
+          <div class="review-count"><span class="dot red"></span> ${data.red_count || 0} RED</div>
+        </div>`;
+
+        // Risk profile
+        if (data.risk_profile) {
+          const rp = data.risk_profile;
+          html += `<div style="font-size:12px; color:var(--text-dim); margin-bottom:8px">
+            Overall Risk: <strong style="color:var(--text)">${(rp.overall_level || 'unknown').toUpperCase()}</strong>
+            (score: ${rp.overall_score || 0})
+            — Tier 1: ${rp.tier_1_issues || 0}, Tier 2: ${rp.tier_2_issues || 0}
+          </div>`;
+
+          // Mini risk matrix
+          if (rp.risk_distribution) {
+            const dist = rp.risk_distribution;
+            html += `<div style="display:flex; gap:6px; margin-bottom:10px; font-size:11px">`;
+            for (const [level, count] of Object.entries(dist)) {
+              if (count > 0) {
+                const cls = level === 'critical' ? 'red' : level;
+                html += `<span class="severity-badge ${cls}">${level}: ${count}</span>`;
+              }
+            }
+            html += `</div>`;
+          }
+        }
+
+        // Findings
+        if (data.findings && data.findings.length > 0) {
+          html += `<div class="review-findings">`;
+          for (const f of data.findings) {
+            const sev = f.severity || 'yellow';
+            html += `<div class="review-finding severity-${sev}" onclick="highlightFinding('${(f.current_language || '').replace(/'/g, "\\'")}')">
+              <div class="finding-header">
+                <span class="severity-badge ${sev}">${sev}</span>
+                <span class="finding-heading">${f.clause_heading || f.clause_type}</span>
+              </div>
+              <div class="finding-desc">${f.deviation_description || ''}</div>
+              ${f.business_impact ? `<div class="finding-impact">Impact: ${f.business_impact}</div>` : ''}
+              ${f.redline ? `<div class="redline-section">
+                <div class="redline-label">Suggested Redline</div>
+                <div class="redline-text">${f.redline.proposed_language || ''}</div>
+                ${f.redline.rationale ? `<div style="font-size:11px; color:var(--text-dim); margin-top:4px">Rationale: ${f.redline.rationale}</div>` : ''}
+              </div>` : ''}
+            </div>`;
+          }
+          html += `</div>`;
+        }
+
+        // Negotiation strategy
+        if (data.negotiation_strategy) {
+          html += `<div class="strategy-section">
+            <div class="strategy-label">Negotiation Strategy</div>
+            <div class="strategy-text">${data.negotiation_strategy}</div>
+          </div>`;
+        }
+
+        // Summary
+        if (data.summary) {
+          html += `<div style="margin-top:8px; font-size:12px; color:var(--text-dim); font-style:italic">${data.summary}</div>`;
+        }
+
+        addAssistantMsg(html);
+      } catch (e) {
+        completeReasoning('Review failed');
+        addAssistantMsg(`Error during playbook review: ${e.message}`);
+      }
+      isAsking = false;
+    }
+
+    function highlightFinding(text) {
+      if (!text) return;
+      findAndHighlightText(text.substring(0, 80));
+    }
+
+    // ── NDA Triage ──────────────────────────────────────────
+    async function triageNDA() {
+      if (!currentDocId || isAsking) return;
+      isAsking = true;
+
+      addUserMsg('Run NDA triage screening on this contract');
+
+      createReasoningContainer('Running NDA triage...');
+      addReasoningStep('Loading 10-point NDA checklist...');
+      await sleep(400);
+      addReasoningStep('Running automated checks (carveouts, term, governing law)...');
+      await sleep(600);
+      addReasoningStep('LLM verification of hybrid items...');
+      await sleep(500);
+      addReasoningStep('Computing classification...');
+
+      try {
+        const r = await fetch(`${API}/contracts/${currentDocId}/triage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const data = await safeJson(r);
+
+        completeReasoning(`Triage complete: ${data.classification?.level?.toUpperCase() || 'UNKNOWN'}`);
+
+        let html = '';
+
+        // Classification badge
+        if (data.classification) {
+          const c = data.classification;
+          const level = c.level || 'yellow';
+          const icon = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+          html += `<div style="text-align:center; margin-bottom:12px">
+            <div class="triage-badge ${level}">
+              <span class="triage-icon">${icon}</span>
+              ${level.toUpperCase()}
+            </div>
+            <div style="font-size:12px; color:var(--text-dim); margin-top:8px">${c.routing || ''}</div>
+            <div style="font-size:11px; color:var(--text-dim)">Timeline: ${c.timeline || 'N/A'}</div>
+          </div>`;
+        }
+
+        // Checklist results
+        if (data.checklist_results && data.checklist_results.length > 0) {
+          html += `<div style="margin-top:10px">`;
+          for (const cr of data.checklist_results) {
+            const icon = cr.status === 'pass' ? '✅' : cr.status === 'fail' ? '❌' : cr.status === 'n/a' ? '➖' : '🔍';
+            html += `<div class="checklist-item">
+              <span class="checklist-icon">${icon}</span>
+              <span class="checklist-name">${cr.name}</span>
+              <span class="checklist-finding" title="${(cr.finding || '').replace(/"/g, '&quot;')}">${cr.finding || ''}</span>
+            </div>`;
+          }
+          html += `</div>`;
+        }
+
+        // Key issues
+        if (data.key_issues && data.key_issues.length > 0) {
+          html += `<div style="margin-top:10px; padding:8px; background:rgba(225,112,85,0.08); border-radius:8px; border:1px solid rgba(225,112,85,0.2)">
+            <div style="font-size:11px; color:#e17055; font-weight:600; margin-bottom:4px">KEY ISSUES</div>`;
+          for (const issue of data.key_issues) {
+            html += `<div style="font-size:12px; color:var(--text); margin-bottom:2px">• ${issue}</div>`;
+          }
+          html += `</div>`;
+        }
+
+        // Summary
+        if (data.summary) {
+          html += `<div style="margin-top:8px; font-size:12px; color:var(--text-dim); font-style:italic">${data.summary}</div>`;
+        }
+
+        // Counts
+        html += `<div style="margin-top:8px; font-size:11px; color:var(--text-dim)">
+          ${data.pass_count || 0} passed · ${data.fail_count || 0} failed · ${data.review_count || 0} needs review
+          · ${data.triage_time_ms || 0}ms
+        </div>`;
+
+        addAssistantMsg(html);
+      } catch (e) {
+        completeReasoning('Triage failed');
+        addAssistantMsg(`Error during NDA triage: ${e.message}`);
+      }
+      isAsking = false;
     }
 
     // Load samples on page init

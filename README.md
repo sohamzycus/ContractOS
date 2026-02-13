@@ -12,6 +12,10 @@ explainable legal knowledge that can be queried, reasoned over, and evolved.
 - **Classify clauses** — payment, termination, confidentiality, scope, and more
 - **Resolve bindings** — "Buyer" = "Alpha Corp", "Effective Date" = "January 1, 2025"
 - **Detect compliance gaps** — missing mandatory facts per clause type
+- **Playbook review** — compare clauses against organizational playbook positions (GREEN/YELLOW/RED)
+- **Risk scoring** — 5×5 Severity × Likelihood matrix with aggregate risk profiles
+- **Redline generation** — LLM-powered alternative language suggestions for deviating clauses
+- **NDA triage** — automated 10-point screening checklist with routing recommendations
 - **Full provenance** — every answer traces back to source evidence with confidence labels
 
 ---
@@ -95,6 +99,8 @@ curl -X POST http://127.0.0.1:8742/query/ask \
 | `GET` | `/contracts/{id}/bindings` | List resolved bindings (definitions + aliases) |
 | `GET` | `/contracts/{id}/clauses/gaps` | List missing mandatory facts |
 | `GET` | `/contracts/{id}/graph` | **TrustGraph context** — full node/edge graph |
+| `POST` | `/contracts/{id}/review` | **Playbook review** — compliance check with risk scoring |
+| `POST` | `/contracts/{id}/triage` | **NDA triage** — automated screening with classification |
 | `DELETE` | `/contracts/clear` | **Clear all** contracts, facts, sessions, FAISS indices |
 | `POST` | `/query/ask` | Ask a question (single or multi-document) |
 | `GET` | `/query/history` | Chat / query history (most recent first) |
@@ -211,6 +217,10 @@ Features:
   - Confidence labels with color coding
   - Full provenance chain display
   - FAISS semantic retrieval indicator
+  - **Playbook review** — "Review Against Playbook" button with color-coded findings
+  - **NDA triage** — "Triage NDA" button with 10-point checklist and classification
+  - **Risk matrix** — visual 5×5 severity × likelihood grid
+  - **Redline suggestions** — expandable alternative language for deviating clauses
 - **Drag & drop** file upload
 - **Zoom controls** (in/out/fit)
 - **Server status** indicator
@@ -242,6 +252,8 @@ Features:
 - **Filter controls** — show all nodes, clauses only, facts only, bindings only, hide clause text
 - **Layout modes** — Force-Directed, Radial, Hierarchy
 - **Hover highlighting** — hover a node to see its connected subgraph
+- **Playbook review** — run compliance review and see findings highlighted on the graph
+- **NDA triage** — run automated screening with classification badge and checklist
 - **Algorithm documentation** — side panel explains the 7-stage indexing pipeline
 
 ### Indexing Algorithm — Two-Stage Pipeline
@@ -379,7 +391,7 @@ npm install -g newman newman-reporter-htmlextra
 ### Run the Full Suite
 
 ```bash
-# All 622 tests
+# All 743 tests
 python -m pytest tests/
 
 # Verbose output
@@ -465,7 +477,7 @@ python -m pytest tests/integration/test_real_nda_documents.py -v
 
 ## Test Report
 
-**622 tests, all passing** (Python 3.14.2, pytest 9.0.2)
+**743 tests, all passing** (Python 3.14.2, pytest 9.0.2)
 
 ### Test Breakdown by Module
 
@@ -478,8 +490,10 @@ python -m pytest tests/integration/test_real_nda_documents.py -v
 | `test_legalbench_extraction.py` | 32 | Integration — LegalBench/CUAD benchmark extraction |
 | `test_clause_classifier.py` | 29 | Tools — clause type classification |
 | `test_contract_patterns.py` | 25 | Tools — regex pattern extraction |
+| `test_risk_models.py` | 18 | Models — RiskScore, RiskLevel, RiskProfile (5×5 matrix) |
 | `test_embedding_index.py` | 18 | FAISS — vector indexing + semantic search |
 | `test_workspace_store.py` | 17 | Storage — workspace persistence |
+| `test_playbook_models.py` | 16 | Models — PlaybookConfig, PlaybookPosition, NegotiationTier |
 | `test_models_fact.py` | 16 | Models — Fact, FactEvidence, FactType |
 | `test_docx_parser.py` | 16 | Tools — Word document parser |
 | `test_api.py` (unit) | 16 | API — all endpoints |
@@ -493,11 +507,17 @@ python -m pytest tests/integration/test_real_nda_documents.py -v
 | `test_pdf_parser.py` | 13 | Tools — PDF document parser |
 | `test_llm_provider.py` | 12 | LLM — provider abstraction |
 | `test_change_detection.py` | 11 | Tools — file hash + change detection |
+| `test_conversation_context.py` | 11 | Unit — conversation context retention |
 | `test_models_query.py` | 11 | Models — Query, QueryResult |
 | `test_alias_detector.py` | 10 | Tools — entity alias detection |
 | `test_mandatory_fact_extractor.py` | 10 | Tools — mandatory fact slots |
 | `test_models_workspace.py` | 10 | Models — Workspace, Session |
 | `test_models_provenance.py` | 9 | Models — ProvenanceChain |
+| `test_triage_models.py` | 9 | Models — TriageResult, ChecklistResult, TriageClassification |
+| `test_copilot_page.py` (integration) | 9 | Integration — Copilot page serving |
+| `test_fact_discovery.py` | 9 | Unit — LLM-powered hidden fact discovery |
+| `test_compliance_agent.py` | 8 | Agents — playbook compliance review |
+| `test_playbook_loader.py` | 8 | Tools — YAML playbook parser |
 | `test_chat_history_and_clear.py` | 8 | Unit — chat history visibility, clear operations |
 | `test_models_inference.py` | 8 | Models — Inference |
 | `test_provenance_formatting.py` | 8 | Tools — provenance display |
@@ -508,18 +528,25 @@ python -m pytest tests/integration/test_real_nda_documents.py -v
 | `test_query_persistence.py` | 7 | Unit — query persistence + multi-doc API |
 | `test_api.py` (integration) | 7 | API — full pipeline |
 | `test_multi_doc_analysis.py` (integration) | 7 | Integration — HuggingFace multi-doc analysis |
+| `test_sample_contracts.py` | 7 | Unit — sample contract loading |
+| `test_nda_triage_agent.py` | 6 | Agents — NDA automated screening |
+| `test_draft_agent.py` | 5 | Agents — redline generation |
+| `test_review_endpoint.py` (integration) | 4 | Integration — playbook review API |
+| `test_discovery_endpoint.py` (integration) | 4 | Integration — hidden fact discovery API |
+| `test_conversation_context_endpoint.py` (integration) | 4 | Integration — conversation context API |
+| `test_triage_endpoint.py` (integration) | 3 | Integration — NDA triage API |
 | `test_workspace_persistence.py` (integration) | 3 | Integration — persistence across restart |
-| **Total** | **622** | |
+| **Total** | **743** | |
 
 ### Test Breakdown by Category
 
 | Category | Tests | Description |
 |----------|------:|-------------|
-| Unit Tests | 428 | Models, tools, storage, agents, FAISS, query persistence, chat history |
-| Integration Tests | 111 | API pipeline, LegalBench extraction, multi-doc, real NDA documents |
+| Unit Tests | 505 | Models, tools, storage, agents, FAISS, playbook, risk, triage, compliance |
+| Integration Tests | 139 | API pipeline, LegalBench extraction, multi-doc, real NDA, review, triage |
 | Contract Tests | 27 | API contract tests via TestClient |
 | Benchmark Tests | 61 | LegalBench contract_nli, definition extraction, contract QA |
-| **Total** | **622** | |
+| **Total** | **743** | **All passing** |
 
 ### Real Document Coverage
 
@@ -675,16 +702,58 @@ A multi-category procurement framework between Pinnacle Manufacturing Group (Buy
 
 ---
 
+## Playbook Intelligence & Risk Framework (Phase 10)
+
+ContractOS includes a full playbook-based contract review system inspired by [Anthropic's Legal Productivity Plugin](https://github.com/anthropics/knowledge-work-plugins/tree/main/legal).
+
+### Playbook Review
+
+```bash
+# Review a contract against the default playbook
+curl -X POST http://127.0.0.1:8742/contracts/$DOC_ID/review \
+  -H "Content-Type: application/json" \
+  -d '{"user_side": "buyer", "generate_redlines": true}'
+```
+
+**Features:**
+- **Hybrid classification** — deterministic rules (missing clause → RED, escalation trigger → RED) + LLM-assisted classification for nuanced judgments
+- **10 clause types** — limitation_of_liability, indemnification, confidentiality, termination, governing_law, ip_rights, data_protection, non_compete, insurance, force_majeure
+- **5×5 Risk Matrix** — Severity (1-5) × Likelihood (1-5) with automatic level derivation (LOW/MEDIUM/HIGH/CRITICAL)
+- **Redline generation** — LLM-powered alternative language with rationale and fallback positions
+- **Negotiation strategy** — Tier 1/2/3 priority recommendations
+- **Configurable playbooks** — YAML-based playbook definitions in `config/default_playbook.yaml`
+
+### NDA Triage
+
+```bash
+# Triage an NDA with automated screening
+curl -X POST http://127.0.0.1:8742/contracts/$DOC_ID/triage \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+**Features:**
+- **10-point checklist** — mutual obligations, standard carveouts, term duration, governing law, IP assignment, non-compete, indemnification, problematic provisions, data protection, agreement structure
+- **Automated checks** — deterministic pattern matching for common NDA issues
+- **LLM verification** — hybrid mode combines auto-checks with LLM evaluation
+- **Classification** — GREEN (auto-approve), YELLOW (expedited review), RED (full legal review)
+- **Routing recommendations** — timeline and routing based on classification level
+
+---
+
 ## Architecture
 
 ```
 Interaction    →  Word/PDF Copilot · CLI · API · TrustGraph Visualization
 Workspace      →  Persistent context · Session history · Change detection · Chat persistence
 Agents         →  DocumentAgent (Q&A with provenance, multi-document support)
+                  ComplianceAgent (playbook review, risk scoring)
+                  DraftAgent (redline generation)
+                  NDATriageAgent (automated NDA screening)
 Tools          →  FactExtractor · BindingResolver · ClauseClassifier
                   CrossReferenceExtractor · MandatoryFactExtractor
                   AliasDetector · ContractPatterns · Confidence
-                  ChangeDetection · ProvenanceFormatter
+                  ChangeDetection · ProvenanceFormatter · PlaybookLoader
 Fabric         →  TrustGraph (SQLite) · WorkspaceStore · EmbeddingIndex (FAISS)
 LLM            →  Anthropic Claude · Mock (testing)
 Indexing       →  sentence-transformers (all-MiniLM-L6-v2) · faiss-cpu
@@ -714,7 +783,11 @@ Contract (root)
 
 ```
 src/contractos/
-├── agents/              # Q&A agents (DocumentAgent)
+├── agents/              # Q&A agents, compliance review, redline generation, NDA triage
+│   ├── document_agent.py      # Q&A with provenance
+│   ├── compliance_agent.py    # Playbook-based compliance review
+│   ├── draft_agent.py         # Redline suggestion generation
+│   └── nda_triage_agent.py    # Automated NDA screening
 ├── api/                 # FastAPI application
 │   ├── app.py           # App factory
 │   ├── deps.py          # Dependency injection
@@ -740,7 +813,11 @@ src/contractos/
 │   ├── provenance.py    # ProvenanceChain, ProvenanceNode
 │   ├── query.py         # Query, QueryResult
 │   ├── workspace.py     # Workspace, ReasoningSession
-│   └── document.py      # Contract metadata
+│   ├── document.py      # Contract metadata
+│   ├── playbook.py      # PlaybookConfig, PlaybookPosition, NegotiationTier
+│   ├── review.py        # ReviewFinding, ReviewResult, RedlineSuggestion
+│   ├── risk.py          # RiskScore, RiskLevel, RiskProfile (5×5 matrix)
+│   └── triage.py        # TriageResult, ChecklistResult, TriageClassification
 └── tools/               # Extraction and analysis tools
     ├── fact_extractor.py       # Orchestrator (incl. clause body text)
     ├── docx_parser.py          # Word document parser
@@ -753,7 +830,8 @@ src/contractos/
     ├── binding_resolver.py     # Definition resolution
     ├── change_detection.py     # File hash + change detection
     ├── confidence.py           # Confidence labels
-    └── provenance_formatter.py # Provenance display
+    ├── provenance_formatter.py # Provenance display
+    └── playbook_loader.py     # YAML playbook parser
 ```
 
 ## Truth Model
@@ -830,7 +908,7 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 
 ## Status
 
-**Phase 8a complete** — Full extraction pipeline, FAISS semantic search, multi-document Q&A with provenance, chat persistence, TrustGraph visualization, browser-based Document Copilot, deployment configs, 22 API endpoints, **631 tests passing**, tested against **50 real NDA documents** from ContractNLI.
+**Phase 10 complete** — Full extraction pipeline, FAISS semantic search, multi-document Q&A with provenance, chat persistence, TrustGraph visualization, browser-based Document Copilot, playbook compliance review, risk scoring, redline generation, NDA triage, deployment configs, 24 API endpoints, **743 tests passing**, tested against **50 real NDA documents** from ContractNLI.
 
 | Phase | Status | Tests |
 |-------|--------|------:|
@@ -848,5 +926,9 @@ See [`spec/`](spec/) for the complete ecosystem blueprint:
 | Phase 7e: Chat History View, Clear All, HuggingFace Multi-Doc | Done | 15 |
 | Phase 7f: Real ContractNLI Document Testing (50 NDAs) | Done | 54 |
 | Phase 8a: Browser-Based Document Copilot + Deployment | Done | 9 |
-| Phase 9: Polish & Benchmarks | Planned | — |
-| **Total** | | **631** |
+| Phase 8b: Hidden Fact Discovery + Highlighting | Done | 13 |
+| Phase 8c: Conversation Context Retention | Done | 15 |
+| Phase 8d: Sample Contracts | Done | 7 |
+| Phase 9: Polish | Done | 3 |
+| Phase 10: Playbook Intelligence & Risk Framework | Done | 77 |
+| **Total** | | **743** |

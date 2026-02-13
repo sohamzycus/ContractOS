@@ -482,6 +482,234 @@ async def load_sample_contract(
         tmp_path.unlink(missing_ok=True)
 
 
+# ── Playbook Review & NDA Triage ──────────────────────────────────
+
+
+class ReviewRequest(BaseModel):
+    """Request body for playbook review."""
+    playbook_path: str | None = None
+    user_side: str = "buyer"
+    focus_areas: list[str] | None = None
+    generate_redlines: bool = False
+
+
+class ReviewFindingResponse(BaseModel):
+    finding_id: str
+    clause_id: str = ""
+    clause_type: str
+    clause_heading: str = ""
+    severity: str
+    current_language: str = ""
+    playbook_position: str = ""
+    deviation_description: str = ""
+    business_impact: str = ""
+    risk_score: dict | None = None
+    redline: dict | None = None
+    provenance_facts: list[str] = []
+    char_start: int = 0
+    char_end: int = 0
+
+
+class RiskProfileResponse(BaseModel):
+    overall_level: str
+    overall_score: float
+    highest_risk_finding: str
+    risk_distribution: dict[str, int]
+    tier_1_issues: int
+    tier_2_issues: int
+    tier_3_issues: int
+
+
+class ReviewResponse(BaseModel):
+    document_id: str
+    playbook_name: str = ""
+    findings: list[ReviewFindingResponse] = []
+    summary: str = ""
+    risk_profile: RiskProfileResponse | None = None
+    negotiation_strategy: str = ""
+    review_time_ms: int = 0
+    green_count: int = 0
+    yellow_count: int = 0
+    red_count: int = 0
+    missing_clauses: list[str] = []
+
+
+class TriageRequest(BaseModel):
+    """Request body for NDA triage."""
+    checklist_path: str | None = None
+    context: str = ""
+
+
+class ChecklistResultResponse(BaseModel):
+    item_id: str
+    name: str
+    status: str
+    finding: str = ""
+    evidence: str = ""
+    fact_ids: list[str] = []
+
+
+class TriageClassificationResponse(BaseModel):
+    level: str
+    routing: str
+    timeline: str
+    rationale: str = ""
+
+
+class TriageResponse(BaseModel):
+    document_id: str
+    classification: TriageClassificationResponse
+    checklist_results: list[ChecklistResultResponse] = []
+    key_issues: list[str] = []
+    summary: str = ""
+    triage_time_ms: int = 0
+    pass_count: int = 0
+    fail_count: int = 0
+    review_count: int = 0
+
+
+@router.post("/{document_id}/review", response_model=ReviewResponse)
+async def review_contract(
+    document_id: str,
+    request: ReviewRequest,
+    state: Annotated[AppState, Depends(get_state)],
+) -> ReviewResponse:
+    """Review a contract against a playbook — returns GREEN/YELLOW/RED per clause."""
+    from contractos.agents.compliance_agent import ComplianceAgent
+    from contractos.tools.playbook_loader import load_default_playbook, load_playbook
+
+    contract = state.trust_graph.get_contract(document_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail=f"Contract {document_id} not found")
+
+    # Load playbook
+    try:
+        if request.playbook_path:
+            playbook = load_playbook(request.playbook_path)
+        else:
+            playbook = load_default_playbook()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=400, detail=f"Playbook not found: {e}")
+
+    agent = ComplianceAgent(state.trust_graph, state.llm)
+    result = await agent.review(
+        document_id,
+        playbook,
+        user_side=request.user_side,
+        focus_areas=request.focus_areas,
+        generate_redlines=request.generate_redlines,
+    )
+
+    # Convert to response
+    findings_resp = []
+    for f in result.findings:
+        risk_dict = None
+        if f.risk_score:
+            risk_dict = {
+                "severity": f.risk_score.severity,
+                "likelihood": f.risk_score.likelihood,
+                "score": f.risk_score.score,
+                "level": f.risk_score.level.value,
+            }
+        redline_dict = None
+        if f.redline:
+            redline_dict = {
+                "proposed_language": f.redline.proposed_language,
+                "rationale": f.redline.rationale,
+                "priority": f.redline.priority.value,
+                "fallback_language": f.redline.fallback_language,
+            }
+        findings_resp.append(ReviewFindingResponse(
+            finding_id=f.finding_id,
+            clause_id=f.clause_id,
+            clause_type=f.clause_type,
+            clause_heading=f.clause_heading,
+            severity=f.severity.value,
+            current_language=f.current_language,
+            playbook_position=f.playbook_position,
+            deviation_description=f.deviation_description,
+            business_impact=f.business_impact,
+            risk_score=risk_dict,
+            redline=redline_dict,
+            provenance_facts=f.provenance_facts,
+            char_start=f.char_start,
+            char_end=f.char_end,
+        ))
+
+    risk_profile_resp = None
+    if result.risk_profile:
+        rp = result.risk_profile
+        risk_profile_resp = RiskProfileResponse(
+            overall_level=rp.overall_level.value,
+            overall_score=rp.overall_score,
+            highest_risk_finding=rp.highest_risk_finding,
+            risk_distribution=rp.risk_distribution,
+            tier_1_issues=rp.tier_1_issues,
+            tier_2_issues=rp.tier_2_issues,
+            tier_3_issues=rp.tier_3_issues,
+        )
+
+    return ReviewResponse(
+        document_id=result.document_id,
+        playbook_name=result.playbook_name,
+        findings=findings_resp,
+        summary=result.summary,
+        risk_profile=risk_profile_resp,
+        negotiation_strategy=result.negotiation_strategy,
+        review_time_ms=result.review_time_ms,
+        green_count=result.green_count,
+        yellow_count=result.yellow_count,
+        red_count=result.red_count,
+        missing_clauses=result.missing_clauses,
+    )
+
+
+@router.post("/{document_id}/triage", response_model=TriageResponse)
+async def triage_contract(
+    document_id: str,
+    request: TriageRequest,
+    state: Annotated[AppState, Depends(get_state)],
+) -> TriageResponse:
+    """Run NDA triage — 10-point checklist with GREEN/YELLOW/RED classification."""
+    from contractos.agents.nda_triage_agent import NDATriageAgent
+
+    contract = state.trust_graph.get_contract(document_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail=f"Contract {document_id} not found")
+
+    agent = NDATriageAgent(state.trust_graph, state.llm)
+    result = await agent.triage(document_id)
+
+    checklist_resp = [
+        ChecklistResultResponse(
+            item_id=cr.item_id,
+            name=cr.name,
+            status=cr.status.value,
+            finding=cr.finding,
+            evidence=cr.evidence,
+            fact_ids=cr.fact_ids,
+        )
+        for cr in result.checklist_results
+    ]
+
+    return TriageResponse(
+        document_id=result.document_id,
+        classification=TriageClassificationResponse(
+            level=result.classification.level.value,
+            routing=result.classification.routing,
+            timeline=result.classification.timeline,
+            rationale=result.classification.rationale,
+        ),
+        checklist_results=checklist_resp,
+        key_issues=result.key_issues,
+        summary=result.summary,
+        triage_time_ms=result.triage_time_ms,
+        pass_count=result.pass_count,
+        fail_count=result.fail_count,
+        review_count=result.review_count,
+    )
+
+
 # ── Document-specific endpoints ───────────────────────────────────
 
 

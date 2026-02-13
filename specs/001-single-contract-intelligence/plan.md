@@ -1,37 +1,31 @@
-# Implementation Plan: Single-Contract Intelligence
+# Implementation Plan: Phase 9 — Playbook Intelligence & Risk Framework
 
-**Branch**: `001-single-contract-intelligence` | **Date**: 2025-02-09 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `specs/001-single-contract-intelligence/spec.md`
+**Branch**: `001-single-contract-intelligence` | **Date**: 2026-02-09 | **Spec**: [spec.md](spec.md)
+**Input**: Competitive analysis of [Anthropic's Legal Productivity Plugin](https://github.com/anthropics/knowledge-work-plugins/tree/main/legal) + existing ContractOS architecture (Phases 1–8d complete, 666 tests passing).
 
 ## Summary
 
-Build the foundational phase of ContractOS: a local service that parses Word
-and PDF procurement contracts, extracts structured facts, resolves defined-term
-bindings, answers natural language questions via LLM, and returns every answer
-with a full provenance chain. Deployed as a local Python service with a Word
-Copilot as the primary interaction surface, using SQLite for the TrustGraph and
-Claude as the default LLM.
+Phase 9 introduces **playbook-based contract review**, **risk assessment**, **NDA triage**, and **redline generation** — domain workflows identified in Anthropic's legal plugin, re-implemented as grounded agents built on ContractOS's existing extraction pipeline, TrustGraph, and FAISS semantic search. Where Anthropic relies on a single LLM pass with no verification, ContractOS grounds every assessment in deterministic extraction with full provenance.
+
+**Key deliverables**:
+1. `ComplianceAgent` — compares extracted clauses against a configurable playbook, producing GREEN/YELLOW/RED severity per clause
+2. `DraftAgent` — generates specific redline language for deviations
+3. `NDATriageAgent` — automated 10-point NDA screening with routing
+4. Risk scoring framework — 5×5 Severity × Likelihood matrix
+5. New API endpoints: `/contracts/{id}/review`, `/contracts/{id}/triage`
+6. Copilot UI: playbook review results with color-coded clauses and risk matrix
 
 ## Technical Context
 
 **Language/Version**: Python 3.12
-**Primary Dependencies**: python-docx (Word parsing), PyMuPDF/pdfplumber (PDF
-parsing), Anthropic SDK (Claude API), SQLite3 (built-in), Pydantic (data
-models), FastAPI (local API server), spaCy (NER), pytest (testing)
-**Storage**: SQLite (TrustGraph — facts, bindings, inferences; Workspace state;
-session history)
-**Testing**: pytest with custom fixtures for contract parsing; COBench v0.1 for
-accuracy benchmarks
-**Target Platform**: macOS / Linux local deployment; Word Copilot via Office
-Add-in (TypeScript/React sidebar)
-**Project Type**: Single project — Python backend + Office Add-in frontend
-**Performance Goals**: < 5 seconds Q&A on cached documents; < 30 seconds first
-parse for a 30-page document; > 93% fact extraction precision
-**Constraints**: Must run locally; LLM API calls are the only external
-dependency; document contents never leave the local machine except as
-excerpts to LLM; configurable LLM provider
-**Scale/Scope**: 1 document at a time (Phase 1); workspace supports multiple
-indexed documents; target 100–500 documents per workspace
+**Primary Dependencies**: FastAPI, Pydantic v2, anthropic SDK, sentence-transformers, faiss-cpu, PyMuPDF, python-docx
+**Storage**: SQLite with WAL mode (TrustGraph, WorkspaceStore)
+**Testing**: pytest, pytest-asyncio, httpx (AsyncClient), respx — TDD mandatory
+**Target Platform**: Docker Compose on any VDI, macOS/Linux dev
+**Project Type**: Single project (src/contractos/ + tests/ + demo/)
+**Performance Goals**: Playbook review < 15s per contract, NDA triage < 10s, redline generation < 5s per clause
+**Constraints**: Must work with existing SQLite storage, must not break existing 666 tests
+**Scale/Scope**: Single-contract review initially, multi-contract comparison in Phase 10
 
 ## Constitution Check
 
@@ -39,22 +33,14 @@ indexed documents; target 100–500 documents per workspace
 
 | Principle | Status | Notes |
 |-----------|--------|-------|
-| Evidence Before Intelligence | PASS | Every tool output includes source evidence; provenance chains mandatory |
-| Truth Model Integrity | PASS | Schema enforces Fact/Binding/Inference/Opinion typing; Pydantic models |
-| Inference Over Extraction | PASS | InferenceEngine combines facts+bindings+LLM to derive claims |
-| Auditability By Design | PASS | ProvenanceChain is a first-class data structure; every answer includes one |
-| Repository-Level Reasoning | N/A | Phase 1 is single-document; architecture supports future expansion |
-| Configuration Over Code | PASS | LLM provider, extraction pipeline via YAML config |
-| Context Is Persistent | PASS | SQLite workspace persists across restarts |
-
-| Constraint | Status | Notes |
-|------------|--------|-------|
-| Layered architecture | PASS | Interaction → Workspace → Agent → Tool → Fabric → Data |
-| Agents are stateless | PASS | DocumentAgent receives context per query |
-| Tools enforce truth model | PASS | Every tool returns typed results (FactResult, etc.) |
-| Interaction Layer never reasons | PASS | Word Copilot is display-only; reasoning in Agent layer |
-| External knowledge declared | N/A | DomainBridge not in Phase 1 |
-| Scale deferred not ignored | PASS | SQLite now; schema supports PostgreSQL migration |
+| Evidence Before Intelligence | PASS | Every GREEN/YELLOW/RED classification is backed by extracted facts with char offsets and provenance chains |
+| Truth Model Integrity | PASS | Playbook deviations are typed as Opinions (role-dependent, policy-dependent). Risk scores are Inferences (derived from facts + playbook). Extracted clause text remains Facts. |
+| Inference Over Extraction | PASS | ComplianceAgent reasons about what clauses mean relative to organizational policy, not just what they say |
+| Auditability By Design | PASS | Every review finding includes: the clause text, the playbook position, the deviation, and the provenance chain |
+| Repository-Level Reasoning | PASS (deferred) | Phase 9 is single-contract. Phase 10 adds cross-contract playbook comparison |
+| Configuration Over Code | PASS | Playbook is a YAML config file, not hardcoded. Clause positions, ranges, and triggers are user-defined |
+| Context Is Persistent | PASS | Review results stored in TrustGraph as ReasoningSessions. Prior reviews retrievable |
+| Test-Driven Development | PASS | All features TDD: unit tests for agents/models, integration tests for endpoints, contract tests for API schemas |
 
 ## Project Structure
 
@@ -62,107 +48,54 @@ indexed documents; target 100–500 documents per workspace
 
 ```text
 specs/001-single-contract-intelligence/
-├── spec.md              # Feature specification
-├── plan.md              # This file
-├── research.md          # Phase 0: Technology decisions
-├── data-model.md        # Phase 1: Entity schemas
-├── quickstart.md        # Phase 1: Getting started guide
-├── contracts/           # Phase 1: API specifications
-│   ├── api-server.md    # FastAPI endpoints
-│   └── copilot-api.md   # Office Add-in communication
-├── checklists/
-│   └── requirements.md  # Requirements tracking
-└── tasks.md             # Phase 2: Task breakdown
+├── plan.md                 # This file
+├── research.md             # Phase 0: Anthropic plugin analysis + design decisions
+├── data-model.md           # Phase 1: New entities (PlaybookPosition, ReviewFinding, RiskScore)
+├── quickstart.md           # Phase 1: Integration scenarios
+├── contracts/              # Phase 1: API specifications for new endpoints
+│   ├── review-contract.md
+│   └── triage-nda.md
+└── tasks.md                # Phase 2: Task breakdown (to be updated)
 ```
 
-### Source Code (repository root)
+### Source Code (new/modified files)
 
 ```text
-src/
-├── contractos/
-│   ├── __init__.py
-│   ├── config.py              # Configuration loading (YAML)
-│   ├── models/                # Pydantic data models
-│   │   ├── __init__.py
-│   │   ├── fact.py            # Fact, FactResult, FactType (incl. CROSS_REFERENCE)
-│   │   ├── binding.py         # Binding, BindingResult
-│   │   ├── inference.py       # Inference, InferenceResult
-│   │   ├── opinion.py         # Opinion, OpinionResult
-│   │   ├── document.py        # Contract document metadata
-│   │   ├── clause.py          # Clause, CrossReference, ReferenceType, ReferenceEffect
-│   │   ├── clause_type.py     # ClauseTypeSpec, MandatoryFactSpec, ClauseFactSlot
-│   │   ├── provenance.py      # ProvenanceChain, ProvenanceNode
-│   │   ├── workspace.py       # Workspace, ReasoningSession
-│   │   └── query.py           # Query, QueryResult
-│   ├── tools/                 # Tooling layer (deterministic operations)
-│   │   ├── __init__.py
-│   │   ├── fact_extractor.py  # Document parsing + fact extraction
-│   │   ├── docx_parser.py     # Word-specific parsing
-│   │   ├── pdf_parser.py      # PDF-specific parsing
-│   │   ├── clause_classifier.py      # Clause type classification
-│   │   ├── cross_reference_extractor.py  # Cross-reference detection + resolution
-│   │   ├── mandatory_fact_extractor.py   # Mandatory fact slot filling per clause type
-│   │   ├── alias_detector.py  # Entity aliasing pattern detection
-│   │   ├── contract_patterns.py  # spaCy custom patterns for contracts
-│   │   ├── binding_resolver.py # Definition resolution
-│   │   ├── inference_engine.py # LLM-assisted inference
-│   │   ├── prompts.py         # LLM prompt templates
-│   │   └── confidence.py      # Confidence calculation
-│   ├── agents/                # Agent orchestration layer
-│   │   ├── __init__.py
-│   │   └── document_agent.py  # Single-contract reasoning
-│   ├── fabric/                # Intelligence fabric
-│   │   ├── __init__.py
-│   │   ├── trust_graph.py     # TrustGraph (SQLite backend)
-│   │   └── schema.sql         # Database schema
-│   ├── workspace/             # Workspace management
-│   │   ├── __init__.py
-│   │   ├── manager.py         # WorkspaceManager
-│   │   └── session.py         # ReasoningSession lifecycle
-│   ├── api/                   # FastAPI server
-│   │   ├── __init__.py
-│   │   ├── server.py          # Main FastAPI application
-│   │   ├── routes/
-│   │   │   ├── documents.py   # Document upload/status
-│   │   │   ├── query.py       # Q&A endpoints
-│   │   │   └── workspace.py   # Workspace management
-│   │   └── middleware/
-│   │       └── provenance.py  # Ensures all responses have provenance
-│   └── llm/                   # LLM abstraction
-│       ├── __init__.py
-│       ├── provider.py        # Base LLM provider interface
-│       └── claude.py          # Claude implementation
-├── config/
-│   └── default.yaml           # Default configuration
-├── copilot/                   # Word Add-in (TypeScript/React)
-│   ├── package.json
-│   ├── src/
-│   │   ├── taskpane/          # Sidebar UI
-│   │   ├── services/          # API client
-│   │   └── components/        # Provenance display, Q&A
-│   └── manifest.xml           # Office Add-in manifest
-tests/
-├── conftest.py                # Shared fixtures
-├── fixtures/                  # Test contracts (anonymized)
-│   ├── simple-procurement.docx
-│   ├── complex-it-services.docx
-│   └── simple-nda.pdf
-├── unit/
-│   ├── test_fact_extractor.py
-│   ├── test_binding_resolver.py
-│   ├── test_inference_engine.py
-│   └── test_trust_graph.py
-├── integration/
-│   └── test_document_agent.py
-└── benchmark/
-    ├── cobench_v01.py         # COBench runner
-    └── annotations/           # Ground truth annotations
-```
+src/contractos/
+├── agents/
+│   ├── document_agent.py       # Existing — no changes
+│   ├── compliance_agent.py     # NEW — playbook-based clause review
+│   ├── draft_agent.py          # NEW — redline generation
+│   └── nda_triage_agent.py     # NEW — NDA screening
+├── models/
+│   ├── playbook.py             # NEW — PlaybookPosition, PlaybookConfig
+│   ├── review.py               # NEW — ReviewFinding, ReviewResult, Severity
+│   └── risk.py                 # NEW — RiskScore, RiskLevel, RiskMatrix
+├── tools/
+│   └── playbook_loader.py      # NEW — YAML playbook parser + validator
+├── api/routes/
+│   └── contracts.py            # MODIFIED — add /review and /triage endpoints
 
-**Structure Decision**: Single Python project with a colocated TypeScript
-Office Add-in under `copilot/`. The Python backend runs as a local FastAPI
-service that the Word Add-in communicates with over localhost.
+config/
+├── default_playbook.yaml       # NEW — default playbook with standard commercial positions
+└── nda_checklist.yaml          # NEW — NDA triage checklist configuration
+
+demo/
+└── copilot.html                # MODIFIED — review results UI, risk matrix
+
+tests/
+├── unit/
+│   ├── test_compliance_agent.py    # NEW
+│   ├── test_draft_agent.py         # NEW
+│   ├── test_nda_triage_agent.py    # NEW
+│   ├── test_playbook_models.py     # NEW
+│   ├── test_risk_models.py         # NEW
+│   └── test_playbook_loader.py     # NEW
+└── integration/
+    ├── test_review_endpoint.py     # NEW
+    └── test_triage_endpoint.py     # NEW
+```
 
 ## Complexity Tracking
 
-No constitution violations identified. No complexity justifications needed.
+No constitution violations. All new features align with existing principles.

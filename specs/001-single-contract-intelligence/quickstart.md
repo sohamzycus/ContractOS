@@ -1,160 +1,205 @@
-# Quickstart: Single-Contract Intelligence
+# Quickstart: Phase 9 — Playbook Intelligence & Risk Framework
 
-**Audience**: Developer setting up ContractOS Phase 1 locally
+## Scenario 1: Playbook-Based Contract Review
+
+### Setup
+```bash
+# Server running with real LLM
+docker compose up -d
+
+# Upload a contract
+curl -X POST http://localhost:8742/contracts/upload \
+  -F "file=@vendor_agreement.docx"
+# → { "document_id": "doc-abc123", "fact_count": 245, "clause_count": 18 }
+```
+
+### Review Against Playbook
+```bash
+curl -X POST http://localhost:8742/contracts/doc-abc123/review \
+  -H "Content-Type: application/json" \
+  -d '{"user_side": "customer", "generate_redlines": true}'
+```
+
+### Expected Response
+```json
+{
+  "summary": "3 RED, 5 YELLOW, 8 GREEN. Key: uncapped indemnification, missing DPA, short notice period.",
+  "red_count": 3,
+  "yellow_count": 5,
+  "green_count": 8,
+  "findings": [
+    {
+      "severity": "red",
+      "clause_type": "indemnification",
+      "deviation_description": "Unilateral indemnification — Buyer only",
+      "redline": {
+        "proposed_language": "Each Party shall indemnify...",
+        "priority": "tier_1"
+      }
+    }
+  ],
+  "negotiation_strategy": "Lead with Tier 1: indemnification, DPA, liability cap..."
+}
+```
+
+### Copilot UI Flow
+1. Upload contract → document renders
+2. Click "Review Against Playbook" button
+3. Reasoning steps animate (loading playbook → analyzing clauses → scoring risk)
+4. Results appear as color-coded cards in sidebar
+5. Click any finding → document scrolls to and highlights the clause
+6. Expand finding → see redline suggestion with rationale
 
 ---
 
-## Prerequisites
+## Scenario 2: NDA Triage
 
-- Python 3.12+
-- Node.js 18+ (for Word Copilot add-in)
-- An Anthropic API key (for Claude) OR OpenAI API key
-- Microsoft Word (desktop, with Add-in support)
-
-## 1. Clone and Install
-
+### Triage an Incoming NDA
 ```bash
-git clone https://github.com/<org>/ContractOS.git
-cd ContractOS
+# Upload NDA
+curl -X POST http://localhost:8742/contracts/upload \
+  -F "file=@vendor_nda.pdf"
+# → { "document_id": "doc-nda-789" }
 
-# Python backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-
-# Download spaCy model
-python -m spacy download en_core_web_lg
-
-# Word Copilot add-in
-cd copilot
-npm install
-cd ..
+# Triage
+curl -X POST http://localhost:8742/contracts/doc-nda-789/triage \
+  -H "Content-Type: application/json" \
+  -d '{"context": "New vendor for cloud services evaluation"}'
 ```
 
-## 2. Configure
-
-```bash
-# Copy default config
-cp config/default.yaml config/local.yaml
-
-# Set your API key
-export ANTHROPIC_API_KEY="sk-ant-..."
-# OR for OpenAI:
-# export OPENAI_API_KEY="sk-..."
-# Then update config/local.yaml: llm.provider: "openai"
+### Expected Response
+```json
+{
+  "classification": {
+    "level": "green",
+    "routing": "Approve and route for signature",
+    "timeline": "Same day"
+  },
+  "pass_count": 9,
+  "fail_count": 0,
+  "review_count": 1,
+  "summary": "Standard mutual NDA. All criteria met. Minor note: governing law is Delaware (acceptable)."
+}
 ```
 
-## 3. Start the Server
+### Copilot UI Flow
+1. Upload NDA → document renders
+2. Click "Triage NDA" button
+3. Reasoning steps animate
+4. Large GREEN/YELLOW/RED badge appears
+5. 10-item checklist with pass/fail/review icons
+6. Routing recommendation with timeline
 
-```bash
-contractos serve --config config/local.yaml
-# Server starts at http://127.0.0.1:8742
-# Health check: http://127.0.0.1:8742/api/v1/health
+---
+
+## Scenario 3: Custom Playbook
+
+### Create Organization Playbook
+```yaml
+# config/my_org_playbook.yaml
+playbook:
+  name: "Acme Corp Legal Playbook"
+  version: "1.0"
+  positions:
+    limitation_of_liability:
+      clause_type: "limitation_of_liability"
+      standard_position: "Mutual cap at 24 months of fees"
+      acceptable_range:
+        min_position: "12 months of fees"
+        max_position: "36 months of fees"
+      escalation_triggers:
+        - "Uncapped liability"
+        - "Cap less than 6 months"
+      priority: "tier_1"
+      required: true
+
+    termination:
+      clause_type: "termination"
+      standard_position: "Annual term with 30-day termination for convenience"
+      acceptable_range:
+        min_position: "Quarterly term with 15-day notice"
+        max_position: "Multi-year with termination for convenience after initial term"
+      escalation_triggers:
+        - "No termination for convenience"
+        - "Auto-renewal without notice period"
+      priority: "tier_2"
+      required: true
 ```
 
-## 4. Load the Word Add-in
-
+### Use Custom Playbook
 ```bash
-# In a separate terminal
-cd copilot
-npm run dev-server
-# Follow instructions to sideload the add-in in Word
-```
-
-## 5. Try It
-
-1. Open a procurement contract (.docx) in Word
-2. Open the ContractOS sidebar (Insert → Add-ins → ContractOS)
-3. Click "Analyze this contract"
-4. Wait for parsing to complete (~15-30 seconds)
-5. Ask: "Who are the parties to this contract?"
-6. Ask: "What are the payment terms?"
-7. Ask: "Does this contract include an indemnification clause?"
-8. Click on any fact in the provenance chain to navigate to the source
-
-## 6. Run via CLI (Alternative)
-
-```bash
-# Parse a document
-contractos parse /path/to/contract.docx
-
-# Ask a question
-contractos query "What are the payment terms?" --document /path/to/contract.docx
-
-# List extracted facts
-contractos facts /path/to/contract.docx --type entity
-
-# List bindings
-contractos bindings /path/to/contract.docx
-```
-
-## 7. Run Tests
-
-```bash
-# Unit tests
-pytest tests/unit/ -v
-
-# Integration tests (requires API key)
-pytest tests/integration/ -v
-
-# Benchmark (COBench v0.1)
-pytest tests/benchmark/cobench_v01.py -v --benchmark
+curl -X POST http://localhost:8742/contracts/doc-abc123/review \
+  -H "Content-Type: application/json" \
+  -d '{"playbook": "my_org_playbook", "user_side": "customer"}'
 ```
 
 ---
 
-## Integration Scenarios
+## Scenario 4: Risk Matrix Visualization
 
-### Scenario 1: First-Time Document Analysis
-
-```
-1. User opens contract in Word
-2. Copilot detects: document not indexed
-3. User clicks "Analyze"
-4. Server: POST /documents → 202 Accepted
-5. Server: FactExtractor runs → 247 facts
-6. Server: BindingResolver runs → 18 bindings
-7. Copilot polls: GET /documents/{id} → status: "indexed"
-8. Sidebar shows: parties, dates, clause count, binding count
-```
-
-### Scenario 2: Returning to a Previously Analyzed Document
+After a playbook review, the Copilot displays a 5×5 risk matrix:
 
 ```
-1. User opens same contract in Word
-2. Copilot: GET /documents?file_hash=<sha256>
-3. Server: document found, already indexed
-4. Copilot: shows previous facts and session history immediately
-5. User asks new question → fast response (no re-parsing needed)
+                    LIKELIHOOD →
+              Remote  Unlikely  Possible  Likely  Certain
+SEVERITY ↓
+Critical  |        |         |    ●    |   ●●  |        |
+High      |        |    ●    |         |   ●   |        |
+Moderate  |        |   ●●    |   ●●●  |        |        |
+Low       |   ●    |  ●●●●   |         |        |        |
+Negligible|  ●●●   |         |         |        |        |
 ```
 
-### Scenario 3: Question with Inference
+Each dot represents a finding. Click a dot to see the finding details and jump to the clause in the document.
 
-```
-1. User asks: "Does this contract cover IT equipment?"
-2. Server:
-   a. Search facts for "IT equipment" → no exact match
-   b. Search facts for product entities → "Dell Inspiron 15"
-   c. Binding: none relevant
-   d. InferenceEngine:
-      - Fact: Schedule A lists "Dell Inspiron 15"
-      - Reasoning: Dell Inspiron is a laptop, which is IT equipment
-      - Note: DomainBridge not available in Phase 1, so inference
-        is LLM-generated with explicit reasoning chain
-      - Confidence: 0.80 (no ontology confirmation)
-   e. Return inference + provenance
-3. Copilot: displays answer with confidence bar and reasoning chain
+---
+
+## Integration Test Scenarios
+
+### T200: Playbook Review — Basic Flow
+```python
+async def test_review_returns_findings(client):
+    # Upload contract
+    r = await client.post("/contracts/upload", files={"file": pdf_file})
+    doc_id = r.json()["document_id"]
+
+    # Review
+    r = await client.post(f"/contracts/{doc_id}/review",
+                          json={"user_side": "customer"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["green_count"] + data["yellow_count"] + data["red_count"] > 0
+    assert all(f["severity"] in ["green", "yellow", "red"] for f in data["findings"])
+    assert all(f["provenance_facts"] for f in data["findings"])
 ```
 
-### Scenario 4: Question with No Answer
+### T201: NDA Triage — GREEN Classification
+```python
+async def test_standard_nda_classified_green(client):
+    r = await client.post("/contracts/upload", files={"file": standard_nda})
+    doc_id = r.json()["document_id"]
 
+    r = await client.post(f"/contracts/{doc_id}/triage")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["classification"]["level"] == "green"
+    assert data["pass_count"] >= 8
 ```
-1. User asks: "What is the force majeure clause?"
-2. Server:
-   a. Search facts for force majeure clauses → none found
-   b. Search all clause headings → no match
-   c. Search all text for "force majeure" → no occurrences
-   d. Return: "not_found" with searched sections list
-3. Copilot: "No force majeure clause found in this contract.
-   Searched: all 14 identified clauses and full document text."
+
+### T202: Redline Generation
+```python
+async def test_redline_generated_for_red_finding(client):
+    r = await client.post("/contracts/upload", files={"file": problematic_contract})
+    doc_id = r.json()["document_id"]
+
+    r = await client.post(f"/contracts/{doc_id}/review",
+                          json={"generate_redlines": True})
+    data = r.json()
+    red_findings = [f for f in data["findings"] if f["severity"] == "red"]
+    assert len(red_findings) > 0
+    for f in red_findings:
+        assert f["redline"] is not None
+        assert f["redline"]["proposed_language"]
+        assert f["redline"]["rationale"]
+        assert f["redline"]["priority"]
 ```

@@ -649,6 +649,13 @@ The [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript
 - **Phase 7 (US5: Workspace Persistence)**: Depends on Phase 2 only (can parallel with US1-US3)
 - **Phase 8 (Word Copilot)**: Depends on Phase 5 + Phase 6 + Phase 7 (needs working API)
 - **Phase 9 (Polish)**: Depends on all user stories being complete
+- **Phase 10 (Playbook Intelligence)**: Depends on Phase 8d (666 tests passing). Sub-phases:
+  - **10a (Models)**: No internal dependencies — start immediately after Phase 8d
+  - **10b (ComplianceAgent)**: Depends on 10a (needs playbook models)
+  - **10c (DraftAgent)**: Depends on 10b (needs review findings to generate redlines)
+  - **10d (NDA Triage)**: Depends on 10a only (independent of 10b/10c)
+  - **10e (Copilot UI)**: Depends on 10b + 10d (needs API endpoints to call)
+  - **10f (Polish)**: Depends on 10a–10e completion
 
 ### TDD Execution Within Each Phase
 
@@ -669,6 +676,12 @@ The [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript
 - **Phase 7 can start alongside Phase 3–5** — workspace persistence is independent of parsing/Q&A.
 - **Phase 8 can start T116–T117 alongside Phase 3–5** — scaffold the add-in project early.
 - **Phase 9**: T128–T131 (tests) all parallel. T132–T137 (implementation) all parallel.
+- **Phase 10a**: T200–T202 (tests) all parallel. T203–T205 (models) all parallel. T206–T207 sequential.
+- **Phase 10b**: T208–T209 (tests) parallel. T210–T216 sequential (agent → prompt → aggregation → strategy → endpoint → models → storage).
+- **Phase 10c**: T217 (test) first. T218–T222 sequential.
+- **Phase 10d**: T223–T225 (tests) all parallel. T226 parallel with T227. T228–T232 sequential.
+- **Phase 10e**: T233–T237 all parallel (different UI sections, same file but independent functions).
+- **Phase 10f**: T238–T240 all parallel. T241–T242 sequential.
 
 ### Critical Path
 
@@ -684,6 +697,21 @@ Phase 1 → Phase 2 → Phase 3 (Fact Extraction)
                      Phase 8 (Word Copilot) ← This is the full Phase 1 product
                         ↓
                      Phase 9 (Polish)
+                        ↓
+                     Phase 10a (Playbook Models)
+                        ↓
+              ┌─────────┴──────────┐
+              ↓                    ↓
+         Phase 10b            Phase 10d
+       (ComplianceAgent)     (NDA Triage)
+              ↓                    │
+         Phase 10c                 │
+        (DraftAgent)               │
+              └─────────┬──────────┘
+                        ↓
+                     Phase 10e (Copilot UI)
+                        ↓
+                     Phase 10f (Polish)
 ```
 
 ---
@@ -843,6 +871,221 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 
 ---
 
+## Phase 10: Playbook Intelligence & Risk Framework [COMPLETE]
+
+**Goal**: Adopt domain workflows from [Anthropic's Legal Productivity Plugin](https://github.com/anthropics/knowledge-work-plugins/tree/main/legal) as grounded agents built on ContractOS's extraction pipeline, TrustGraph, and FAISS semantic search. Every assessment is backed by extracted facts with provenance chains.
+
+**Spec**: `plan.md` (Phase 9 plan), `research.md` (R1–R7), `data-model-phase9.md`, `contracts/review-contract.md`, `contracts/triage-nda.md`, `quickstart.md`
+
+**Prerequisites**: All Phase 8d tasks complete (666 tests passing). Existing clause classifier, fact extractor, binding resolver, and LLM provider operational.
+
+### Phase 10a: Foundation — Playbook Models & Loader (T200–T207)
+
+**Purpose**: Core data models and configuration loading that all playbook features depend on.
+
+#### Tests (TDD Red)
+
+- [x] T200 [P] Write unit tests for playbook models in `tests/unit/test_playbook_models.py` — verify: `PlaybookConfig` validates from YAML dict; `PlaybookPosition` requires clause_type and standard_position; `AcceptableRange` has min/max; `NegotiationTier` enum has tier_1/tier_2/tier_3; `ReviewSeverity` enum has green/yellow/red; invalid YAML rejected with ValidationError
+- [x] T201 [P] Write unit tests for risk models in `tests/unit/test_risk_models.py` — verify: `RiskScore` enforces severity/likelihood 1-5; score = severity × likelihood; `RiskLevel` derived correctly (1-4=low, 5-9=medium, 10-15=high, 16-25=critical); `RiskProfile` aggregates correctly
+- [x] T202 [P] Write unit tests for playbook loader in `tests/unit/test_playbook_loader.py` — verify: loads YAML file into `PlaybookConfig`; validates schema; returns default playbook when no path given; raises FileNotFoundError for missing file; handles malformed YAML gracefully
+
+#### Implementation (TDD Green)
+
+- [x] T203 [P] Create playbook models in `src/contractos/models/playbook.py` — `PlaybookConfig`, `PlaybookPosition`, `AcceptableRange`, `NegotiationTier` Pydantic models
+- [x] T204 [P] Create review models in `src/contractos/models/review.py` — `ReviewSeverity`, `ReviewFinding`, `RedlineSuggestion`, `ReviewResult`, `RiskProfile` Pydantic models
+- [x] T205 [P] Create risk models in `src/contractos/models/risk.py` — `RiskScore`, `RiskLevel` with computed score and level derivation
+- [x] T206 Implement playbook loader in `src/contractos/tools/playbook_loader.py` — `load_playbook(path)` → `PlaybookConfig`; `load_default_playbook()` → built-in default
+- [x] T207 Create default playbook in `config/default_playbook.yaml` — standard commercial positions for: limitation_of_liability, indemnification, ip_ownership, data_protection, confidentiality, termination, governing_law, force_majeure, assignment, payment_terms (10 clause types with positions, ranges, triggers, priorities)
+
+**Checkpoint**: ✅ Playbook models validated, loader tested, default playbook available. 42 tests pass.
+
+---
+
+### Phase 10b: ComplianceAgent — Playbook Review (T208–T216)
+
+**Goal**: Compare extracted clauses against playbook positions, classify each as GREEN/YELLOW/RED with provenance.
+
+**Independent Test**: Upload a contract, run playbook review, verify each clause gets a severity classification backed by extracted facts.
+
+#### Tests (TDD Red)
+
+- [x] T208 [P] Write unit tests for ComplianceAgent in `tests/unit/test_compliance_agent.py` — verify:
+  - `review(document_id, playbook)` returns `ReviewResult` with findings
+  - Each finding has severity, clause_id, provenance_facts
+  - Missing required clauses → RED finding with "missing clause" type
+  - Clause matching playbook standard → GREEN
+  - Clause outside range → YELLOW
+  - Escalation trigger match → RED (deterministic override)
+  - Mock LLM for classification judgment
+  - At least 8 test cases covering GREEN/YELLOW/RED paths
+- [x] T209 [P] Write integration test for review endpoint in `tests/integration/test_review_endpoint.py` — verify:
+  - `POST /contracts/{id}/review` returns 200 with ReviewResult
+  - Response has findings, summary, risk_profile, negotiation_strategy
+  - 404 for nonexistent document
+  - Findings reference real extracted clause IDs
+  - At least 4 test cases
+
+#### Implementation (TDD Green)
+
+- [x] T210 Implement ComplianceAgent in `src/contractos/agents/compliance_agent.py`:
+  - `async review(document_id, playbook, state, user_side, focus_areas, generate_redlines)` → `ReviewResult`
+  - Step 1: Load clauses from TrustGraph for document
+  - Step 2: For each playbook position, find matching clause by type
+  - Step 3: Missing required clause → RED finding (deterministic)
+  - Step 4: Found clause → check escalation triggers (deterministic pattern match)
+  - Step 5: If no trigger match → LLM classification (send clause text + playbook position)
+  - Step 6: Build ReviewFinding with provenance (fact IDs from clause)
+  - Step 7: Aggregate into ReviewResult with risk_profile
+  - LLM system prompt: `COMPLIANCE_REVIEW_PROMPT` with structured JSON output
+- [x] T211 Add LLM prompt for compliance review in `src/contractos/agents/compliance_agent.py` — `COMPLIANCE_REVIEW_PROMPT` that instructs LLM to compare clause text against playbook position and return severity, deviation_description, business_impact, risk_score (severity 1-5, likelihood 1-5) as JSON
+- [x] T212 Implement risk profile aggregation in `src/contractos/agents/compliance_agent.py` — `_build_risk_profile(findings)` → `RiskProfile` with overall_level, distribution, tier counts
+- [x] T213 Implement negotiation strategy generation in `src/contractos/agents/compliance_agent.py` — `_generate_strategy(findings, playbook)` → string summary using LLM with Tier 1/2/3 framework
+- [x] T214 Add `POST /contracts/{document_id}/review` endpoint in `src/contractos/api/routes/contracts.py`:
+  - Request body: `ReviewRequest(playbook, user_side, focus_areas, generate_redlines)`
+  - Response: `ReviewResponse` (mirrors ReviewResult)
+  - Route MUST be placed before `/{document_id}` catch-all
+  - Loads playbook, calls ComplianceAgent.review(), returns result
+- [x] T215 Add review response models to `src/contractos/api/routes/contracts.py` — `ReviewRequest`, `ReviewResponse`, `ReviewFindingResponse`, `RiskScoreResponse`, `RiskProfileResponse`, `RedlineResponse`
+- [x] T216 Store review results as ReasoningSession in WorkspaceStore — review is persisted for later retrieval
+
+**Checkpoint**: ✅ Playbook review operational. Upload contract → review against playbook → GREEN/YELLOW/RED per clause with provenance. Tests pass.
+
+---
+
+### Phase 10c: DraftAgent — Redline Generation (T217–T222)
+
+**Goal**: Generate specific alternative contract language for YELLOW/RED findings.
+
+**Independent Test**: Given a RED finding, generate a redline with proposed language, rationale, priority, and fallback.
+
+#### Tests (TDD Red)
+
+- [x] T217 [P] Write unit tests for DraftAgent in `tests/unit/test_draft_agent.py` — verify:
+  - `generate_redline(finding, playbook_position, user_side)` returns `RedlineSuggestion`
+  - Proposed language is non-empty and different from current language
+  - Rationale is suitable for external sharing (no internal jargon)
+  - Priority matches playbook position tier
+  - Fallback language provided for tier_1 findings
+  - Mock LLM for generation
+  - At least 5 test cases
+
+#### Implementation (TDD Green)
+
+- [x] T218 Implement DraftAgent in `src/contractos/agents/draft_agent.py`:
+  - `async generate_redline(finding, playbook_position, user_side, llm)` → `RedlineSuggestion`
+  - LLM prompt: current language + playbook position + deviation + contract type + user side
+  - Parse LLM response as structured JSON
+  - Fallback: if LLM fails, return None (redline is optional)
+- [x] T219 Add `REDLINE_GENERATION_PROMPT` in `src/contractos/agents/draft_agent.py` — instructs LLM to generate: proposed_language, rationale (suitable for counterparty), priority, fallback_language
+- [x] T220 Integrate DraftAgent into ComplianceAgent — when `generate_redlines=True`, call DraftAgent for each YELLOW/RED finding and attach `RedlineSuggestion` to the finding
+- [x] T221 [P] Write integration test for redline generation in `tests/integration/test_review_endpoint.py` — verify redlines appear in review response when `generate_redlines=true`
+- [x] T222 Add lenient JSON parsing for redline LLM output — reuse `_parse_lenient_json` from `fact_discovery.py`
+
+**Checkpoint**: ✅ Redline generation operational. YELLOW/RED findings include proposed alternative language. Tests pass.
+
+---
+
+### Phase 10d: NDA Triage Agent (T223–T232)
+
+**Goal**: Automated 10-point NDA screening with GREEN/YELLOW/RED classification and routing.
+
+**Independent Test**: Upload an NDA, run triage, verify 10-point checklist with pass/fail/review per item and overall classification.
+
+#### Tests (TDD Red)
+
+- [x] T223 [P] Write unit tests for triage models in `tests/unit/test_triage_models.py` — verify: `ChecklistItem` validates; `ChecklistResult` has status enum; `TriageClassification` has level/routing/timeline; `TriageResult` aggregates correctly; `TriageLevel` enum has green/yellow/red
+- [x] T224 [P] Write unit tests for NDATriageAgent in `tests/unit/test_nda_triage_agent.py` — verify:
+  - `triage(document_id, state)` returns `TriageResult`
+  - 10 checklist items evaluated
+  - All PASS → GREEN classification
+  - One FAIL (non-critical) → YELLOW
+  - Critical FAIL (missing carveout, non-compete) → RED
+  - Automated checks run for `auto` and `hybrid` items
+  - LLM called for `hybrid` and `llm_only` items
+  - Mock LLM, at least 6 test cases
+- [x] T225 [P] Write integration test for triage endpoint in `tests/integration/test_triage_endpoint.py` — verify:
+  - `POST /contracts/{id}/triage` returns 200 with TriageResult
+  - Response has classification, checklist_results, key_issues
+  - 404 for nonexistent document
+  - At least 3 test cases
+
+#### Implementation (TDD Green)
+
+- [x] T226 [P] Create triage models in `src/contractos/models/triage.py` — `AutomationLevel`, `ChecklistStatus`, `TriageLevel`, `ChecklistItem`, `ChecklistResult`, `TriageClassification`, `TriageResult`
+- [x] T227 Create NDA checklist config in `config/nda_checklist.yaml` — 10 items: agreement_structure, definition_scope, receiving_party_obligations, standard_carveouts, permitted_disclosures, term_duration, return_destruction, remedies, problematic_provisions, governing_law; each with automation level and criteria
+- [x] T228 Implement NDATriageAgent in `src/contractos/agents/nda_triage_agent.py`:
+  - `async triage(document_id, state, checklist_path)` → `TriageResult`
+  - Load checklist config
+  - For each item: run automated checks (pattern matching on extracted facts/clauses) + LLM verification
+  - Aggregate: all PASS → GREEN; any non-critical FAIL → YELLOW; critical FAIL → RED
+  - Generate routing recommendation and timeline
+- [x] T229 Implement automated checklist checks in `src/contractos/agents/nda_triage_agent.py`:
+  - `_check_agreement_structure(facts, clauses)` — detect mutual/unilateral
+  - `_check_standard_carveouts(facts)` — pattern match 5 required carveouts
+  - `_check_term_duration(facts)` — extract term from duration facts
+  - `_check_governing_law(facts)` — extract jurisdiction
+  - `_check_problematic_provisions(facts, clauses)` — detect non-solicitation, non-compete patterns
+- [x] T230 Add `NDA_TRIAGE_PROMPT` in `src/contractos/agents/nda_triage_agent.py` — LLM prompt for hybrid/llm_only checklist items
+- [x] T231 Add `POST /contracts/{document_id}/triage` endpoint in `src/contractos/api/routes/contracts.py`:
+  - Request body: `TriageRequest(checklist, context)`
+  - Response: `TriageResponse` (mirrors TriageResult)
+  - Route placed before `/{document_id}` catch-all
+- [x] T232 Add triage response models to `src/contractos/api/routes/contracts.py` — `TriageRequest`, `TriageResponse`, `ChecklistResultResponse`, `TriageClassificationResponse`
+
+**Checkpoint**: ✅ NDA triage operational. Upload NDA → 10-point checklist → GREEN/YELLOW/RED with routing. Tests pass.
+
+---
+
+### Phase 10e: Copilot UI — Review & Triage (T233–T237)
+
+**Goal**: Display playbook review results and NDA triage in the Copilot UI.
+
+#### Implementation
+
+- [x] T233 Add "Review Against Playbook" quick-action button in `demo/copilot.html`:
+  - New button alongside "Discover Hidden Facts"
+  - Triggers `POST /contracts/{id}/review` with reasoning steps animation
+  - Displays results as color-coded finding cards (GREEN/YELLOW/RED badges)
+  - Each card: clause heading, severity badge, deviation description
+  - Click card → highlight clause in rendered document
+  - Expandable redline suggestion for YELLOW/RED
+- [x] T234 Add "Triage NDA" quick-action button in `demo/copilot.html`:
+  - Triggers `POST /contracts/{id}/triage`
+  - Displays large classification badge (GREEN/YELLOW/RED)
+  - 10-item checklist with pass/fail/review icons
+  - Routing recommendation with timeline
+  - Key issues list for YELLOW/RED
+- [x] T235 Add risk matrix visualization in `demo/copilot.html`:
+  - Small 5×5 grid showing finding distribution by severity × likelihood
+  - Color-coded cells (green/yellow/orange/red)
+  - Click cell → filter findings to that risk level
+- [x] T236 Add CSS styles for review/triage UI in `demo/copilot.html`:
+  - `.review-finding` card with severity badge
+  - `.triage-badge` large classification indicator
+  - `.checklist-item` with status icon
+  - `.risk-matrix` grid visualization
+  - `.redline-suggestion` expandable section
+- [x] T237 Add negotiation strategy display in `demo/copilot.html`:
+  - Tier 1/2/3 priority list
+  - Collapsible section below findings
+  - Links to relevant findings per tier
+
+**Checkpoint**: ✅ Full Copilot UI for playbook review and NDA triage. Color-coded findings, risk matrix, redlines, triage checklist all functional.
+
+---
+
+### Phase 10f: Polish & Documentation (T238–T242)
+
+- [x] T238 [P] Update `docs/EXECUTIVE_SUMMARY.md` with Phase 10 features
+- [x] T239 [P] Update `docs/ANTHROPIC_COWORK_ANALYSIS.md` with implementation status
+- [x] T240 [P] Update `README.md` with playbook review and NDA triage documentation
+- [x] T241 Run full test suite — verify all tests pass (target: ~730+ tests)
+- [x] T242 Update `tasks.md` with Phase 10 completion status and final test count
+
+**Checkpoint**: ✅ Phase 10 complete. Playbook review, risk scoring, redline generation, NDA triage all operational with full TDD coverage. **77 new tests (70 unit + 7 integration), 743 total.**
+
+---
+
 ## Test Coverage Summary
 
 | Phase | Unit Tests | Integration Tests | Contract Tests | Total Tests |
@@ -858,15 +1101,19 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 8c (Conversation Context) | 11 | 4 | 0 | 15 |
 | Phase 8d (Sample Contracts) | 7 | 0 | 0 | 7 |
 | Phase 9 (Polish) | 2 | 1 | 0 | 3 |
-| **Total** | **67** | **19** | **6** | **92** |
+| Phase 10a (Playbook Models) | 3 | 0 | 0 | 3 |
+| Phase 10b (ComplianceAgent) | 1 | 1 | 0 | 2 |
+| Phase 10c (DraftAgent) | 1 | 1 | 0 | 2 |
+| Phase 10d (NDA Triage) | 2 | 1 | 0 | 3 |
+| **Total** | **74** | **22** | **6** | **102** |
 
 ## Task Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 195 |
-| Test tasks | 105 (54%) |
-| Implementation tasks | 90 (46%) |
+| Total tasks | 238 |
+| Test tasks | 115 (48%) |
+| Implementation tasks | 123 (52%) |
 | Phase 1 (Setup) | 5 tasks |
 | Phase 2 (Foundation) | 35 tasks |
 | Phase 3–7 (User Stories) | 71 tasks |
@@ -877,12 +1124,19 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 8d (Sample Contracts) | 5 tasks |
 | Phase 8 (Word Add-in, superseded) | 16 tasks |
 | Phase 9 (Polish) | 11 tasks |
-| Total passing tests | 666 |
+| **Phase 10a (Playbook Models)** | **8 tasks** |
+| **Phase 10b (ComplianceAgent)** | **9 tasks** |
+| **Phase 10c (DraftAgent)** | **6 tasks** |
+| **Phase 10d (NDA Triage)** | **10 tasks** |
+| **Phase 10e (Copilot UI)** | **5 tasks** |
+| **Phase 10f (Polish)** | **5 tasks** |
+| Total passing tests | 743 |
 | Real NDA documents tested | 50 (from ContractNLI) |
 | Deployment configs | 4 (Docker, Railway, Render, Procfile) |
-| Parallelizable tasks | 55 (29%) |
+| Parallelizable tasks | 72 (30%) |
 | MVP scope (through Phase 5) | 86 tasks |
-| Full scope (through Phase 8c) | 190 tasks |
+| Full scope (through Phase 8d) | 195 tasks |
+| Phase 10 scope | 43 tasks (T200–T242) |
 
 ---
 
