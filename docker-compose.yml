@@ -9,6 +9,16 @@
 # To view logs:   docker compose logs -f contractos
 # To stop:        docker compose down
 # To reset data:  docker compose down -v   (removes SQLite volume)
+#
+# Features included:
+#   - SSE streaming endpoints (progressive reasoning)
+#   - Obligation extraction & risk memo generation
+#   - Playbook review with redline generation
+#   - NDA triage screening
+#   - Hidden fact discovery (LLM-powered)
+#   - FAISS semantic search (all-MiniLM-L6-v2 pre-baked)
+#   - Draggable/detachable Copilot sidebar
+#   - HTML report downloads
 ###############################################################################
 
 services:
@@ -28,6 +38,7 @@ services:
     environment:
       - PORT=${PORT:-8742}
       - PYTHONPATH=/app/src
+      - PYTHONUNBUFFERED=1
       - CONTRACTOS_DB_PATH=/data/.contractos/trustgraph.db
 
     volumes:

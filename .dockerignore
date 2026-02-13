@@ -1,25 +1,51 @@
+# ── Version control ────────────────────────────────────────
 .git
+.gitignore
+
+# ── Python artifacts ──────────────────────────────────────
 .venv
 __pycache__
 *.pyc
-.pytest_cache
-.mypy_cache
-.ruff_cache
-tests/
-.specify/
-spec/
-specs/
-postman/
+*.pyo
 *.egg-info
 dist/
 build/
+
+# ── Linting / type-checking caches ───────────────────────
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# ── Tests (not needed in production image) ────────────────
+tests/
+
+# ── Specs & docs (not needed in production image) ────────
+.specify/
+spec/
+specs/
+docs/
+postman/
+
+# ── Environment files (secrets — never bake into image) ──
 .env
 .env.*
-.env.example
-node_modules
+
+# ── Deployment configs (not needed inside container) ──────
 docker-compose.yml
 Procfile
 railway.toml
 render.yaml
+
+# ── Frontend tooling ─────────────────────────────────────
+node_modules
+
+# ── Markdown docs (except README needed by pyproject.toml) ─
 *.md
 !README.md
+
+# ── IDE / editor ─────────────────────────────────────────
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo

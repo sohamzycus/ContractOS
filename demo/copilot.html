@@ -175,21 +175,71 @@
       box-shadow: 0 0 12px var(--accent-glow);
     }
 
+    /* ── Resize Handle ────────────────────────────────────── */
+    .resize-handle {
+      width: 5px; cursor: col-resize; background: transparent;
+      flex-shrink: 0; position: relative; z-index: 20;
+      transition: background 0.2s;
+    }
+    .resize-handle::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 3px; height: 40px; border-radius: 3px;
+      background: var(--border); transition: all 0.2s;
+    }
+    .resize-handle:hover { background: rgba(108,92,231,0.1); }
+    .resize-handle:hover::after,
+    .resize-handle.dragging::after {
+      background: var(--accent); height: 60px; width: 4px;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    .resize-handle.dragging { background: rgba(108,92,231,0.15); }
+
     /* ── Copilot Sidebar ────────────────────────────────── */
     .copilot {
       width: var(--copilot-width); background: var(--surface);
       border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s;
+      display: flex; flex-direction: column; flex-shrink: 0;
+      transition: width 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+      min-width: 0;
     }
-    .copilot.collapsed { width: 0; overflow: hidden; border: none; }
+    .copilot.collapsed { width: 0; overflow: hidden; border: none; opacity: 0; }
+    .copilot.no-transition { transition: none; }
+
+    /* Floating / detached mode */
+    .copilot.floating {
+      position: fixed; z-index: 1000;
+      border-radius: 16px; border: 1px solid var(--border);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(108,92,231,0.15);
+      resize: both; overflow: hidden;
+      min-width: 360px; min-height: 400px;
+    }
+    .copilot.floating .copilot-header {
+      cursor: move;
+    }
+
     .copilot-header {
-      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
     }
     .copilot-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
     .copilot-title .badge {
       background: var(--accent); color: #fff; font-size: 10px; padding: 2px 8px;
       border-radius: 10px; font-weight: 600;
+    }
+    .copilot-header-actions { display: flex; align-items: center; gap: 4px; }
+    .copilot-header-actions .icon-btn {
+      width: 28px; height: 28px; border-radius: 6px; border: none;
+      background: transparent; color: var(--text-dim); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; transition: all 0.15s;
+    }
+    .copilot-header-actions .icon-btn:hover {
+      background: var(--surface2); color: var(--text);
+    }
+    .copilot-header-actions .icon-btn[title]:hover::after {
+      /* tooltip handled by native title */
     }
 
     /* Extraction summary */
@@ -369,7 +419,30 @@
     }
 
     /* Quick actions */
-    .quick-actions { padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick-actions {
+      padding: 0; border-bottom: 1px solid var(--border);
+      max-height: 300px; overflow-y: auto;
+    }
+    .qa-group {
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .qa-group:last-child { border-bottom: none; }
+    .qa-group-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px; cursor: pointer; user-select: none;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--text-dim);
+      transition: color 0.2s;
+    }
+    .qa-group-header:hover { color: var(--text); }
+    .qa-group-header .qa-chevron {
+      font-size: 8px; transition: transform 0.2s;
+    }
+    .qa-group-header .qa-chevron.open { transform: rotate(90deg); }
+    .qa-group-body {
+      padding: 0 12px 8px; display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .qa-group-body.collapsed { display: none; }
     .quick-btn {
       padding: 5px 10px; border-radius: 16px; border: 1px solid var(--border);
       background: transparent; color: var(--text-dim); font-size: 11px;
@@ -382,6 +455,18 @@
     .quick-btn.review-btn:hover { border-color: var(--accent); background: rgba(0,210,211,0.1); }
     .quick-btn.triage-btn { border-color: rgba(85,239,196,0.4); color: #55efc4; }
     .quick-btn.triage-btn:hover { border-color: #55efc4; background: rgba(85,239,196,0.1); }
+
+    /* Scroll-to-bottom fab */
+    .scroll-bottom-btn {
+      position: absolute; bottom: 80px; right: 20px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: #fff; border: none;
+      cursor: pointer; display: none; align-items: center; justify-content: center;
+      font-size: 14px; box-shadow: 0 4px 12px rgba(108,92,231,0.4);
+      z-index: 10; transition: all 0.2s;
+    }
+    .scroll-bottom-btn:hover { transform: scale(1.1); }
+    .scroll-bottom-btn.visible { display: flex; }
 
     /* Review Findings */
     .review-findings { margin-top: 12px; }
@@ -469,25 +554,45 @@
     .strategy-text { font-size: 12px; color: var(--text); line-height: 1.5; white-space: pre-wrap; }
 
     /* Input */
-    .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); }
-    .chat-input-wrap { display: flex; gap: 8px; align-items: flex-end; }
-    .chat-input {
-      flex: 1; padding: 10px 14px; border-radius: 12px;
-      border: 1px solid var(--border); background: var(--surface2);
-      color: var(--text); font-size: 13px; font-family: inherit;
-      resize: none; min-height: 42px; max-height: 120px;
-      outline: none; transition: border-color 0.2s;
+    .chat-input-area {
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      background: var(--surface);
     }
-    .chat-input:focus { border-color: var(--accent); }
+    .chat-input-wrap {
+      display: flex; gap: 8px; align-items: flex-end;
+      background: var(--surface2); border-radius: 14px;
+      border: 1px solid var(--border); padding: 4px 4px 4px 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .chat-input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,92,231,0.15);
+    }
+    .chat-input {
+      flex: 1; padding: 8px 0; border-radius: 0;
+      border: none; background: transparent;
+      color: var(--text); font-size: 13px; font-family: inherit;
+      resize: none; min-height: 36px; max-height: 120px;
+      outline: none;
+    }
     .chat-input::placeholder { color: var(--text-dim); }
     .send-btn {
-      width: 42px; height: 42px; border-radius: 12px; border: none;
+      width: 36px; height: 36px; border-radius: 10px; border: none;
       background: var(--accent); color: #fff; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; transition: background 0.2s; flex-shrink: 0;
+      font-size: 16px; transition: all 0.2s; flex-shrink: 0;
     }
-    .send-btn:hover { background: #5a4bd4; }
-    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn:hover { background: #5a4bd4; transform: scale(1.05); }
+    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .input-hint {
+      font-size: 10px; color: var(--text-dim); margin-top: 4px;
+      display: flex; justify-content: space-between; padding: 0 4px;
+      opacity: 0.6;
+    }
+    .input-hint kbd {
+      background: var(--surface3); padding: 1px 5px; border-radius: 3px;
+      font-family: inherit; font-size: 9px; border: 1px solid var(--border);
+    }
 
     /* Zoom controls */
     .zoom-controls {
@@ -528,6 +633,7 @@
       <span id="statusText" style="font-size:12px; color:var(--text-dim)">Checking...</span>
       <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border:none" onclick="document.getElementById('fileInput').click()">📤 Upload Contract</button>
       <button class="btn btn-outline btn-sm" onclick="toggleCopilot()" id="copilotToggle">Hide Copilot</button>
+      <span style="width:1px;height:24px;background:var(--border);margin:0 4px"></span>
       <a href="/demo/" class="btn btn-outline btn-sm" style="text-decoration:none">API Console</a>
       <a href="/demo/graph.html" class="btn btn-outline btn-sm" style="text-decoration:none">TrustGraph</a>
     </div>
@@ -557,33 +663,59 @@
       </div>
     </div>
 
+    <!-- Resize Handle -->
+    <div class="resize-handle" id="resizeHandle"></div>
+
     <!-- Copilot Sidebar -->
     <div class="copilot" id="copilotPanel">
-      <div class="copilot-header">
+      <div class="copilot-header" id="copilotHeader">
         <div class="copilot-title">🤖 Copilot <span class="badge">AI</span></div>
-        <button class="btn btn-outline btn-sm" onclick="clearChat()">Clear</button>
+        <div class="copilot-header-actions">
+          <button class="icon-btn" onclick="clearChat()" title="Clear chat">🗑</button>
+          <button class="icon-btn" id="detachBtn" onclick="toggleFloating()" title="Detach panel">⧉</button>
+          <button class="icon-btn" onclick="toggleCopilot()" title="Close panel">✕</button>
+        </div>
       </div>
       <div class="extraction-summary" id="extractionSummary" style="display:none">
         <div class="title">Extraction Summary</div>
         <div class="extraction-stats" id="extractionStats"></div>
       </div>
       <div class="quick-actions" id="quickActions" style="display:none">
-        <button class="quick-btn" onclick="askQuick('Who are the parties to this agreement?')">Parties</button>
-        <button class="quick-btn" onclick="askQuick('What are the payment terms?')">Payment</button>
-        <button class="quick-btn" onclick="askQuick('What are the termination conditions?')">Termination</button>
-        <button class="quick-btn" onclick="askQuick('What confidentiality obligations exist?')">Confidentiality</button>
-        <button class="quick-btn" onclick="askQuick('What is the governing law?')">Governing Law</button>
-        <button class="quick-btn" onclick="askQuick('What is the liability cap?')">Liability</button>
-        <button class="quick-btn" onclick="askQuick('What are the key dates?')">Key Dates</button>
-        <button class="quick-btn" onclick="askQuick('Are there any compliance gaps?')">Gaps</button>
-        <button class="quick-btn discover-btn" onclick="discoverHiddenFacts()">🔍 Discover Hidden Facts</button>
-        <button class="quick-btn review-btn" onclick="reviewAgainstPlaybook()">📋 Review Against Playbook</button>
-        <button class="quick-btn triage-btn" onclick="triageNDA()">🏷️ Triage NDA</button>
-        <button class="quick-btn" onclick="extractObligations()" style="background:rgba(108,92,231,0.15);color:var(--accent)">📋 Extract Obligations</button>
-        <button class="quick-btn" onclick="generateRiskMemo()" style="background:rgba(255,159,67,0.15);color:var(--orange)">⚠️ Risk Memo</button>
+        <!-- Deep Analysis -->
+        <div class="qa-group">
+          <div class="qa-group-header" onclick="toggleQAGroup(this)">
+            <span>🔬 Deep Analysis</span>
+            <span class="qa-chevron open">▶</span>
+          </div>
+          <div class="qa-group-body">
+            <button class="quick-btn discover-btn" onclick="discoverHiddenFacts()">🔍 Discover Hidden Facts</button>
+            <button class="quick-btn review-btn" onclick="reviewAgainstPlaybook()">📋 Review Against Playbook</button>
+            <button class="quick-btn" onclick="extractObligations()" style="background:rgba(108,92,231,0.15);color:var(--accent)">📋 Extract Obligations</button>
+            <button class="quick-btn" onclick="generateRiskMemo()" style="background:rgba(255,159,67,0.15);color:var(--orange)">⚠️ Risk Memo</button>
+            <button class="quick-btn triage-btn" onclick="triageNDA()">🏷️ Triage NDA</button>
+          </div>
+        </div>
+        <!-- Quick Questions -->
+        <div class="qa-group">
+          <div class="qa-group-header" onclick="toggleQAGroup(this)">
+            <span>💬 Quick Questions</span>
+            <span class="qa-chevron">▶</span>
+          </div>
+          <div class="qa-group-body collapsed">
+            <button class="quick-btn" onclick="askQuick('Who are the parties to this agreement?')">Parties</button>
+            <button class="quick-btn" onclick="askQuick('What are the payment terms?')">Payment</button>
+            <button class="quick-btn" onclick="askQuick('What are the termination conditions?')">Termination</button>
+            <button class="quick-btn" onclick="askQuick('What confidentiality obligations exist?')">Confidentiality</button>
+            <button class="quick-btn" onclick="askQuick('What is the governing law?')">Governing Law</button>
+            <button class="quick-btn" onclick="askQuick('What is the liability cap?')">Liability</button>
+            <button class="quick-btn" onclick="askQuick('What are the key dates?')">Key Dates</button>
+            <button class="quick-btn" onclick="askQuick('Are there any compliance gaps?')">Gaps</button>
+          </div>
+        </div>
       </div>
-      <div class="chat-area" id="chatArea">
+      <div class="chat-area" id="chatArea" style="position:relative">
         <div class="chat-msg system">Upload a contract to start asking questions</div>
+        <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollChat()">↓</button>
       </div>
       <div class="chat-input-area">
         <div class="chat-input-wrap">
@@ -591,6 +723,10 @@
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
             oninput="autoResize(this)"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
+        </div>
+        <div class="input-hint">
+          <span><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for newline</span>
+          <span><kbd>⌘K</kbd> focus</span>
         </div>
       </div>
     </div>
@@ -638,11 +774,179 @@
     }
     checkHealth(); setInterval(checkHealth, 15000);
 
+    // ── Copilot Panel Toggle ────────────────────────────────
     function toggleCopilot() {
       const p = document.getElementById('copilotPanel');
-      p.classList.toggle('collapsed');
+      const handle = document.getElementById('resizeHandle');
+      if (p.classList.contains('floating')) {
+        // If floating, just hide/show
+        p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+      } else {
+        p.classList.toggle('collapsed');
+        handle.style.display = p.classList.contains('collapsed') ? 'none' : '';
+      }
       document.getElementById('copilotToggle').textContent = p.classList.contains('collapsed') ? 'Show Copilot' : 'Hide Copilot';
     }
+
+    // ── Floating / Detach Mode ──────────────────────────────
+    function toggleFloating() {
+      const p = document.getElementById('copilotPanel');
+      const handle = document.getElementById('resizeHandle');
+      const btn = document.getElementById('detachBtn');
+
+      if (p.classList.contains('floating')) {
+        // Re-dock
+        p.classList.remove('floating');
+        p.style.cssText = '';
+        handle.style.display = '';
+        btn.textContent = '⧉';
+        btn.title = 'Detach panel';
+      } else {
+        // Detach
+        const rect = p.getBoundingClientRect();
+        p.classList.add('floating');
+        p.style.top = '80px';
+        p.style.right = '20px';
+        p.style.width = '440px';
+        p.style.height = (window.innerHeight - 120) + 'px';
+        handle.style.display = 'none';
+        btn.textContent = '⊞';
+        btn.title = 'Dock panel';
+        // Make header draggable
+        initFloatingDrag();
+      }
+    }
+
+    function initFloatingDrag() {
+      const header = document.getElementById('copilotHeader');
+      const panel = document.getElementById('copilotPanel');
+      let isDragging = false, startX, startY, startLeft, startTop;
+
+      function onMouseDown(e) {
+        if (!panel.classList.contains('floating')) return;
+        if (e.target.closest('.icon-btn')) return; // Don't drag when clicking buttons
+        isDragging = true;
+        startX = e.clientX; startY = e.clientY;
+        const rect = panel.getBoundingClientRect();
+        startLeft = rect.left; startTop = rect.top;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        e.preventDefault();
+      }
+      function onMouseMove(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        panel.style.left = (startLeft + dx) + 'px';
+        panel.style.top = (startTop + dy) + 'px';
+        panel.style.right = 'auto';
+      }
+      function onMouseUp() {
+        isDragging = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      }
+      header.addEventListener('mousedown', onMouseDown);
+    }
+
+    // ── Resize Handle ───────────────────────────────────────
+    (function initResize() {
+      const handle = document.getElementById('resizeHandle');
+      const panel = document.getElementById('copilotPanel');
+      let isResizing = false;
+      let startX, startWidth;
+
+      handle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = panel.offsetWidth;
+        handle.classList.add('dragging');
+        panel.classList.add('no-transition');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const dx = startX - e.clientX;
+        const newWidth = Math.max(300, Math.min(800, startWidth + dx));
+        panel.style.width = newWidth + 'px';
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        isResizing = false;
+        handle.classList.remove('dragging');
+        panel.classList.remove('no-transition');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      });
+    })();
+
+    // ── QA Group Toggle ─────────────────────────────────────
+    function toggleQAGroup(header) {
+      const body = header.nextElementSibling;
+      const chevron = header.querySelector('.qa-chevron');
+      body.classList.toggle('collapsed');
+      chevron.classList.toggle('open');
+    }
+
+    // ── Scroll-to-Bottom Button ─────────────────────────────
+    (function initScrollBtn() {
+      const chatArea = document.getElementById('chatArea');
+      const btn = document.getElementById('scrollBottomBtn');
+      chatArea.addEventListener('scroll', () => {
+        const distFromBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+        btn.classList.toggle('visible', distFromBottom > 100);
+      });
+    })();
+
+    // ── Keyboard Shortcuts ──────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      // Cmd+K or Ctrl+K → focus chat input
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const input = document.getElementById('chatInput');
+        input.focus();
+        const panel = document.getElementById('copilotPanel');
+        if (panel.classList.contains('collapsed')) toggleCopilot();
+      }
+      // Escape → close copilot if floating
+      if (e.key === 'Escape') {
+        const panel = document.getElementById('copilotPanel');
+        if (panel.classList.contains('floating')) {
+          toggleFloating();
+        }
+      }
+    });
+
+    // ── Drag & Drop on Document Viewer ─────────────────────
+    (function initDragDrop() {
+      const viewer = document.getElementById('docViewer');
+      viewer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        viewer.style.outline = '2px dashed var(--accent)';
+        viewer.style.outlineOffset = '-4px';
+      });
+      viewer.addEventListener('dragleave', () => {
+        viewer.style.outline = '';
+        viewer.style.outlineOffset = '';
+      });
+      viewer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        viewer.style.outline = '';
+        viewer.style.outlineOffset = '';
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          const ext = file.name.split('.').pop().toLowerCase();
+          if (['docx', 'pdf'].includes(ext)) {
+            processFileUpload(file);
+          }
+        }
+      });
+    })();
 
     // ── File Upload ─────────────────────────────────────────
     async function handleFileUpload(event) {
@@ -650,6 +954,10 @@
       if (!file) return;
       // Reset input value so the same file can be re-selected
       event.target.value = '';
+      processFileUpload(file);
+    }
+
+    async function processFileUpload(file) {
       currentFile = file;
       const ext = file.name.split('.').pop().toLowerCase();
       if (!['docx','pdf'].includes(ext)) { alert('Upload .docx or .pdf'); return; }
