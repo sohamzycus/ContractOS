@@ -104,12 +104,17 @@ Cursor (using MCP):
 
 ---
 
-## Scenario 4: Docker Deployment (Remote MCP)
+## Scenario 4: Container Deployment (Remote MCP)
+
+> **Container engine agnostic:** Replace `docker compose` with your engine's equivalent:
+> - Docker Desktop: `docker compose`
+> - Rancher Desktop: `nerdctl compose` (or `docker compose` with Docker CLI compatibility)
+> - Podman: `podman-compose` or `podman compose`
 
 ### Start
 
 ```bash
-# docker-compose.yml includes both FastAPI and MCP servers
+# Both FastAPI and MCP HTTP run in the same container
 docker compose up --build -d
 
 # FastAPI UI:  http://host:8742/demo/copilot.html

@@ -440,16 +440,36 @@ Returns: Message[] for structured clause comparison
 }
 ```
 
-### Docker Compose Addition
+### Docker (Single Container — Both Servers)
+
+Both FastAPI and MCP HTTP run in the **same container** to share a single SQLite connection. The `entrypoint.sh` script starts both:
 
 ```yaml
+# docker-compose.yml (updated)
 services:
-  contractos-mcp:
+  contractos:
     build: .
-    command: ["python", "-m", "contractos.mcp.server", "--transport", "http", "--port", "8743"]
     ports:
-      - "8743:8743"
+      - "${PORT:-8742}:${PORT:-8742}"       # FastAPI + Copilot UI
+      - "${MCP_PORT:-8743}:${MCP_PORT:-8743}" # MCP Streamable HTTP
     env_file: .env
+    environment:
+      - MCP_TRANSPORT=http
+      - MCP_PORT=8743
     volumes:
       - contractos-data:/data/.contractos
 ```
+
+```bash
+# entrypoint.sh (new)
+#!/bin/sh
+# Start MCP HTTP server in background (if MCP_TRANSPORT=http)
+if [ "$MCP_TRANSPORT" = "http" ]; then
+  python -m contractos.mcp.server --transport http --port ${MCP_PORT:-8743} &
+fi
+# Start FastAPI as main process
+exec python -m uvicorn contractos.api.app:create_app \
+  --host 0.0.0.0 --port ${PORT:-8742} --factory --timeout-keep-alive 120 --log-level info
+```
+
+**Container engine agnostic:** Works with Docker Desktop, Rancher Desktop, Podman, or any OCI-compliant runtime. Replace `docker compose` with your engine's equivalent (`nerdctl compose`, `podman-compose`, etc.).

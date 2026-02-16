@@ -70,7 +70,8 @@ tests/
 ├── unit/test_mcp_prompts.py   # Unit tests for each MCP prompt
 └── integration/test_mcp_server.py  # End-to-end MCP protocol tests
 
-.cursor/mcp.json               # NEW — Cursor MCP client config (local stdio)
+.cursor/mcp.json.example       # NEW — Cursor MCP client config template (checked in)
+.cursor/mcp.json               # LOCAL — actual config with API keys (gitignored)
 ```
 
 ## Architecture
@@ -153,13 +154,27 @@ tests/
 | 4 | `risk_summary` | Executive risk summary | doc_id |
 | 5 | `clause_comparison` | Compare clauses across contracts | doc_id_1, doc_id_2, clause_type |
 
-## Complexity Tracking
+## Server Strategy
 
-No constitution violations. The MCP server is a thin adapter layer that reuses all existing infrastructure.
+ContractOS runs **two servers from the same codebase**, sharing a single `AppState`:
+
+| Mode | What runs | Use case |
+|------|-----------|----------|
+| **MCP stdio** (default) | MCP server only, no FastAPI | Cursor / Claude Desktop local integration |
+| **Container (Docker)** | FastAPI (port 8742) + MCP HTTP (port 8743) in **one container** | VDI / remote deployment |
+
+**Single-container strategy:** Both servers run in the same container via `entrypoint.sh` to share a single SQLite connection (SQLite doesn't support concurrent writers across processes). FastAPI is the main process; MCP HTTP starts as a background process. Both import the same `AppState` singleton.
+
+**Container engine agnostic:** All deployment docs use OCI-standard commands. Works with Docker Desktop, Rancher Desktop (`nerdctl`), Podman, or any OCI-compliant runtime. The `docker-compose.yml` / `compose.yaml` format is supported by all engines.
+
+## Key Decisions
 
 | Decision | Rationale |
 |----------|-----------|
 | Separate `mcp/` package (not inline in `api/`) | Clean separation of concerns; MCP and FastAPI are independent interaction layers |
-| Shared `AppState` | Avoids data duplication; single TrustGraph instance |
+| `MCPContext` wraps `AppState` (composition) | Reuses existing singleton; no duplication of TrustGraph/EmbeddingIndex/LLM |
+| All LLM calls via `AppState.llm` provider | Constitution §6: Configuration Over Code — provider-agnostic |
 | stdio as default transport | Lowest latency for local Cursor/Claude Desktop use |
+| Single container for Docker | SQLite single-writer constraint; shared `AppState` singleton |
 | 13 tools (not 25+) | Grouped by user intent, not raw API surface; within MCP best practices |
+| `.cursor/mcp.json.example` checked in, `.cursor/mcp.json` gitignored | API keys never committed |

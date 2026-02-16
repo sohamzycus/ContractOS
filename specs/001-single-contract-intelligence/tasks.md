@@ -1168,6 +1168,357 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 
 ---
 
+---
+
+## Phase 13: MCP Server — Contract Intelligence via Model Context Protocol
+
+**Goal**: Expose all ContractOS capabilities as an MCP server so AI assistants (Cursor, Claude Desktop, Claude Code) can perform contract intelligence natively — upload, analyze, review, triage, discover, and query contracts without the Copilot UI.
+
+**Design Artifacts**: `research-mcp.md`, `data-model-mcp.md`, `contracts/mcp-server.md`, `quickstart-mcp.md`
+
+**SDK**: `mcp[cli]>=1.26.0` (FastMCP)  
+**Transports**: stdio (local, default), Streamable HTTP (remote/Docker)
+
+---
+
+### Phase 13a: Setup & Infrastructure (T261–T268)
+
+**Purpose**: Install MCP dependency, create package structure, initialize shared context
+
+- [ ] T261 Add `mcp[cli]>=1.26.0` to `pyproject.toml` dependencies and install
+- [ ] T262 [P] Create `src/contractos/mcp/__init__.py` with package docstring
+- [ ] T263 [P] Create `src/contractos/mcp/context.py` — shared `MCPContext` class:
+  - **Wraps `AppState` via composition** (imports and reuses `init_state()` from `api/deps.py`)
+  - Does NOT duplicate TrustGraph/EmbeddingIndex/LLM — accesses them via `self.state`
+  - Singleton lifecycle (created once at server startup, calls `shutdown_state()` on close)
+  - `get_contract_or_error(document_id)` helper that raises agent-friendly error strings
+  - `get_document_text(document_id)` helper to retrieve full text for LLM calls
+  - All LLM calls MUST go through `self.state.llm` (provider abstraction, not direct Anthropic SDK)
+- [ ] T264 Create `src/contractos/mcp/server.py` — FastMCP server definition:
+  - `FastMCP("ContractOS", version="0.1.0", json_response=True)`
+  - `__main__` entry point: `python -m contractos.mcp.server`
+  - CLI args: `--transport` (stdio|http), `--port` (default 8743)
+  - Startup: initialize `MCPContext`, register tools/resources/prompts
+  - Graceful shutdown: close TrustGraph, EmbeddingIndex
+- [ ] T265 [P] Create `.cursor/mcp.json.example` — Cursor MCP client config template (checked in, placeholder keys). Add `.cursor/mcp.json` to `.gitignore` (contains real API keys)
+- [ ] T266 [P] Create `tests/unit/test_mcp_context.py` — unit tests for MCPContext:
+  - Test context initialization with mock config
+  - Test `get_contract_or_error` raises for missing document
+  - Test `get_document_text` returns full text
+  - Test singleton lifecycle (init + shutdown)
+- [ ] T267 [P] Create `tests/unit/test_mcp_server_startup.py` — server startup tests:
+  - Test server creates FastMCP instance with correct name/version
+  - Test tool/resource/prompt registration counts (13/10/5)
+  - Test `--transport` CLI arg parsing
+- [ ] T268 Verify MCP server starts without errors: `PYTHONPATH=src python -m contractos.mcp.server`
+
+**Checkpoint**: MCP server starts, empty tool/resource/prompt registrations verified.
+
+---
+
+### Phase 13b: MCP Tools — Contract Ingestion (T269–T276)
+
+**Purpose**: Implement tools for uploading and loading contracts
+
+#### Tests (T269–T271)
+
+- [ ] T269 [P] Unit test for `upload_contract` tool in `tests/unit/test_mcp_tools.py`:
+  - Test successful upload returns `UploadResult` with doc_id, fact_count, clause_count
+  - Test file-not-found returns agent-friendly error string
+  - Test unsupported format (.txt) returns error
+  - Mock: `fact_extractor.extract_from_file`, `TrustGraph`, `EmbeddingIndex`
+- [ ] T270 [P] Unit test for `load_sample_contract` tool:
+  - Test loading `simple_nda.pdf` returns `UploadResult`
+  - Test invalid filename returns error with available samples list
+  - Mock: file I/O, extraction pipeline
+- [ ] T271 [P] Unit test for `clear_workspace` tool:
+  - Test returns confirmation with counts
+  - Mock: `TrustGraph.clear_all_data()`
+
+#### Implementation (T272–T276)
+
+- [ ] T272 Create `src/contractos/mcp/tools.py` — tool module with `register_tools(mcp, ctx)` function
+- [ ] T273 Implement `@mcp.tool() upload_contract(file_path: str)` in tools.py:
+  - Read file from `file_path`, detect format (.docx/.pdf)
+  - Call `extract_from_file()` → store in TrustGraph → index in FAISS
+  - Return `UploadResult` dict with doc_id, counts, timing
+  - Error handling: FileNotFoundError, unsupported format, extraction failure
+- [ ] T274 Implement `@mcp.tool() load_sample_contract(filename: str)`:
+  - Resolve from `demo/samples/` directory
+  - Validate against `manifest.json`
+  - Reuse same extraction pipeline as `upload_contract`
+- [ ] T275 Implement `@mcp.tool() clear_workspace()`:
+  - Call `TrustGraph.clear_all_data()`, clear FAISS index, clear chat history
+  - Return counts of removed items
+- [ ] T276 Wire `register_tools()` into `server.py` startup
+
+**Checkpoint**: Upload, load sample, and clear workspace tools functional.
+
+---
+
+### Phase 13c: MCP Tools — Q&A and Search (T277–T283)
+
+**Purpose**: Implement question answering and semantic search tools
+
+#### Tests (T277–T279)
+
+- [ ] T277 [P] Unit test for `ask_question` tool:
+  - Test returns answer with confidence, provenance, sources
+  - Test with specific `document_ids` filter
+  - Test with no indexed contracts returns error
+  - Mock: `DocumentAgent.answer()`
+- [ ] T278 [P] Unit test for `search_contracts` tool:
+  - Test returns ranked results with scores
+  - Test `top_k` parameter
+  - Test empty index returns error
+  - Mock: `EmbeddingIndex.search()`
+- [ ] T279 [P] Unit test for `compare_clauses` tool:
+  - Test returns differences with significance ratings
+  - Test missing document returns error
+  - Test missing clause type returns error
+  - Mock: `DocumentAgent`, `TrustGraph`
+
+#### Implementation (T280–T283)
+
+- [ ] T280 Implement `@mcp.tool() ask_question(question: str, document_ids: list[str] | None = None)`:
+  - Build `Query` from input, call `DocumentAgent.answer()`
+  - Format `QueryResult` → `QuestionResult` dict with provenance
+  - Use `ctx.report_progress()` for long-running queries
+- [ ] T281 Implement `@mcp.tool() search_contracts(query: str, top_k: int = 5)`:
+  - Call `EmbeddingIndex.search()` across all indexed documents
+  - Return `SearchResult` dict with hits, scores, clause types
+- [ ] T282 Implement `@mcp.tool() compare_clauses(document_id_1, document_id_2, clause_type)`:
+  - Define `CLAUSE_COMPARISON_PROMPT` system prompt (structured diff template with aspect/significance output)
+  - Fetch clauses of given type from both documents via TrustGraph
+  - Call LLM via `ctx.state.llm` (NOT direct Anthropic SDK) with comparison prompt
+  - Parse structured response with `_parse_lenient_json()`
+  - Return `ComparisonResult` dict with differences and recommendation
+- [ ] T283 Integration test in `tests/integration/test_mcp_qa_tools.py`:
+  - Upload sample contract → ask question → verify answer has provenance
+  - Upload two samples → compare clauses → verify differences returned
+
+**Checkpoint**: Q&A, search, and comparison tools functional with provenance.
+
+---
+
+### Phase 13d: MCP Tools — Analysis (T284–T296)
+
+**Purpose**: Implement playbook review, NDA triage, discovery, obligations, risk memo, gaps, and reports
+
+#### Tests (T284–T289)
+
+- [ ] T284 [P] Unit test for `review_against_playbook` tool:
+  - Test returns findings with severity, risk_profile, strategy
+  - Test progress reporting (ctx.report_progress called)
+  - Mock: `ComplianceAgent.review()`
+- [ ] T285 [P] Unit test for `triage_nda` tool:
+  - Test returns checklist with PASS/FAIL/PARTIAL, classification, summary
+  - Mock: `NDATriageAgent.triage()`
+- [ ] T286 [P] Unit test for `discover_hidden_facts` tool:
+  - Test returns discovered_facts with categories
+  - Mock: `discover_hidden_facts()` from tools
+- [ ] T287 [P] Unit test for `extract_obligations` tool:
+  - Test returns obligations categorized by type
+  - Mock: LLM call with obligation prompt
+- [ ] T288 [P] Unit test for `generate_risk_memo` tool:
+  - Test returns risk memo with key_risks, recommendations
+  - Mock: LLM call with risk memo prompt
+- [ ] T289 [P] Unit test for `get_clause_gaps` and `generate_report` tools:
+  - Test clause gaps returns missing facts per clause
+  - Test report generation returns HTML content
+  - Mock: TrustGraph queries, report template
+
+#### Implementation (T290–T296)
+
+- [ ] T290 Implement `@mcp.tool() review_against_playbook(document_id, playbook_path=None)`:
+  - Load playbook (custom or default), fetch contract + clauses from TrustGraph
+  - Call `ComplianceAgent.review()` with progress reporting
+  - Return `ReviewResult` serialized as dict
+- [ ] T291 Implement `@mcp.tool() triage_nda(document_id)`:
+  - Fetch contract text, call `NDATriageAgent.triage()`
+  - Return `TriageResult` serialized as dict
+- [ ] T292 Implement `@mcp.tool() discover_hidden_facts(document_id)`:
+  - Fetch contract text, call `discover_hidden_facts()` from tools
+  - Return `DiscoveryResult` serialized as dict
+- [ ] T293 Implement `@mcp.tool() extract_obligations(document_id)`:
+  - Fetch contract text via `ctx.get_document_text()`
+  - Call LLM via `ctx.state.llm` (provider abstraction) with `OBLIGATION_SYSTEM_PROMPT`
+  - Parse response with `_parse_lenient_json()`
+  - Return `ObligationResult` dict
+- [ ] T294 Implement `@mcp.tool() generate_risk_memo(document_id)`:
+  - Fetch contract text via `ctx.get_document_text()`
+  - Call LLM via `ctx.state.llm` (provider abstraction) with `RISK_MEMO_PROMPT`
+  - Parse response with `_parse_lenient_json()`
+  - Return `RiskMemoResult` dict
+- [ ] T295 Implement `@mcp.tool() get_clause_gaps(document_id)`:
+  - Query TrustGraph for missing mandatory fact slots
+  - Return `ClauseGapResult` dict
+- [ ] T296 Implement `@mcp.tool() generate_report(document_id, report_type)`:
+  - Reuse `_report_template` and report generators from `stream.py`
+  - Return `ReportResult` dict with HTML content
+
+**Checkpoint**: All 13 MCP tools implemented and unit-tested.
+
+---
+
+### Phase 13e: MCP Resources (T297–T305)
+
+**Purpose**: Implement 10 read-only resources for contract data access
+
+#### Tests (T297–T298)
+
+- [ ] T297 [P] Unit test for all resources in `tests/unit/test_mcp_resources.py`:
+  - Test `contractos://contracts` returns list of contracts
+  - Test `contractos://contracts/{id}` returns single contract
+  - Test `contractos://contracts/{id}/facts` returns facts list
+  - Test `contractos://contracts/{id}/clauses` returns clauses list
+  - Test `contractos://contracts/{id}/bindings` returns bindings list
+  - Test `contractos://contracts/{id}/graph` returns nodes + edges
+  - Test `contractos://samples` returns manifest entries
+  - Test `contractos://chat/history` returns sessions
+  - Test `contractos://health` returns status dict
+  - Test `contractos://playbook` returns playbook config
+  - Mock: TrustGraph, EmbeddingIndex, manifest.json
+- [ ] T298 [P] Unit test for resource error handling:
+  - Test invalid document ID returns empty/error
+  - Test empty TrustGraph returns empty lists
+
+#### Implementation (T299–T305)
+
+- [ ] T299 Create `src/contractos/mcp/resources.py` — resource module with `register_resources(mcp, ctx)`
+- [ ] T300 [P] Implement `@mcp.resource("contractos://contracts")` and `@mcp.resource("contractos://contracts/{id}")`:
+  - Query TrustGraph for contract list / single contract
+  - Serialize as JSON
+- [ ] T301 [P] Implement `@mcp.resource("contractos://contracts/{id}/facts")`:
+  - Query TrustGraph `get_facts_by_document()`
+  - Serialize facts with evidence and offsets
+- [ ] T302 [P] Implement `@mcp.resource("contractos://contracts/{id}/clauses")` and `@mcp.resource("contractos://contracts/{id}/bindings")`:
+  - Query TrustGraph for clauses and bindings
+- [ ] T303 [P] Implement `@mcp.resource("contractos://contracts/{id}/graph")`:
+  - Build TrustGraph view (nodes + edges) from facts, bindings, clauses, cross-refs
+- [ ] T304 [P] Implement `@mcp.resource("contractos://samples")`, `@mcp.resource("contractos://chat/history")`, `@mcp.resource("contractos://health")`:
+  - Samples: read `demo/samples/manifest.json`
+  - Chat history: query session store
+  - Health: return status, version, indexed count, embedding model
+- [ ] T305 Implement `@mcp.resource("contractos://playbook")`:
+  - Load default playbook via `load_default_playbook()`
+  - Serialize PlaybookConfig as JSON
+
+**Checkpoint**: All 10 MCP resources implemented and unit-tested.
+
+---
+
+### Phase 13f: MCP Prompts (T306–T313)
+
+**Purpose**: Implement 5 reusable prompt workflows
+
+#### Tests (T306–T307)
+
+- [ ] T306 [P] Unit test for all prompts in `tests/unit/test_mcp_prompts.py`:
+  - Test `full_contract_analysis` returns Message[] with correct tool sequence
+  - Test `due_diligence_checklist` returns structured checklist template
+  - Test `negotiation_prep` returns strategy-focused messages
+  - Test `risk_summary` returns executive briefing messages
+  - Test `clause_comparison` returns comparison workflow messages
+  - Verify all prompts include parameter descriptions
+- [ ] T307 [P] Unit test for prompt parameter validation:
+  - Test missing required parameters raise appropriate errors
+
+#### Implementation (T308–T313)
+
+- [ ] T308 Create `src/contractos/mcp/prompts.py` — prompt module with `register_prompts(mcp, ctx)`
+- [ ] T309 Implement `@mcp.prompt() full_contract_analysis(document_id)`:
+  - Return Message[] guiding AI through: triage → review → obligations → risk memo → discover
+  - Include instructions for synthesizing results
+- [ ] T310 Implement `@mcp.prompt() due_diligence_checklist(document_id)`:
+  - Return Message[] with structured due diligence template
+  - Cover: parties, term, termination, liability, IP, confidentiality, compliance
+- [ ] T311 Implement `@mcp.prompt() negotiation_prep(document_id)`:
+  - Return Message[] for building negotiation strategy from review findings
+  - Include playbook positions and redline suggestions
+- [ ] T312 Implement `@mcp.prompt() risk_summary(document_id)`:
+  - Return Message[] for executive risk briefing
+  - Combine risk memo + obligations + discovery findings
+- [ ] T313 Implement `@mcp.prompt() clause_comparison(doc_id_1, doc_id_2, clause_type)`:
+  - Return Message[] for structured cross-contract comparison
+
+**Checkpoint**: All 5 MCP prompts implemented and unit-tested.
+
+---
+
+### Phase 13g: Integration Tests & End-to-End (T314–T319)
+
+**Purpose**: Verify MCP server works end-to-end with real protocol
+
+#### Tests (T314–T318)
+
+- [ ] T314 Create `tests/integration/test_mcp_server.py` — end-to-end MCP protocol tests:
+  - Test server startup and tool listing (13 tools)
+  - Test server startup and resource listing (10 resources)
+  - Test server startup and prompt listing (5 prompts)
+- [ ] T315 [P] Integration test: upload → query pipeline:
+  - Load sample contract via `load_sample_contract`
+  - Ask question via `ask_question`
+  - Verify answer includes provenance
+- [ ] T316 [P] Integration test: full analysis pipeline:
+  - Load sample → triage → review → obligations → risk memo → report
+  - Verify each tool returns expected structure
+- [ ] T317 [P] Integration test: resource access:
+  - Load sample → read `contractos://contracts` → verify contract listed
+  - Read `contractos://contracts/{id}/facts` → verify facts returned
+  - Read `contractos://health` → verify status ok
+- [ ] T318 [P] Integration test: error handling:
+  - Call tools with invalid document IDs → verify agent-friendly errors
+  - Call `ask_question` with no indexed contracts → verify helpful error
+
+#### Validation (T319)
+
+- [ ] T319 Run MCP Inspector validation:
+  - Start server in HTTP mode on port 8743
+  - Connect MCP Inspector
+  - Verify all 13 tools, 10 resources, 5 prompts visible
+  - Execute `load_sample_contract` + `triage_nda` interactively
+
+**Checkpoint**: All MCP protocol tests pass. Inspector validation complete.
+
+---
+
+### Phase 13h: Docker & Deployment (T320–T324)
+
+**Purpose**: Add MCP server to Docker deployment, update documentation
+
+- [ ] T320 Single-container deployment — both FastAPI + MCP HTTP in one container:
+  - Create `entrypoint.sh` — starts MCP HTTP as background process (if `MCP_TRANSPORT=http`), then `exec` uvicorn as main process
+  - Update `docker-compose.yml` — expose both ports (8742 FastAPI, 8743 MCP), add `MCP_TRANSPORT` and `MCP_PORT` env vars
+  - Update `Dockerfile` — `COPY entrypoint.sh`, `RUN chmod +x`, set as `ENTRYPOINT`
+  - Add header comment: "Container engine agnostic — works with Docker Desktop, Rancher Desktop, Podman, or any OCI runtime"
+- [ ] T321 Update `Dockerfile` — ensure `mcp[cli]` is installed (already in pyproject.toml deps), expose MCP port
+- [ ] T322 [P] Update `README.md` — add MCP server section:
+  - Quick start for Cursor integration
+  - Quick start for Claude Desktop
+  - Docker deployment with MCP
+  - Available tools, resources, prompts summary
+- [ ] T323 [P] Update `docs/EXECUTIVE_SUMMARY.md` — add Phase 13 MCP section
+- [ ] T324 [P] Update `tests/reports/QA_TEST_REPORT.md` — add MCP test results
+
+**Checkpoint**: Docker deployment includes MCP server. Documentation updated.
+
+---
+
+### Phase 13i: Polish & Cross-Cutting (T325–T329)
+
+**Purpose**: Final quality, performance, and usability improvements
+
+- [ ] T325 Add structured logging to all MCP tools (tool name, document_id, timing)
+- [ ] T326 Add `ctx.report_progress()` calls to long-running tools (review, triage, discover, obligations, risk_memo)
+- [ ] T327 Performance test: measure tool response times against targets (<5s queries, <30s analysis)
+- [ ] T328 Error message review: ensure all errors are agent-friendly (guide AI to fix the issue)
+- [ ] T329 Run full test suite (`pytest tests/`) — verify no regressions, update total test count
+
+**Checkpoint**: ✅ Phase 13 complete. ContractOS MCP server operational with 13 tools, 10 resources, 5 prompts. Cursor + Claude Desktop integration verified.
+
+---
+
 ## Test Coverage Summary
 
 | Phase | Unit Tests | Integration Tests | Contract Tests | Total Tests |
@@ -1188,15 +1539,16 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 10c (DraftAgent) | 1 | 1 | 0 | 2 |
 | Phase 10d (NDA Triage) | 2 | 1 | 0 | 3 |
 | Phase 12 (SSE Streaming + Bug Fixes) | 19 | 17 | 0 | 36 |
-| **Total** | **93** | **39** | **6** | **138** |
+| **Phase 13 (MCP Server)** | **~35** | **~10** | **0** | **~45** |
+| **Total** | **~128** | **~49** | **6** | **~183** |
 
 ## Task Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 256 |
-| Test tasks | 119 (46%) |
-| Implementation tasks | 137 (54%) |
+| Total tasks | 329 |
+| Test tasks | ~145 (44%) |
+| Implementation tasks | ~184 (56%) |
 | Phase 1 (Setup) | 5 tasks |
 | Phase 2 (Foundation) | 35 tasks |
 | Phase 3–7 (User Stories) | 71 tasks |
@@ -1214,14 +1566,41 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | **Phase 10e (Copilot UI)** | **5 tasks** |
 | **Phase 10f (Polish)** | **5 tasks** |
 | **Phase 12 (SSE Streaming)** | **18 tasks** |
-| Total passing tests | 691 |
+| **Phase 13 (MCP Server)** | **69 tasks (T261–T329)** |
+| Total passing tests | 691 + ~45 new |
 | Real NDA documents tested | 50 (from ContractNLI) |
-| Deployment configs | 4 (Docker, Railway, Render, Procfile) |
-| Parallelizable tasks | 72 (30%) |
+| Deployment configs | 5 (Docker, Docker+MCP, Railway, Render, Procfile) |
+| Parallelizable tasks | ~95 (29%) |
 | MVP scope (through Phase 5) | 86 tasks |
 | Full scope (through Phase 8d) | 195 tasks |
 | Phase 10 scope | 43 tasks (T200–T242) |
 | Phase 12 scope | 18 tasks (T243–T260) |
+| Phase 13 scope | 69 tasks (T261–T329) |
+
+---
+
+## Dependencies & Execution Order (Phase 13)
+
+### Phase Dependencies
+
+```
+Phase 13a (Setup)           ─── BLOCKS ALL ──→ Phase 13b–13f
+Phase 13b (Ingestion Tools) ─── BLOCKS ──────→ Phase 13c, 13d (tools need upload first)
+Phase 13c (Q&A Tools)       ─── independent ─→ can parallel with 13d
+Phase 13d (Analysis Tools)  ─── independent ─→ can parallel with 13c
+Phase 13e (Resources)       ─── independent ─→ can parallel with 13b–13d
+Phase 13f (Prompts)         ─── independent ─→ can parallel with 13b–13e
+Phase 13g (Integration)     ─── REQUIRES ────→ 13b + 13c + 13d + 13e + 13f
+Phase 13h (Docker/Docs)     ─── REQUIRES ────→ 13g
+Phase 13i (Polish)          ─── REQUIRES ────→ 13h
+```
+
+### Parallel Opportunities
+
+- **13b + 13e + 13f** can run in parallel after 13a completes
+- **13c + 13d** can run in parallel after 13b completes
+- Within each sub-phase, tasks marked [P] can run in parallel
+- Test tasks within a sub-phase can all run in parallel
 
 ---
 

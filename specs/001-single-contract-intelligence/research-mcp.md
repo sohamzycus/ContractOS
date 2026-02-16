@@ -131,14 +131,24 @@ The MCP server should **reuse** the existing ContractOS fabric, agents, and tool
 
 Both transports share the same tool/resource/prompt definitions. The transport is selected at startup via CLI flag or environment variable.
 
-### 4.3 Dual Server Strategy
+### 4.3 Server Strategy — Single Container
 
-ContractOS will run **two servers** from the same codebase:
+ContractOS runs **two servers from the same codebase**, sharing a single `AppState`:
 
-1. **FastAPI HTTP server** (existing) — serves the Copilot UI, REST API, SSE streams
-2. **MCP server** (new) — serves MCP clients via stdio or Streamable HTTP
+1. **FastAPI HTTP server** (existing) — serves the Copilot UI, REST API, SSE streams (port 8742)
+2. **MCP server** (new) — serves MCP clients via stdio or Streamable HTTP (port 8743)
 
-Both share the same `AppState` (TrustGraph, EmbeddingIndex, config). When running as MCP stdio, the FastAPI server is not started. When running as MCP Streamable HTTP, it can optionally co-exist with the FastAPI server on different ports.
+**Critical constraint:** SQLite doesn't support concurrent writers across processes. Both servers MUST share the same `AppState` singleton. In Docker, both run in the **same container** via an `entrypoint.sh` supervisor script (FastAPI as main process, MCP HTTP as background).
+
+When running as MCP stdio (local Cursor/Claude Desktop), only the MCP server starts — no FastAPI.
+
+### 4.4 Container Engine Compatibility
+
+All deployment artifacts use OCI-standard commands and Compose v2 format. Compatible with:
+- **Docker Desktop** (`docker compose`)
+- **Rancher Desktop** (`nerdctl compose` or Docker-compatible CLI)
+- **Podman** (`podman-compose` or `podman compose`)
+- Any OCI-compliant container runtime
 
 ### 4.4 File Structure
 

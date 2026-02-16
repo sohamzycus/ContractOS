@@ -5,6 +5,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.cursor/mcp.json
 
 # Python
 __pycache__/
