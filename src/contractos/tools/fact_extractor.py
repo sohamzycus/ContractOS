@@ -11,7 +11,7 @@ from contractos.models.clause import Clause, CrossReference
 from contractos.models.clause_type import ClauseFactSlot
 from contractos.models.fact import EntityType, Fact, FactEvidence, FactType
 from contractos.tools.alias_detector import detect_aliases
-from contractos.tools.clause_classifier import classify_paragraphs
+from contractos.tools.clause_classifier import classify_paragraphs_with_fallback
 from contractos.tools.contract_patterns import PatternMatch, extract_patterns
 from contractos.tools.cross_reference_extractor import extract_cross_references
 from contractos.tools.docx_parser import parse_docx
@@ -144,8 +144,8 @@ def extract_from_file(
     result.facts.extend(alias_facts)
     result.bindings.extend(alias_bindings)
 
-    # Step 5: Classify clauses
-    clauses = classify_paragraphs(parsed.paragraphs, document_id)
+    # Step 5: Classify clauses (with structural fallback for heading detection)
+    clauses = classify_paragraphs_with_fallback(parsed.paragraphs, document_id)
 
     # Link clause fact_ids to heading paragraph facts
     for clause in clauses:

@@ -1,4 +1,8 @@
-"""Word document (.docx) parser — extracts paragraphs, tables, headings with character offsets."""
+"""Word document (.docx) parser — extracts paragraphs, tables, headings with character offsets.
+
+Includes bold-as-heading fallback for documents that don't use Word's
+built-in Heading styles (common in legal contracts).
+"""
 
 from __future__ import annotations
 
@@ -20,6 +24,9 @@ def parse_docx(file_path: str | Path) -> ParsedDocument:
 
     Extracts paragraphs with heading levels, tables with cell metadata,
     and computes character offsets into a concatenated full_text.
+
+    If no built-in Heading styles are found, applies a bold-text
+    fallback to detect section headings.
     """
     doc = Document(str(file_path))
 
@@ -119,6 +126,12 @@ def parse_docx(file_path: str | Path) -> ParsedDocument:
     full_text = "\n".join(full_text_parts)
     word_count = len(full_text.split())
 
+    # Bold-as-heading fallback: if no headings detected via styles,
+    # re-scan for bold paragraphs that look like section headings
+    has_headings = any(p.heading_level is not None for p in paragraphs)
+    if not has_headings:
+        paragraphs = _apply_bold_heading_fallback(paragraphs, doc)
+
     return ParsedDocument(
         paragraphs=paragraphs,
         tables=tables,
@@ -145,3 +158,116 @@ def _get_heading_level(element) -> int | None:
         except ValueError:
             return None
     return None
+
+
+def _apply_bold_heading_fallback(
+    paragraphs: list[ParsedParagraph],
+    doc: Document,
+) -> list[ParsedParagraph]:
+    """Re-scan paragraphs for bold formatting and promote to headings.
+
+    Only activates when the document has zero Heading-style paragraphs.
+    Detects bold paragraphs that are short (< 80 chars) and look like
+    section headings.
+    """
+    updated: list[ParsedParagraph] = []
+    doc_paragraphs = list(doc.paragraphs)
+
+    for i, para in enumerate(paragraphs):
+        text = para.text.strip()
+        if not text:
+            updated.append(para)
+            continue
+
+        # Find the matching python-docx paragraph
+        is_bold = False
+        if i < len(doc_paragraphs):
+            dp = doc_paragraphs[i]
+            is_bold = _is_paragraph_bold(dp)
+
+        heading_level = None
+        if is_bold and _looks_like_heading(text):
+            heading_level = 1
+
+        # Also detect ALL-CAPS short text as headings
+        if heading_level is None and _is_allcaps_heading(text):
+            heading_level = 1
+
+        # Also detect numbered section headings: "1. DEFINITIONS"
+        if heading_level is None and _is_numbered_heading(text):
+            heading_level = 1
+
+        if heading_level is not None:
+            updated.append(ParsedParagraph(
+                text=para.text,
+                char_start=para.char_start,
+                char_end=para.char_end,
+                structural_path=f"body > heading[{heading_level}][{i}]",
+                heading_level=heading_level,
+                page_number=para.page_number,
+            ))
+        else:
+            updated.append(para)
+
+    return updated
+
+
+def _is_paragraph_bold(dp) -> bool:
+    """Check if a python-docx Paragraph is bold (all runs or paragraph-level)."""
+    if dp.paragraph_format and dp.style and dp.style.font and dp.style.font.bold:
+        return True
+
+    runs = dp.runs
+    if not runs:
+        return False
+
+    # All non-empty runs must be bold
+    non_empty_runs = [r for r in runs if r.text.strip()]
+    if not non_empty_runs:
+        return False
+
+    return all(r.bold is True for r in non_empty_runs)
+
+
+def _looks_like_heading(text: str) -> bool:
+    """Check if text looks like a section heading (short, no trailing sentence)."""
+    text = text.strip()
+    if not text:
+        return False
+    if len(text) > 80:
+        return False
+    word_count = len(text.split())
+    if word_count > 10:
+        return False
+    # Headings typically don't end with a period (unless it's a numbered heading like "1.")
+    if text.endswith(".") and not text[-2].isdigit():
+        return False
+    return True
+
+
+def _is_allcaps_heading(text: str) -> bool:
+    """Check if text is an ALL-CAPS heading."""
+    text = text.strip()
+    if not text:
+        return False
+    if not (4 <= len(text) <= 60):
+        return False
+    word_count = len(text.split())
+    if word_count > 8:
+        return False
+    if not any(c.isalpha() for c in text):
+        return False
+    alpha_chars = [c for c in text if c.isalpha()]
+    return all(c.isupper() for c in alpha_chars)
+
+
+def _is_numbered_heading(text: str) -> bool:
+    """Check if text is a numbered section heading like '1. DEFINITIONS'."""
+    import re
+    text = text.strip()
+    if not text:
+        return False
+    if len(text) > 80:
+        return False
+    # Match: "1.", "1.1", "12.", "12.1" followed by text starting with uppercase
+    return bool(re.match(r'^\d+(?:\.\d+)*\.?\s+[A-Z]', text))

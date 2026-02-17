@@ -7,7 +7,11 @@ from datetime import datetime
 
 from contractos.models.binding import Binding, BindingScope, BindingType
 from contractos.models.fact import Fact, FactType
-from contractos.tools.contract_patterns import DEFINITION_PATTERN
+from contractos.tools.contract_patterns import (
+    DEFINITION_PATTERN,
+    PARENTHETICAL_DEF_PATTERN,
+    normalize_quotes,
+)
 
 
 def resolve_bindings(
@@ -19,7 +23,7 @@ def resolve_bindings(
     """Resolve all bindings from extracted facts and document text.
 
     Pipeline:
-    1. Extract definition-based bindings from text patterns
+    1. Extract definition-based bindings from text patterns (including parenthetical)
     2. Merge with existing alias-based bindings (from alias_detector)
     3. Deduplicate by term (case-insensitive)
 
@@ -48,17 +52,25 @@ def _extract_definition_bindings(
     facts: list[Fact],
     document_id: str,
 ) -> list[Binding]:
-    """Extract bindings from definition patterns in text."""
-    bindings: list[Binding] = []
+    """Extract bindings from definition patterns in text.
 
-    for match in DEFINITION_PATTERN.finditer(text):
+    Uses both the standard definition pattern and the parenthetical
+    definition pattern, with smart-quote normalization.
+    """
+    normalized = normalize_quotes(text)
+    bindings: list[Binding] = []
+    seen_terms: set[str] = set()
+
+    # Standard definitions: "Term" shall mean ...
+    for match in DEFINITION_PATTERN.finditer(normalized):
         term = match.group(1).strip()
         definition = match.group(2).strip()
 
         if not term or not definition:
             continue
+        if term.lower() in seen_terms:
+            continue
 
-        # Find a supporting fact near this definition
         source_fact_id = _find_nearest_fact(facts, match.start(), match.end())
 
         bindings.append(Binding(
@@ -70,13 +82,54 @@ def _extract_definition_bindings(
             document_id=document_id,
             scope=BindingScope.CONTRACT,
         ))
+        seen_terms.add(term.lower())
+
+    # Parenthetical definitions: (the "Agreement") or ("Service Provider")
+    for match in PARENTHETICAL_DEF_PATTERN.finditer(normalized):
+        term = match.group(1).strip()
+        if not term or term.lower() in seen_terms:
+            continue
+
+        # Get surrounding context as the definition
+        context_start = max(0, match.start() - 120)
+        context = normalized[context_start:match.start()].strip()
+        if len(context) > 100:
+            context = context[-100:]
+
+        source_fact_id = _find_nearest_fact(facts, match.start(), match.end())
+
+        bindings.append(Binding(
+            binding_id=f"b-def-{uuid.uuid4().hex[:8]}",
+            binding_type=BindingType.DEFINITION,
+            term=term,
+            resolves_to=context if context else "(parenthetical definition)",
+            source_fact_id=source_fact_id,
+            document_id=document_id,
+            scope=BindingScope.CONTRACT,
+        ))
+        seen_terms.add(term.lower())
+
+        # Handle alternative term: (the "X" or "Y")
+        if match.group(2):
+            alt_term = match.group(2).strip()
+            if alt_term and alt_term.lower() not in seen_terms:
+                bindings.append(Binding(
+                    binding_id=f"b-def-{uuid.uuid4().hex[:8]}",
+                    binding_type=BindingType.DEFINITION,
+                    term=alt_term,
+                    resolves_to=context if context else "(parenthetical definition)",
+                    source_fact_id=source_fact_id,
+                    document_id=document_id,
+                    scope=BindingScope.CONTRACT,
+                ))
+                seen_terms.add(alt_term.lower())
 
     return bindings
 
 
 def _find_nearest_fact(facts: list[Fact], char_start: int, char_end: int) -> str:
     """Find the fact whose evidence span is closest to the given range."""
-    best_fact_id = ""
+    best_fact_id = "unknown"
     best_distance = float("inf")
 
     for fact in facts:

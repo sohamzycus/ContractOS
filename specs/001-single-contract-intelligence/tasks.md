@@ -1540,13 +1540,14 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 10d (NDA Triage) | 2 | 1 | 0 | 3 |
 | Phase 12 (SSE Streaming + Bug Fixes) | 19 | 17 | 0 | 36 |
 | **Phase 13 (MCP Server)** | **~35** | **~10** | **0** | **~45** |
-| **Total** | **~128** | **~49** | **6** | **~183** |
+| **Phase 14 (Deep Extraction)** | **47** | **17** | **0** | **64** |
+| **Total** | **~175** | **~66** | **6** | **~247** |
 
 ## Task Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 329 |
+| Total tasks | 337 |
 | Test tasks | ~145 (44%) |
 | Implementation tasks | ~184 (56%) |
 | Phase 1 (Setup) | 5 tasks |
@@ -1567,7 +1568,7 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | **Phase 10f (Polish)** | **5 tasks** |
 | **Phase 12 (SSE Streaming)** | **18 tasks** |
 | **Phase 13 (MCP Server)** | **69 tasks (T261–T329)** |
-| Total passing tests | 691 + ~45 new |
+| Total passing tests | 691 + ~45 MCP + ~64 deep extraction |
 | Real NDA documents tested | 50 (from ContractNLI) |
 | Deployment configs | 5 (Docker, Docker+MCP, Railway, Render, Procfile) |
 | Parallelizable tasks | ~95 (29%) |
@@ -1576,6 +1577,7 @@ Conversation context retention adds a **fourth dimension**: multi-turn memory ac
 | Phase 10 scope | 43 tasks (T200–T242) |
 | Phase 12 scope | 18 tasks (T243–T260) |
 | Phase 13 scope | 69 tasks (T261–T329) |
+| Phase 14 scope | 8 tasks (T330–T337) |
 
 ---
 
@@ -1601,6 +1603,88 @@ Phase 13i (Polish)          ─── REQUIRES ────→ 13h
 - **13c + 13d** can run in parallel after 13b completes
 - Within each sub-phase, tasks marked [P] can run in parallel
 - Test tasks within a sub-phase can all run in parallel
+
+---
+
+## Phase 14: Deep Extraction — Real-World Contract Quality (T330–T337)
+
+**Problem:** Real-world contracts (CDK50014.pdf, SERVICE AGREEMENT 2.docx) produce only dates/amounts as facts, with **zero clauses**, **zero bindings**, and **zero cross-references**. Root causes:
+
+1. PDF parser never sets `heading_level` → clause classifier skips all paragraphs
+2. DOCX parser only recognizes Word `Heading*` styles → bold/custom-styled headings ignored
+3. Definition pattern only matches straight `"` quotes → smart quotes `\u201c\u201d` missed
+4. Alias pattern requires "hereinafter" phrasing → common `Entity ("Alias")` missed
+5. Cascade failure: no clauses → no cross-refs → no clause-body facts → no mandatory slots
+
+**Files modified:** `contract_patterns.py`, `pdf_parser.py`, `docx_parser.py`, `clause_classifier.py`, `alias_detector.py`, `binding_resolver.py`, `fact_extractor.py`
+
+### Phase 14a — Smart Quote Normalization (Foundation)
+
+- [X] **T330** — Normalize smart/curly quotes before pattern matching `[contract_patterns.py]`
+  - Add `normalize_quotes(text)` function: `\u201c\u201d` → `"`, `\u2018\u2019` → `'`, `\u2013\u2014` → `-`
+  - Call at top of `extract_patterns()` and export for use by other modules
+  - Ensures all downstream patterns work with normalized text
+  - **Test:** Verify definition/alias patterns match smart-quoted text
+
+### Phase 14b — Parser Heading Detection [P]
+
+- [X] **T331** — PDF heading detection via font-size/bold heuristics `[pdf_parser.py]`
+  - Use PyMuPDF `page.get_text("dict")` to get font size and flags per span
+  - Detect headings by: (a) font size > median + threshold, (b) bold flag, (c) ALL-CAPS short text
+  - Assign `heading_level` based on font size tiers (largest=1, next=2, etc.)
+  - Preserve existing block-based extraction as fallback
+  - **Test:** CDK50014.pdf should produce heading paragraphs for DEFINITIONS, TERM, INDEMNIFICATION, etc.
+
+- [X] **T332** — DOCX bold-as-heading fallback `[docx_parser.py]`
+  - If document has zero `Heading*` styles, re-scan paragraphs for bold formatting
+  - Detect bold: check `w:b` in paragraph `rPr` or all runs' `rPr`
+  - Short bold paragraph (< 80 chars, no period at end or ends with `.` as heading style) → `heading_level=1`
+  - Only activate when zero headings found via style detection (avoid false positives in well-styled docs)
+  - **Test:** SERVICE AGREEMENT 2.docx should produce headings for Term and Termination, Confidentiality, Indemnification, etc.
+
+### Phase 14c — Broader Pattern Matching [P]
+
+- [X] **T333** — Broader definition patterns `[contract_patterns.py, binding_resolver.py]`
+  - Extend `DEFINITION_PATTERN` to match smart quotes and single quotes
+  - Add new `PARENTHETICAL_DEFINITION_PATTERN`: `(the "Term")` or `("Term")` after descriptive text
+  - Add new `INLINE_DEFINITION_PATTERN`: `"Term" shall mean` with broader verb list (designates, constitutes, includes)
+  - Update `binding_resolver._extract_definition_bindings` to use all patterns
+  - **Test:** "Affiliate" shall mean..., (the "Agreement"), ("Service Provider") all match
+
+- [X] **T334** — Broader alias/entity patterns `[contract_patterns.py, alias_detector.py]`
+  - Add `PARTY_ALIAS_PATTERN`: `Entity Name, a <jurisdiction> <entity_type> ("Alias")`
+  - Support: `Corp ("X")`, `LLC ("X")`, `Inc. ("X")`, `Ltd ("X")`, `Pvt Ltd ("X")`
+  - Support both straight and smart quotes in alias capture
+  - **Test:** `Zycus Pvt Ltd a Michigan corporation ("Service Provider')` matches
+
+### Phase 14d — Clause Classifier Fallback
+
+- [X] **T335** — Structural heading detection when `heading_level` is None `[clause_classifier.py]`
+  - Add `classify_paragraphs_with_fallback()` that wraps existing `classify_paragraphs()`
+  - If zero clauses from heading-based classification, run structural fallback:
+    - Numbered paragraphs: `^\d+\.?\s+[A-Z]` (e.g., "1. DEFINITIONS", "12. INSURANCE")
+    - ALL-CAPS short lines: `^[A-Z\s]{4,60}$` (e.g., "CONFIDENTIALITY", "WARRANTIES")
+    - Bold-marked paragraphs (from parser heading_level detection)
+  - Create synthetic `heading_level=1` for matched paragraphs and re-run classification
+  - Update `fact_extractor.py` to call the fallback version
+  - **Test:** Contracts with no Word heading styles still produce clauses
+
+### Phase 14e — Integration & Validation
+
+- [X] **T336** — Unit tests for all new extraction capabilities `[tests/unit/]`
+  - Test `normalize_quotes()` with all Unicode quote variants
+  - Test PDF heading detection with mock font data
+  - Test DOCX bold fallback with mock XML
+  - Test broadened definition/alias patterns against real contract text
+  - Test clause classifier fallback with numbered/ALL-CAPS paragraphs
+  - Target: 15+ new unit tests
+
+- [X] **T337** — End-to-end validation against real contracts `[tests/integration/]`
+  - Run CDK50014.pdf through pipeline → verify clauses > 0, bindings > 0
+  - Run SERVICE AGREEMENT 2.docx through pipeline → verify clauses > 0, bindings > 0
+  - Compare before/after extraction counts
+  - Verify no regression on existing sample contracts (simple_nda.pdf, etc.)
+  - **Acceptance criteria:** Both real contracts produce ≥5 clauses and ≥3 bindings
 
 ---
 
