@@ -78,14 +78,17 @@ class TestMCPContext:
     @patch("contractos.mcp.context.init_state")
     def test_get_contract_or_error_found(self, mock_init):
         mock_state = MagicMock()
-        mock_state.trust_graph.get_contract.return_value = {"document_id": "abc", "filename": "test.pdf"}
+        mock_contract = MagicMock()
+        mock_contract.document_id = "abc"
+        mock_contract.title = "test"
+        mock_state.trust_graph.get_contract.return_value = mock_contract
         mock_init.return_value = mock_state
 
         from contractos.mcp.context import MCPContext
 
         ctx = MCPContext()
         result = ctx.get_contract_or_error("abc")
-        assert result["document_id"] == "abc"
+        assert result.document_id == "abc"
 
     @patch("contractos.mcp.context.init_state")
     def test_get_contract_or_error_not_found(self, mock_init):
@@ -118,9 +121,13 @@ class TestMCPTools:
     @pytest.mark.asyncio
     async def test_clear_workspace(self, mock_init):
         mock_state = MagicMock()
+        mock_contract_a = MagicMock()
+        mock_contract_a.document_id = "a"
+        mock_contract_b = MagicMock()
+        mock_contract_b.document_id = "b"
         mock_state.trust_graph.list_contracts.return_value = [
-            {"document_id": "a"},
-            {"document_id": "b"},
+            mock_contract_a,
+            mock_contract_b,
         ]
         mock_state.embedding_index.has_document.return_value = True
         mock_init.return_value = mock_state
@@ -206,24 +213,25 @@ class TestMCPResources:
     @patch("contractos.mcp.context.init_state")
     def test_health_resource(self, mock_init):
         mock_state = MagicMock()
-        mock_state.trust_graph.list_contracts.return_value = [{"document_id": "a"}]
+        mock_contract = MagicMock()
+        mock_contract.document_id = "a"
+        mock_state.trust_graph.list_contracts.return_value = [mock_contract]
         mock_state.config.llm.provider = "mock"
         mock_init.return_value = mock_state
 
         from contractos.mcp.server import create_server
 
         mcp, ctx = create_server()
-        # Access the resource function directly
         resource_fns = {r.uri: r for r in mcp._resource_manager._resources.values()}
-        # The health resource should be registered
         assert any("health" in str(uri) for uri in resource_fns)
 
     @patch("contractos.mcp.context.init_state")
     def test_contracts_resource(self, mock_init):
         mock_state = MagicMock()
-        mock_state.trust_graph.list_contracts.return_value = [
-            {"document_id": "abc", "filename": "test.pdf"}
-        ]
+        mock_contract = MagicMock()
+        mock_contract.document_id = "abc"
+        mock_contract.title = "test"
+        mock_state.trust_graph.list_contracts.return_value = [mock_contract]
         mock_state.config.llm.provider = "mock"
         mock_init.return_value = mock_state
 
