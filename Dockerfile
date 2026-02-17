@@ -30,6 +30,8 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # demo/   — copilot.html, graph.html, index.html, samples/
 COPY config/ config/
 COPY demo/ demo/
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 
 # ── Data directory ───────────────────────────────────────
 RUN mkdir -p /data/.contractos
@@ -47,15 +49,19 @@ ENV ANTHROPIC_MODEL=""
 # Storage — persistent volume mount point
 ENV CONTRACTOS_DB_PATH=/data/.contractos/trustgraph.db
 
+# MCP — set MCP_TRANSPORT=http to enable MCP HTTP server alongside FastAPI
+ENV MCP_TRANSPORT=""
+ENV MCP_PORT=8743
+
 EXPOSE ${PORT}
+EXPOSE ${MCP_PORT}
 
 # ── Health check ─────────────────────────────────────────
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -sf http://localhost:${PORT}/health || exit 1
 
 # ── Entrypoint ───────────────────────────────────────────
-# Single worker (SQLite doesn't support concurrent writes across processes).
-# Async FastAPI handles concurrency within the single process just fine.
-# --timeout-keep-alive 120: keep connections alive for SSE streaming responses.
-# --log-level info: structured logging for production.
-CMD ["sh", "-c", "python -m uvicorn contractos.api.app:create_app --host 0.0.0.0 --port ${PORT:-8742} --factory --timeout-keep-alive 120 --log-level info"]
+# entrypoint.sh starts FastAPI (main) + MCP HTTP (background, if MCP_TRANSPORT=http).
+# Both share a single AppState/SQLite connection (SQLite single-writer constraint).
+# Set MCP_TRANSPORT=http in docker-compose to enable the MCP server.
+ENTRYPOINT ["./entrypoint.sh"]

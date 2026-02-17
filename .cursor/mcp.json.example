@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "contractos": {
+      "command": "/absolute/path/to/ContractOS/.venv/bin/python",
+      "args": ["-m", "contractos.mcp.server"],
+      "env": {
+        "PYTHONPATH": "src",
+        "ANTHROPIC_API_KEY": "sk-your-api-key-here",
+        "ANTHROPIC_BASE_URL": "https://litellm-qc.zycus.net/",
+        "ANTHROPIC_MODEL": "claude-sonnet-4-5-global"
+      }
+    }
+  }
+}

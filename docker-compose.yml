@@ -1,16 +1,21 @@
 ###############################################################################
-# ContractOS — Production Docker Compose
+# ContractOS — Production Compose
+#
+# Container engine agnostic — works with:
+#   Docker Desktop, Rancher Desktop (nerdctl), Podman, or any OCI runtime
 #
 # Usage:
 #   1. Copy .env.example to .env and fill in your Anthropic credentials
-#   2. docker compose up --build -d
-#   3. Open http://<host-ip>:8742/demo/copilot.html
+#   2. docker compose up --build -d       (or: nerdctl compose / podman-compose)
+#   3. Open http://<host-ip>:8742/demo/copilot.html  (Copilot UI)
+#   4. MCP endpoint: http://<host-ip>:8743/mcp       (AI assistant integration)
 #
 # To view logs:   docker compose logs -f contractos
 # To stop:        docker compose down
 # To reset data:  docker compose down -v   (removes SQLite volume)
 #
 # Features included:
+#   - MCP server (13 tools, 10 resources, 5 prompts) for Cursor/Claude Desktop
 #   - SSE streaming endpoints (progressive reasoning)
 #   - Obligation extraction & risk memo generation
 #   - Playbook review with redline generation
@@ -30,7 +35,8 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${PORT:-8742}:${PORT:-8742}"
+      - "${PORT:-8742}:${PORT:-8742}"           # FastAPI + Copilot UI
+      - "${MCP_PORT:-8743}:${MCP_PORT:-8743}"   # MCP Streamable HTTP
 
     env_file:
       - .env
@@ -40,6 +46,9 @@ services:
       - PYTHONPATH=/app/src
       - PYTHONUNBUFFERED=1
       - CONTRACTOS_DB_PATH=/data/.contractos/trustgraph.db
+      # Enable MCP HTTP server alongside FastAPI
+      - MCP_TRANSPORT=http
+      - MCP_PORT=${MCP_PORT:-8743}
 
     volumes:
       # Persistent SQLite storage — survives container restarts and rebuilds

@@ -69,7 +69,11 @@ Every extracted entity is stored in a **typed, relational knowledge graph** (SQL
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                     INTERACTION LAYER                         │
-│         Browser Copilot · API Console · TrustGraph Viz       │
+│    Browser Copilot · API Console · TrustGraph Viz · MCP      │
+├──────────────────────────────────────────────────────────────┤
+│                MCP INTEGRATION LAYER                          │
+│   13 Tools · 10 Resources · 5 Prompts (stdio + HTTP)        │
+│   Cursor · Claude Desktop · Claude Code · Any MCP Client    │
 ├──────────────────────────────────────────────────────────────┤
 │                     WORKSPACE LAYER                           │
 │          WorkspaceStore · SessionStore · ContextMemory        │
@@ -101,6 +105,7 @@ Every extracted entity is stored in a **typed, relational knowledge graph** (SQL
 2. **Every tool output is typed** — Fact, Binding, Inference, or Opinion
 3. **Agents are stateless** — all state lives in TrustGraph and WorkspaceStore
 4. **Interaction layer never reasons** — all reasoning in the Agent layer
+5. **MCP wraps, never duplicates** — MCPContext composes AppState via delegation
 
 ---
 
@@ -110,27 +115,31 @@ Every extracted entity is stored in a **typed, relational knowledge graph** (SQL
 
 | Metric | Value |
 |--------|-------|
-| Python source modules | 45 |
-| Lines of production code | ~8,500 |
-| Test files | 53 |
-| Lines of test code | ~13,500 (1.6x production code) |
-| **Passing tests** | **691** |
-| API endpoints | 31 |
+| Python source modules | 63 |
+| Lines of production code | ~9,800 |
+| Test files | 69 |
+| Lines of test code | ~14,800 (1.5x production code) |
+| **Passing tests** | **794** |
+| API endpoints | 34 |
 | SSE streaming endpoints | 6 |
+| MCP tools | 13 |
+| MCP resources | 10 |
+| MCP prompts | 5 |
 | Demo UI pages | 3 |
 | Sample contracts | 4 (2 PDF, 2 DOCX) |
 | Real NDA documents tested | 50 (ContractNLI dataset, Stanford NLP) |
-| Deployment configs | Docker Compose, Railway, Render, Procfile |
+| Deployment configs | Docker Compose (single-container), Railway, Render, Procfile |
 
-### API Surface (31 Endpoints)
+### API Surface (34 Endpoints + MCP)
 
 | Category | Endpoints | Key Operations |
 |----------|----------|----------------|
-| **Contracts** | 14 | Upload, list, clear, samples, facts, clauses, bindings, graph, gaps, discover, review, triage |
+| **Contracts** | 16 | Upload, list, clear, samples, facts, clauses, bindings, graph, gaps, discover, review, triage |
 | **Query** | 3 | Ask (with conversation context), history, clear history |
 | **Workspaces** | 7 | Create, list, get, add/remove documents, check changes, sessions |
 | **Streaming** | 6 | SSE review, triage, discover, obligations, risk-memo, report download |
 | **Health** | 2 | Health check, configuration |
+| **MCP** | 13 tools + 10 resources + 5 prompts | Full contract intelligence via Model Context Protocol (stdio + HTTP) |
 
 ### Pydantic Model Layer
 
@@ -231,10 +240,40 @@ Download comprehensive HTML reports for any analysis:
 ### 11. TrustGraph Visualization
 Interactive D3.js force-directed graph showing the full knowledge graph — contracts, clauses, facts, bindings, and cross-references as connected nodes with typed edges.
 
-### 7. Sample Contract Playground
+### 12. MCP Server — Model Context Protocol Integration
+
+ContractOS exposes its full contract intelligence as an **MCP server** (Anthropic's open standard), enabling any MCP-compatible AI assistant to use ContractOS as a tool:
+
+**13 Tools:**
+
+| Tool | Description |
+|------|-------------|
+| `upload_contract` | Upload and analyse a contract (PDF/DOCX) |
+| `load_sample_contract` | Load a built-in sample for testing |
+| `ask_question` | Natural-language Q&A with provenance |
+| `review_against_playbook` | Playbook compliance review with redlines |
+| `triage_nda` | 10-point NDA screening checklist |
+| `discover_hidden_facts` | LLM-powered implicit risk discovery |
+| `extract_obligations` | Obligation extraction (affirmative/negative/conditional) |
+| `generate_risk_memo` | Structured risk assessment memo |
+| `get_clause_gaps` | Mandatory fact gap analysis |
+| `search_contracts` | Semantic search across all indexed contracts |
+| `compare_clauses` | Cross-contract clause comparison |
+| `generate_report` | HTML report generation (review/triage/discovery) |
+| `clear_workspace` | Clear all contracts and analysis data |
+
+**10 Resources** (read-only data): contracts list, contract metadata, facts, clauses, bindings, TrustGraph, samples, chat history, health, playbook config.
+
+**5 Prompts** (reusable workflows): full contract analysis pipeline, due diligence checklist, negotiation prep, risk summary, clause comparison.
+
+**Transport:** stdio (Cursor, Claude Desktop, Claude Code) and Streamable HTTP (Docker, remote deployment).
+
+**Architecture:** `MCPContext` wraps the existing `AppState` via composition — no duplication of TrustGraph, EmbeddingIndex, or LLM provider. All LLM calls route through the provider abstraction.
+
+### 13. Sample Contract Playground
 4 pre-built contracts (simple NDA, complex procurement framework, simple procurement, complex IT outsourcing) available for one-click loading — users can explore the system immediately.
 
-### 8. Multi-Document Workspaces
+### 14. Multi-Document Workspaces
 Create workspaces containing multiple contracts. Ask cross-document questions with document-labeled provenance.
 
 ---
@@ -243,16 +282,17 @@ Create workspaces containing multiple contracts. Ask cross-document questions wi
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | Python 3.12, FastAPI, Uvicorn (async) |
+| **Backend** | Python 3.14, FastAPI, Uvicorn (async) |
 | **LLM** | Anthropic Claude (via SDK), LiteLLM proxy compatible |
 | **Embeddings** | sentence-transformers `all-MiniLM-L6-v2` (384-dim, ~90MB) |
 | **Vector Search** | FAISS IndexFlatIP (inner product on L2-normalized = cosine similarity) |
 | **Storage** | SQLite with WAL mode, foreign keys |
 | **Document Parsing** | python-docx (DOCX), PyMuPDF + pdfplumber (PDF) |
 | **Streaming** | Server-Sent Events (SSE) via FastAPI StreamingResponse |
+| **MCP** | FastMCP (`mcp[cli]`), stdio + Streamable HTTP transports |
 | **Frontend** | Vanilla JS, EventSource API, docx-preview.js, PDF.js, D3.js |
 | **Testing** | pytest, pytest-asyncio, httpx (async), respx, factory-boy |
-| **Deployment** | Docker Compose (production), Railway, Render |
+| **Deployment** | Docker Compose (single-container, OCI-compliant), Railway, Render |
 | **Configuration** | YAML + env var overrides, Pydantic settings |
 
 ---
@@ -263,15 +303,16 @@ The entire system was built TDD — tests written before code:
 
 | Category | Tests | Description |
 |----------|------:|-------------|
-| Unit Tests | ~524 | Models, tools, storage, agents, FAISS, query persistence, JSON parser |
+| Unit Tests | ~539 | Models, tools, storage, agents, FAISS, query persistence, JSON parser, MCP server |
 | Integration Tests | ~156 | Full API pipeline, SSE streams, obligation/risk-memo extraction |
 | Contract Tests | ~27 | API contract tests via AsyncClient |
 | Benchmark Tests | ~61 | LegalBench contract_nli, definition extraction |
-| **Total** | **691** | **All passing** |
+| MCP Tests | ~15 | Server creation, tool/resource/prompt registration, context lifecycle |
+| **Total** | **794** | **All passing** |
 
 - **50 real NDA documents** from ContractNLI (Stanford NLP) tested end-to-end
-- **~12K lines of test code** — 2x the production code
-- Tests run in ~55 seconds
+- **~14.8K lines of test code** — 1.5x the production code
+- Tests run in ~62 seconds
 
 ---
 
@@ -282,14 +323,28 @@ The entire system was built TDD — tests written before code:
 ```bash
 cp .env.example .env    # Fill in ANTHROPIC_API_KEY, BASE_URL, MODEL
 docker compose up --build -d
-# Access: http://<host>:8742/demo/copilot.html
+# FastAPI + Copilot UI: http://<host>:8742/demo/copilot.html
+# MCP HTTP endpoint:    http://<host>:8743/mcp/
 ```
 
+- **Single-container deployment** — FastAPI + MCP HTTP server managed by `entrypoint.sh`
+- **Container engine agnostic** — Docker Desktop, Rancher Desktop (`nerdctl`), Podman, or any OCI runtime
 - Pre-baked embedding model (no cold-start downloads)
 - Persistent SQLite volume
 - 4GB memory allocation, 2GB reserved
 - Health checks, auto-restart, structured logging
 - Single command deployment on any VDI
+
+### MCP Client Setup (Cursor / Claude Desktop)
+
+```bash
+cp .cursor/mcp.json.example .cursor/mcp.json
+# Edit: set absolute path to .venv/bin/python and your API key
+```
+
+- stdio transport for local IDE integration (Cursor, Claude Desktop, Claude Code)
+- Streamable HTTP transport for remote/Docker deployment
+- `.cursor/mcp.json` is git-ignored (contains API keys)
 
 ---
 
@@ -315,7 +370,8 @@ docker compose up --build -d
 | Phase 8d | Sample Contracts & Playground | 7 |
 | Phase 10 | Playbook Intelligence & Risk Framework | 80+ |
 | Phase 12 | SSE Streaming, Expanded Legal Analysis, Reports | 36 |
-| **Total** | **256 tasks** | **691** |
+| Phase 13 | MCP Server — Model Context Protocol | 15 |
+| **Total** | **280+ tasks** | **794** |
 
 ---
 
@@ -343,5 +399,11 @@ Then they click **"Review Against Playbook"** — and watch in real-time as Cont
 5. Offers a downloadable HTML report
 
 They click **"Risk Memo"** and get a structured assessment with severity/likelihood scoring, missing protections, prioritized recommendations, and escalation items — all streamed progressively as the AI reasons.
+
+Or — they stay in their IDE. In Cursor, they type:
+
+> "Load the simple NDA sample and run a full contract analysis"
+
+The AI assistant calls ContractOS MCP tools — `load_sample_contract`, `triage_nda`, `review_against_playbook`, `extract_obligations`, `generate_risk_memo`, `discover_hidden_facts` — and synthesizes a comprehensive executive summary, all without leaving the editor.
 
 That is ContractOS — the operating system for contract intelligence.
