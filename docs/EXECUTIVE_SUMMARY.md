@@ -2,6 +2,8 @@
 
 > The operating system for contract intelligence.
 
+**Quick Links:** [README](../README.md) | [Presentation](../presentation/index.html) | [Demo Script](../presentation/DEMO_SCRIPT.md) | [Architecture Spec](../spec/architecture.md)
+
 ---
 
 ## What Is ContractOS?
