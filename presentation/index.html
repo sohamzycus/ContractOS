@@ -7,6 +7,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
     --r-background-color: #0a0a1a;
@@ -18,13 +20,16 @@
     --yellow: #fbbf24;
     --red: #f87171;
     --purple: #a78bfa;
+    --glass: rgba(255,255,255,0.03);
+    --glass-border: rgba(255,255,255,0.08);
   }
-  .reveal { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
-  .reveal h1, .reveal h2, .reveal h3 { font-weight: 700; text-transform: none; letter-spacing: -0.02em; }
-  .reveal h1 { font-size: 2.4em; }
-  .reveal h2 { font-size: 1.6em; }
-  .reveal h3 { font-size: 1.2em; color: var(--accent); }
-  .reveal p, .reveal li { font-size: 0.75em; line-height: 1.6; }
+
+  .reveal { font-family: 'Inter', system-ui, sans-serif; }
+  .reveal h1, .reveal h2, .reveal h3 { font-weight: 800; text-transform: none; letter-spacing: -0.03em; }
+  .reveal h1 { font-size: 2.6em; background: linear-gradient(135deg, #fff 0%, #6ea8fe 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .reveal h2 { font-size: 1.7em; }
+  .reveal h3 { font-size: 1.15em; color: var(--accent); font-weight: 600; }
+  .reveal p, .reveal li { font-size: 0.75em; line-height: 1.7; }
   .reveal .subtitle { color: var(--accent); font-size: 1.1em; font-weight: 500; margin-top: -10px; }
   .reveal .tagline { color: #94a3b8; font-size: 0.85em; font-style: italic; margin-top: 20px; }
   .reveal .highlight { color: var(--accent); font-weight: 600; }
@@ -33,154 +38,250 @@
   .reveal .red { color: var(--red); }
   .reveal .purple { color: var(--purple); }
 
+  .reveal .slides section { padding: 20px 40px; }
+
+  /* Animated gradient background for title slide */
+  .title-bg { position: relative; overflow: hidden; }
+  .title-bg::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(110,168,254,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 50%, rgba(167,139,250,0.06) 0%, transparent 60%);
+    animation: gradientShift 8s ease-in-out infinite alternate;
+    z-index: -1;
+  }
+  @keyframes gradientShift {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    100% { transform: translate(-5%, 3%) rotate(2deg); }
+  }
+
+  /* Glow effect on headings */
+  .glow-text { text-shadow: 0 0 40px rgba(110,168,254,0.3), 0 0 80px rgba(110,168,254,0.1); }
+
+  /* Glass morphism cards */
+  .glass-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .glass-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(110,168,254,0.3);
+    box-shadow: 0 8px 32px rgba(110,168,254,0.1);
+  }
+
+  /* Truth model cards */
   .truth-model { display: flex; gap: 16px; justify-content: center; margin: 30px 0; flex-wrap: wrap; }
   .truth-card {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 18px 22px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px 24px;
     width: 200px;
     text-align: center;
-    transition: transform 0.2s;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
-  .truth-card:hover { transform: translateY(-4px); }
-  .truth-card h4 { margin: 0 0 8px 0; font-size: 0.9em; }
+  .truth-card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+  .truth-card h4 { margin: 0 0 8px 0; font-size: 0.95em; font-weight: 800; letter-spacing: 0.05em; }
   .truth-card p { font-size: 0.6em !important; color: #94a3b8; margin: 0; }
-  .truth-card.fact { border-color: var(--green); }
+  .truth-card.fact { border-color: var(--green); box-shadow: 0 0 20px rgba(74,222,128,0.08); }
   .truth-card.fact h4 { color: var(--green); }
-  .truth-card.binding { border-color: var(--accent); }
+  .truth-card.binding { border-color: var(--accent); box-shadow: 0 0 20px rgba(110,168,254,0.08); }
   .truth-card.binding h4 { color: var(--accent); }
-  .truth-card.inference { border-color: var(--yellow); }
+  .truth-card.inference { border-color: var(--yellow); box-shadow: 0 0 20px rgba(251,191,36,0.08); }
   .truth-card.inference h4 { color: var(--yellow); }
-  .truth-card.opinion { border-color: var(--red); }
+  .truth-card.opinion { border-color: var(--red); box-shadow: 0 0 20px rgba(248,113,113,0.08); }
   .truth-card.opinion h4 { color: var(--red); }
 
+  /* Metric cards with counter animation */
   .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 30px 0; }
   .metric-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 20px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 22px;
     text-align: center;
+    transition: transform 0.3s ease;
   }
-  .metric-card .number { font-size: 2em; font-weight: 800; color: var(--accent); display: block; }
+  .metric-card:hover { transform: scale(1.05); }
+  .metric-card .number { font-size: 2.2em; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: block; }
   .metric-card .label { font-size: 0.6em; color: #94a3b8; margin-top: 4px; display: block; }
 
-  .arch-layer {
-    background: rgba(255,255,255,0.03);
-    border-left: 3px solid var(--accent);
-    padding: 10px 16px;
-    margin: 8px 0;
-    border-radius: 0 8px 8px 0;
-    font-size: 0.65em;
-    text-align: left;
+  /* Architecture SVG container */
+  .arch-svg-container {
+    width: 100%;
+    max-width: 960px;
+    margin: 15px auto;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
   }
-  .arch-layer strong { color: var(--accent); }
+  .arch-svg-container svg { width: 100%; height: auto; display: block; }
+  .arch-svg-container .layer-group { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .arch-svg-container.revealed .layer-group { opacity: 1; transform: translateY(0); }
+  .arch-svg-container.revealed .layer-group:nth-child(2) { transition-delay: 0.15s; }
+  .arch-svg-container.revealed .layer-group:nth-child(3) { transition-delay: 0.3s; }
+  .arch-svg-container.revealed .layer-group:nth-child(4) { transition-delay: 0.45s; }
+  .arch-svg-container.revealed .layer-group:nth-child(5) { transition-delay: 0.6s; }
+  .arch-svg-container.revealed .layer-group:nth-child(6) { transition-delay: 0.75s; }
+  .arch-svg-container.revealed .prov-arrow { opacity: 1; stroke-dashoffset: 0; }
+  .arch-svg-container .prov-arrow { stroke-dasharray: 800; stroke-dashoffset: 800; transition: stroke-dashoffset 1.5s ease 1s; }
 
-  .pipeline-step {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    margin: 10px 0;
-  }
+  /* Pipeline with animated connectors */
+  .pipeline-step { display: inline-flex; align-items: center; gap: 12px; margin: 10px 0; }
   .pipeline-badge {
-    background: var(--accent);
-    color: #0a0a1a;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 1.1em;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 1.2em;
     flex-shrink: 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    color: #0a0a1a;
   }
-  .pipeline-arrow { color: #475569; font-size: 1.5em; }
+  .pipeline-arrow { color: #475569; font-size: 1.5em; animation: pulseArrow 2s ease-in-out infinite; }
+  @keyframes pulseArrow { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
 
+  /* Feature grid */
   .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
   .feature-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 16px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 18px;
     text-align: left;
+    transition: transform 0.3s ease, border-color 0.3s ease;
   }
+  .feature-card:hover { transform: translateY(-3px); border-color: rgba(110,168,254,0.2); }
   .feature-card h4 { color: var(--accent); margin: 0 0 6px 0; font-size: 0.8em; }
   .feature-card p { font-size: 0.55em !important; color: #94a3b8; margin: 0; }
 
-  .traffic-light { display: flex; gap: 24px; justify-content: center; margin: 20px 0; }
+  /* Traffic light */
+  .traffic-light { display: flex; gap: 28px; justify-content: center; margin: 24px 0; }
   .traffic-item { text-align: center; }
   .traffic-dot {
-    width: 50px; height: 50px; border-radius: 50%;
+    width: 56px; height: 56px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 8px; font-weight: 700; font-size: 0.7em;
+    margin: 0 auto 10px; font-weight: 800; font-size: 0.75em;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   }
-  .traffic-dot.g { background: var(--green); color: #0a0a1a; }
-  .traffic-dot.y { background: var(--yellow); color: #0a0a1a; }
-  .traffic-dot.r { background: var(--red); color: #0a0a1a; }
+  .traffic-dot.g { background: var(--green); color: #0a0a1a; box-shadow: 0 0 24px rgba(74,222,128,0.3); }
+  .traffic-dot.y { background: var(--yellow); color: #0a0a1a; box-shadow: 0 0 24px rgba(251,191,36,0.3); }
+  .traffic-dot.r { background: var(--red); color: #0a0a1a; box-shadow: 0 0 24px rgba(248,113,113,0.3); }
   .traffic-label { font-size: 0.55em; color: #94a3b8; }
 
+  /* Scenario box */
   .scenario-box {
-    background: rgba(110,168,254,0.08);
-    border: 1px solid rgba(110,168,254,0.2);
-    border-radius: 12px;
-    padding: 24px;
+    background: linear-gradient(135deg, rgba(110,168,254,0.06) 0%, rgba(167,139,250,0.04) 100%);
+    border: 1px solid rgba(110,168,254,0.15);
+    border-radius: 16px;
+    padding: 26px;
     margin: 20px 0;
     text-align: left;
     font-size: 0.7em;
-    line-height: 1.7;
-    font-style: italic;
+    line-height: 1.8;
     color: #cbd5e1;
   }
   .scenario-box strong { color: var(--accent); font-style: normal; }
 
+  /* Tech grid */
   .tech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
   .tech-item {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-    padding: 12px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 14px;
     text-align: center;
     font-size: 0.6em;
+    transition: transform 0.3s ease, border-color 0.3s ease;
   }
+  .tech-item:hover { transform: translateY(-3px); border-color: rgba(110,168,254,0.2); }
   .tech-item strong { color: var(--accent); display: block; margin-bottom: 4px; font-size: 1.1em; }
 
-  .tdd-bar { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+  /* TDD bars */
+  .tdd-bar { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
   .tdd-fill {
-    height: 28px;
-    border-radius: 6px;
+    height: 30px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
-    padding: 0 12px;
+    padding: 0 14px;
     font-size: 0.6em;
-    font-weight: 600;
+    font-weight: 700;
     color: #0a0a1a;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    transition: width 1s ease;
   }
 
-  .mcp-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0; }
+  /* MCP tools grid */
+  .mcp-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
   .mcp-tool {
-    background: rgba(167,139,250,0.08);
-    border: 1px solid rgba(167,139,250,0.2);
-    border-radius: 8px;
-    padding: 8px 12px;
+    background: rgba(167,139,250,0.06);
+    border: 1px solid rgba(167,139,250,0.15);
+    border-radius: 10px;
+    padding: 10px 14px;
     font-size: 0.55em;
     text-align: left;
+    transition: transform 0.3s ease, border-color 0.3s ease;
   }
-  .mcp-tool code { color: var(--purple); font-size: 1.05em; }
+  .mcp-tool:hover { transform: translateY(-2px); border-color: rgba(167,139,250,0.4); }
+  .mcp-tool code { color: var(--purple); font-size: 1.05em; font-weight: 600; }
 
+  /* Comparison table */
   .compare-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.6em; }
-  .compare-table th, .compare-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); }
-  .compare-table th { color: var(--accent); font-weight: 600; }
+  .compare-table th, .compare-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .compare-table th { color: var(--accent); font-weight: 700; font-size: 1.05em; }
+  .compare-table tr { transition: background 0.2s ease; }
+  .compare-table tr:hover { background: rgba(110,168,254,0.04); }
 
-  .roadmap-item { display: flex; align-items: flex-start; gap: 14px; margin: 14px 0; text-align: left; }
-  .roadmap-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
-  .roadmap-dot.done { background: var(--green); }
+  /* Roadmap */
+  .roadmap-item { display: flex; align-items: flex-start; gap: 16px; margin: 16px 0; text-align: left; }
+  .roadmap-dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; box-shadow: 0 0 12px rgba(0,0,0,0.3); }
+  .roadmap-dot.done { background: var(--green); box-shadow: 0 0 12px rgba(74,222,128,0.3); }
+  .roadmap-dot.next { background: var(--accent); box-shadow: 0 0 12px rgba(110,168,254,0.3); }
   .roadmap-text { font-size: 0.65em; }
   .roadmap-text strong { color: #fff; }
 
-  .final-tagline { font-size: 1.5em !important; font-weight: 700; color: var(--accent); margin-top: 40px; }
+  /* Final slide */
+  .final-tagline { font-size: 1.6em !important; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-top: 40px; }
   .final-sub { color: #64748b; font-size: 0.8em !important; margin-top: 10px; }
+
+  /* Fragment animation overrides */
+  .reveal .fragment.fade-up { transform: translateY(30px); }
+  .reveal .fragment.fade-up.visible { transform: translateY(0); }
+  .reveal .fragment.scale-up { transform: scale(0.85); opacity: 0; }
+  .reveal .fragment.scale-up.visible { transform: scale(1); opacity: 1; }
+
+  /* Slide number styling */
+  .reveal .slide-number { font-family: 'Inter', sans-serif; font-size: 0.6em; color: #475569; }
+
+  /* Progress bar */
+  .reveal .progress { height: 3px; }
+  .reveal .progress span { background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+  /* Animated underline for emphasis */
+  .animated-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .animated-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; left: 0;
+    width: 0; height: 2px;
+    background: var(--accent);
+    transition: width 0.6s ease;
+  }
+  .visible .animated-underline::after,
+  .current-fragment .animated-underline::after { width: 100%; }
+
+  /* Pulse animation for key numbers */
+  @keyframes countUp { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+  .reveal .fragment.visible .number { animation: countUp 0.5s ease-out; }
 </style>
 </head>
 <body>
@@ -188,32 +289,36 @@
 <div class="slides">
 
 <!-- SLIDE 1: Title -->
-<section>
-  <h1>ContractOS</h1>
-  <p class="subtitle">The Operating System for Contract Intelligence</p>
-  <p class="tagline">Capstone Project Presentation</p>
-  <br>
-  <p style="font-size:0.6em; color:#64748b;">Built with Python &bull; FastAPI &bull; FAISS &bull; Anthropic Claude &bull; MCP</p>
+<section class="title-bg" data-transition="zoom" data-background-transition="zoom">
+  <div style="margin-top:40px;">
+    <h1 class="glow-text">ContractOS</h1>
+    <p class="subtitle" style="font-size:1.2em;">The Operating System for Contract Intelligence</p>
+    <p class="tagline">Capstone Project Presentation</p>
+    <br>
+    <p style="font-size:0.6em; color:#475569; letter-spacing:0.05em;">
+      Python &bull; FastAPI &bull; FAISS &bull; Anthropic Claude &bull; MCP &bull; D3.js
+    </p>
+  </div>
 </section>
 
 <!-- SLIDE 2: The Problem -->
-<section>
+<section data-transition="slide-in fade-out">
   <h2>The Problem</h2>
-  <p>Contracts encode obligations, risks, and rights <span class="highlight">implicitly</span>.</p>
+  <p>Contracts encode obligations, risks, and rights <span class="highlight animated-underline">implicitly</span>.</p>
   <div class="feature-grid" style="margin-top:30px;">
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="1">
       <h4>Buried in Tables</h4>
       <p>SLA penalties, pricing tiers, and delivery schedules hidden in schedule annexes that nobody reads until it's too late.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="2">
       <h4>Scattered Clauses</h4>
       <p>"Subject to Section 5.2" — cross-references create a web of dependencies that humans struggle to trace.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="3">
       <h4>Defined Terms</h4>
       <p>"Service Provider" means TechServe... but also their subcontractors? Definitions transform meaning silently.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="4">
       <h4>No Provenance</h4>
       <p>When an AI says "the liability cap is $14M" — where exactly does it say that? Can you trust it?</p>
     </div>
@@ -221,111 +326,295 @@
 </section>
 
 <!-- SLIDE 3: Market Gap -->
-<section>
+<section data-transition="fade">
   <h2>What Existing Tools Get Wrong</h2>
   <br>
   <table class="compare-table">
     <tr><th>Approach</th><th>Problem</th></tr>
-    <tr><td>Keyword Search</td><td>Misses "shall indemnify" when searching for "liability"</td></tr>
-    <tr><td>Document Chatbots</td><td>Hallucinate answers with no source grounding</td></tr>
-    <tr><td>Flat Embedding Search</td><td>Treats a 50-page contract as a text blob</td></tr>
-    <tr><td>Manual Review</td><td>8+ hours per contract, inconsistent, doesn't scale</td></tr>
+    <tr class="fragment fade-up" data-fragment-index="1"><td>Keyword Search</td><td>Misses "shall indemnify" when searching for "liability"</td></tr>
+    <tr class="fragment fade-up" data-fragment-index="2"><td>Document Chatbots</td><td>Hallucinate answers with no source grounding</td></tr>
+    <tr class="fragment fade-up" data-fragment-index="3"><td>Flat Embedding Search</td><td>Treats a 50-page contract as a text blob</td></tr>
+    <tr class="fragment fade-up" data-fragment-index="4"><td>Manual Review</td><td>8+ hours per contract, inconsistent, doesn't scale</td></tr>
   </table>
   <br>
-  <p style="font-size:0.8em;">They all fail at the same thing: <span class="highlight">separating what a contract says from what it means from what someone thinks about it.</span></p>
+  <p class="fragment fade-up" data-fragment-index="5" style="font-size:0.8em;">They all fail at the same thing: <span class="highlight">separating what a contract says from what it means from what someone thinks about it.</span></p>
 </section>
 
-<!-- SLIDE 4: Our Solution -->
-<section>
+<!-- SLIDE 4: Our Solution — The Truth Model -->
+<section data-transition="convex">
   <h2>Our Solution: The Truth Model</h2>
   <p>A strict four-layer epistemological model for contract intelligence.</p>
   <div class="truth-model">
-    <div class="truth-card fact">
+    <div class="truth-card fact fragment fade-up" data-fragment-index="1">
       <h4>FACT</h4>
       <p>Directly grounded in contract text. Immutable.</p>
-      <p style="margin-top:8px; color:var(--green);">"Term: 24 months"</p>
+      <p style="margin-top:8px; color:var(--green); font-size:0.65em !important;">"Term: 24 months"</p>
     </div>
-    <div class="truth-card binding">
+    <div class="truth-card binding fragment fade-up" data-fragment-index="2">
       <h4>BINDING</h4>
       <p>Explicit semantic mapping. Scoped.</p>
-      <p style="margin-top:8px; color:var(--accent);">"Company" = Acme Corp</p>
+      <p style="margin-top:8px; color:var(--accent); font-size:0.65em !important;">"Company" = Acme Corp</p>
     </div>
-    <div class="truth-card inference">
+    <div class="truth-card inference fragment fade-up" data-fragment-index="3">
       <h4>INFERENCE</h4>
       <p>Derived claim with confidence. Revisable.</p>
-      <p style="margin-top:8px; color:var(--yellow);">Expires Dec 2025 (0.92)</p>
+      <p style="margin-top:8px; color:var(--yellow); font-size:0.65em !important;">Expires Dec 2025 (0.92)</p>
     </div>
-    <div class="truth-card opinion">
+    <div class="truth-card opinion fragment fade-up" data-fragment-index="4">
       <h4>OPINION</h4>
       <p>Contextual judgment. Never persisted as truth.</p>
-      <p style="margin-top:8px; color:var(--red);">Missing force majeure = risk</p>
+      <p style="margin-top:8px; color:var(--red); font-size:0.65em !important;">Missing force majeure = risk</p>
     </div>
   </div>
-  <p class="tagline">Every answer is auditable. Every claim is traceable to source text.</p>
+  <p class="tagline fragment fade-in" data-fragment-index="5">Every answer is auditable. Every claim is traceable to source text.</p>
 </section>
 
-<!-- SLIDE 5: Architecture -->
-<section>
+<!-- SLIDE 5: Architecture Diagram (draw.io) -->
+<section data-transition="zoom-in slide-out">
   <h2>Architecture</h2>
-  <div style="max-width:700px; margin:20px auto;">
-    <div class="arch-layer" style="border-color:#6ea8fe;"><strong>Interaction</strong> &mdash; Browser Copilot &bull; API Console &bull; TrustGraph Viz &bull; MCP</div>
-    <div class="arch-layer" style="border-color:#a78bfa;"><strong>MCP Layer</strong> &mdash; 13 Tools &bull; 10 Resources &bull; 5 Prompts (stdio + HTTP)</div>
-    <div class="arch-layer" style="border-color:#4ade80;"><strong>Agents</strong> &mdash; DocumentAgent &bull; ComplianceAgent &bull; NDATriageAgent &bull; DraftAgent</div>
-    <div class="arch-layer" style="border-color:#fbbf24;"><strong>Tools</strong> &mdash; FactExtractor &bull; BindingResolver &bull; ClauseClassifier &bull; AliasDetector &bull; CrossRefExtractor</div>
-    <div class="arch-layer" style="border-color:#f87171;"><strong>Fabric</strong> &mdash; TrustGraph (SQLite) &bull; EmbeddingIndex (FAISS) &bull; WorkspaceStore</div>
-    <div class="arch-layer" style="border-color:#64748b;"><strong>Data</strong> &mdash; Raw Documents &bull; Config &bull; Audit Log</div>
+  <div class="arch-svg-container" id="archDiagram">
+    <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter',system-ui,sans-serif;">
+      <defs>
+        <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <marker id="arrowDown" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#475569"/></marker>
+        <marker id="arrowProv" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#F87171"/></marker>
+        <linearGradient id="gradBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1E3A5F"/><stop offset="100%" stop-color="#1E293B"/></linearGradient>
+        <linearGradient id="gradPurple" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2D1B4E"/><stop offset="100%" stop-color="#1E293B"/></linearGradient>
+        <linearGradient id="gradGreen" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1A3328"/><stop offset="100%" stop-color="#1E293B"/></linearGradient>
+        <linearGradient id="gradYellow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3D2E0A"/><stop offset="100%" stop-color="#1E293B"/></linearGradient>
+        <linearGradient id="gradRed" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2E1A1A"/><stop offset="100%" stop-color="#1A1A2E"/></linearGradient>
+      </defs>
+
+      <!-- Layer 1: Interaction -->
+      <g class="layer-group">
+        <rect x="20" y="10" width="900" height="80" rx="10" fill="#1E293B" stroke="#6EA8FE" stroke-width="1.5" opacity="0.9"/>
+        <text x="35" y="28" fill="#6EA8FE" font-size="9" font-weight="800" letter-spacing="0.5">INTERACTION LAYER</text>
+        <g>
+          <rect x="30" y="35" width="120" height="48" rx="8" fill="url(#gradBlue)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="90" y="53" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">Browser Copilot</text>
+          <text x="90" y="65" fill="#94A3B8" font-size="6.5" text-anchor="middle">Multi-doc workspace</text>
+        </g>
+        <g>
+          <rect x="160" y="35" width="120" height="48" rx="8" fill="url(#gradBlue)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="220" y="53" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">REST API</text>
+          <text x="220" y="65" fill="#94A3B8" font-size="6.5" text-anchor="middle">34 endpoints + SSE</text>
+        </g>
+        <g>
+          <rect x="290" y="35" width="120" height="48" rx="8" fill="url(#gradBlue)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="350" y="53" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">TrustGraph Viz</text>
+          <text x="350" y="65" fill="#94A3B8" font-size="6.5" text-anchor="middle">D3.js force graph</text>
+        </g>
+        <g>
+          <rect x="420" y="35" width="120" height="48" rx="8" fill="url(#gradBlue)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="480" y="53" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">MCP Server</text>
+          <text x="480" y="65" fill="#94A3B8" font-size="6.5" text-anchor="middle">13 tools + 10 resources</text>
+        </g>
+        <g>
+          <rect x="550" y="35" width="120" height="48" rx="8" fill="url(#gradBlue)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="610" y="53" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">Cross-Contract</text>
+          <text x="610" y="65" fill="#94A3B8" font-size="6.5" text-anchor="middle">Compare &amp; Q&amp;A</text>
+        </g>
+        <g>
+          <rect x="680" y="35" width="120" height="48" rx="8" fill="url(#gradBlue)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="740" y="53" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">Reports</text>
+          <text x="740" y="65" fill="#94A3B8" font-size="6.5" text-anchor="middle">HTML/PDF export</text>
+        </g>
+        <g>
+          <rect x="810" y="35" width="100" height="48" rx="8" fill="url(#gradBlue)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="860" y="53" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">Streaming</text>
+          <text x="860" y="65" fill="#94A3B8" font-size="6.5" text-anchor="middle">SSE real-time</text>
+        </g>
+      </g>
+
+      <!-- Flow arrow 1 -->
+      <line x1="470" y1="92" x2="470" y2="108" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowDown)"/>
+
+      <!-- Layer 2: Agents -->
+      <g class="layer-group">
+        <rect x="20" y="110" width="900" height="80" rx="10" fill="#1E293B" stroke="#A78BFA" stroke-width="1.5" opacity="0.9"/>
+        <text x="35" y="128" fill="#A78BFA" font-size="9" font-weight="800" letter-spacing="0.5">AGENT LAYER</text>
+        <g>
+          <rect x="50" y="135" width="190" height="48" rx="8" fill="url(#gradPurple)" stroke="#A78BFA" stroke-width="1"/>
+          <text x="145" y="153" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">DocumentAgent</text>
+          <text x="145" y="165" fill="#94A3B8" font-size="6.5" text-anchor="middle">Semantic Q&amp;A + FAISS + LLM</text>
+        </g>
+        <g>
+          <rect x="260" y="135" width="190" height="48" rx="8" fill="url(#gradPurple)" stroke="#A78BFA" stroke-width="1"/>
+          <text x="355" y="153" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">ComplianceAgent</text>
+          <text x="355" y="165" fill="#94A3B8" font-size="6.5" text-anchor="middle">Playbook review G/Y/R</text>
+        </g>
+        <g>
+          <rect x="470" y="135" width="190" height="48" rx="8" fill="url(#gradPurple)" stroke="#A78BFA" stroke-width="1"/>
+          <text x="565" y="153" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">NDATriageAgent</text>
+          <text x="565" y="165" fill="#94A3B8" font-size="6.5" text-anchor="middle">10-point checklist</text>
+        </g>
+        <g>
+          <rect x="680" y="135" width="190" height="48" rx="8" fill="url(#gradPurple)" stroke="#A78BFA" stroke-width="1"/>
+          <text x="775" y="153" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">DraftAgent</text>
+          <text x="775" y="165" fill="#94A3B8" font-size="6.5" text-anchor="middle">Redline generation</text>
+        </g>
+      </g>
+
+      <!-- Flow arrow 2 -->
+      <line x1="470" y1="192" x2="470" y2="208" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowDown)"/>
+
+      <!-- Layer 3: Extraction Tools -->
+      <g class="layer-group">
+        <rect x="20" y="210" width="900" height="80" rx="10" fill="#1E293B" stroke="#4ADE80" stroke-width="1.5" opacity="0.9"/>
+        <text x="35" y="228" fill="#4ADE80" font-size="9" font-weight="800" letter-spacing="0.5">EXTRACTION TOOLS</text>
+        <g>
+          <rect x="30" y="235" width="120" height="48" rx="8" fill="url(#gradGreen)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="90" y="253" fill="#fff" font-size="7.5" font-weight="700" text-anchor="middle">FactExtractor</text>
+          <text x="90" y="265" fill="#94A3B8" font-size="6" text-anchor="middle">Pattern-based, 0 LLM</text>
+        </g>
+        <g>
+          <rect x="160" y="235" width="120" height="48" rx="8" fill="url(#gradGreen)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="220" y="253" fill="#fff" font-size="7.5" font-weight="700" text-anchor="middle">BindingResolver</text>
+          <text x="220" y="265" fill="#94A3B8" font-size="6" text-anchor="middle">Entity mapping</text>
+        </g>
+        <g>
+          <rect x="290" y="235" width="120" height="48" rx="8" fill="url(#gradGreen)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="350" y="253" fill="#fff" font-size="7.5" font-weight="700" text-anchor="middle">ClauseClassifier</text>
+          <text x="350" y="265" fill="#94A3B8" font-size="6" text-anchor="middle">18 clause types</text>
+        </g>
+        <g>
+          <rect x="420" y="235" width="120" height="48" rx="8" fill="url(#gradGreen)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="480" y="253" fill="#fff" font-size="7.5" font-weight="700" text-anchor="middle">AliasDetector</text>
+          <text x="480" y="265" fill="#94A3B8" font-size="6" text-anchor="middle">Acronym resolution</text>
+        </g>
+        <g>
+          <rect x="550" y="235" width="120" height="48" rx="8" fill="url(#gradGreen)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="610" y="253" fill="#fff" font-size="7.5" font-weight="700" text-anchor="middle">CrossRefExtractor</text>
+          <text x="610" y="265" fill="#94A3B8" font-size="6" text-anchor="middle">Section references</text>
+        </g>
+        <g>
+          <rect x="680" y="235" width="120" height="48" rx="8" fill="url(#gradGreen)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="740" y="253" fill="#fff" font-size="7.5" font-weight="700" text-anchor="middle">FactDiscovery</text>
+          <text x="740" y="265" fill="#94A3B8" font-size="6" text-anchor="middle">LLM-powered</text>
+        </g>
+        <g>
+          <rect x="810" y="235" width="100" height="48" rx="8" fill="url(#gradGreen)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="860" y="253" fill="#fff" font-size="7.5" font-weight="700" text-anchor="middle">DocParser</text>
+          <text x="860" y="265" fill="#94A3B8" font-size="6" text-anchor="middle">PDF + DOCX</text>
+        </g>
+      </g>
+
+      <!-- Flow arrow 3 -->
+      <line x1="470" y1="292" x2="470" y2="308" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowDown)"/>
+
+      <!-- Layer 4: Data Fabric -->
+      <g class="layer-group">
+        <rect x="20" y="310" width="900" height="80" rx="10" fill="#1E293B" stroke="#FBBF24" stroke-width="1.5" opacity="0.9"/>
+        <text x="35" y="328" fill="#FBBF24" font-size="9" font-weight="800" letter-spacing="0.5">DATA FABRIC</text>
+        <g>
+          <rect x="40" y="335" width="210" height="48" rx="8" fill="url(#gradYellow)" stroke="#FBBF24" stroke-width="1"/>
+          <text x="145" y="353" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">TrustGraph</text>
+          <text x="145" y="365" fill="#94A3B8" font-size="6.5" text-anchor="middle">SQLite WAL | Facts, Bindings, Clauses</text>
+        </g>
+        <g>
+          <rect x="270" y="335" width="210" height="48" rx="8" fill="url(#gradYellow)" stroke="#FBBF24" stroke-width="1"/>
+          <text x="375" y="353" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">EmbeddingIndex</text>
+          <text x="375" y="365" fill="#94A3B8" font-size="6.5" text-anchor="middle">FAISS | MiniLM-L6-v2 (384-dim)</text>
+        </g>
+        <g>
+          <rect x="500" y="335" width="210" height="48" rx="8" fill="url(#gradYellow)" stroke="#FBBF24" stroke-width="1"/>
+          <text x="605" y="353" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">WorkspaceStore</text>
+          <text x="605" y="365" fill="#94A3B8" font-size="6.5" text-anchor="middle">Multi-doc sessions + chat</text>
+        </g>
+        <g>
+          <rect x="730" y="335" width="180" height="48" rx="8" fill="url(#gradYellow)" stroke="#FBBF24" stroke-width="1"/>
+          <text x="820" y="353" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">LLM Provider</text>
+          <text x="820" y="365" fill="#94A3B8" font-size="6.5" text-anchor="middle">Anthropic Claude</text>
+        </g>
+      </g>
+
+      <!-- Flow arrow 4 -->
+      <line x1="470" y1="392" x2="470" y2="408" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowDown)"/>
+
+      <!-- Layer 5: Truth Model -->
+      <g class="layer-group">
+        <rect x="20" y="410" width="900" height="70" rx="10" fill="#1A1A2E" stroke="#F87171" stroke-width="1.5" opacity="0.9"/>
+        <text x="35" y="428" fill="#F87171" font-size="9" font-weight="800" letter-spacing="0.5">TRUTH MODEL</text>
+        <g>
+          <rect x="50" y="435" width="180" height="38" rx="8" fill="url(#gradRed)" stroke="#4ADE80" stroke-width="1"/>
+          <text x="140" y="450" fill="#4ADE80" font-size="9" font-weight="800" text-anchor="middle">FACT</text>
+          <text x="140" y="463" fill="#94A3B8" font-size="6" text-anchor="middle">Immutable | char offsets</text>
+        </g>
+        <g>
+          <rect x="250" y="435" width="180" height="38" rx="8" fill="url(#gradRed)" stroke="#6EA8FE" stroke-width="1"/>
+          <text x="340" y="450" fill="#6EA8FE" font-size="9" font-weight="800" text-anchor="middle">BINDING</text>
+          <text x="340" y="463" fill="#94A3B8" font-size="6" text-anchor="middle">Semantic mapping | scoped</text>
+        </g>
+        <g>
+          <rect x="450" y="435" width="180" height="38" rx="8" fill="url(#gradRed)" stroke="#FBBF24" stroke-width="1"/>
+          <text x="540" y="450" fill="#FBBF24" font-size="9" font-weight="800" text-anchor="middle">INFERENCE</text>
+          <text x="540" y="463" fill="#94A3B8" font-size="6" text-anchor="middle">Derived | confidence scored</text>
+        </g>
+        <g>
+          <rect x="650" y="435" width="180" height="38" rx="8" fill="url(#gradRed)" stroke="#F87171" stroke-width="1"/>
+          <text x="740" y="450" fill="#F87171" font-size="9" font-weight="800" text-anchor="middle">OPINION</text>
+          <text x="740" y="463" fill="#94A3B8" font-size="6" text-anchor="middle">Contextual | never persisted</text>
+        </g>
+      </g>
+
+      <!-- Provenance chain (dashed arrow right side) -->
+      <path class="prov-arrow" d="M925,445 L940,445 L940,50 L925,50" fill="none" stroke="#F87171" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowProv)" filter="url(#glow)"/>
+      <text x="948" y="250" fill="#F87171" font-size="7.5" font-weight="700" transform="rotate(90,948,250)" text-anchor="middle">PROVENANCE CHAIN</text>
+
+      <!-- Footer -->
+      <text x="470" y="505" fill="#475569" font-size="7" text-anchor="middle">Downward-only data flow  |  Every output is typed  |  Agents are stateless  |  Interaction layer never reasons</text>
+    </svg>
   </div>
-  <p style="font-size:0.6em; color:#94a3b8; margin-top:16px;">Downward-only data flow &bull; Every output is typed &bull; Agents are stateless &bull; Interaction layer never reasons</p>
+  <p style="font-size:0.55em; color:#64748b; margin-top:8px;">Architecture diagram created with draw.io MCP</p>
 </section>
 
 <!-- SLIDE 6: Three-Phase Pipeline -->
-<section>
+<section data-transition="slide">
   <h2>Three-Phase Extraction Pipeline</h2>
   <br>
   <div style="text-align:center;">
     <div style="display:inline-flex; align-items:center; gap:20px; flex-wrap:wrap; justify-content:center;">
-      <div style="text-align:center;">
+      <div class="fragment fade-up" data-fragment-index="1" style="text-align:center;">
         <div class="pipeline-badge" style="background:var(--green);">1</div>
         <p style="font-size:0.6em; margin-top:8px;"><strong>Pattern Extraction</strong><br><span style="color:#94a3b8;">Regex + structural parsing<br>Definitions, dates, amounts<br>Zero LLM calls</span></p>
       </div>
-      <span class="pipeline-arrow">&rarr;</span>
-      <div style="text-align:center;">
+      <span class="pipeline-arrow fragment fade-in" data-fragment-index="2">&rarr;</span>
+      <div class="fragment fade-up" data-fragment-index="2" style="text-align:center;">
         <div class="pipeline-badge" style="background:var(--accent);">2</div>
         <p style="font-size:0.6em; margin-top:8px;"><strong>Semantic Indexing</strong><br><span style="color:#94a3b8;">FAISS + MiniLM-L6-v2<br>384-dim vectors<br>Per-document indexes</span></p>
       </div>
-      <span class="pipeline-arrow">&rarr;</span>
-      <div style="text-align:center;">
+      <span class="pipeline-arrow fragment fade-in" data-fragment-index="3">&rarr;</span>
+      <div class="fragment fade-up" data-fragment-index="3" style="text-align:center;">
         <div class="pipeline-badge" style="background:var(--purple);">3</div>
         <p style="font-size:0.6em; margin-top:8px;"><strong>LLM Discovery</strong><br><span style="color:#94a3b8;">Anthropic Claude<br>Hidden obligations, risks<br>Cross-clause implications</span></p>
       </div>
     </div>
   </div>
   <br>
-  <p style="font-size:0.7em;">Phases 1 & 2 are <span class="green">deterministic and reproducible</span>. Phase 3 is <span class="purple">AI-augmented</span> — it finds what patterns miss.</p>
+  <p class="fragment fade-in" data-fragment-index="4" style="font-size:0.7em;">Phases 1 & 2 are <span class="green">deterministic and reproducible</span>. Phase 3 is <span class="purple">AI-augmented</span> — it finds what patterns miss.</p>
 </section>
 
 <!-- SLIDE 7: Feature — Upload & Q&A -->
-<section>
+<section data-transition="slide">
   <h2>Upload & Semantic Q&A</h2>
   <p>Upload any PDF or DOCX. Ask questions. Get grounded answers.</p>
   <br>
   <div class="scenario-box">
     <strong>User:</strong> "Does this contract indemnify the buyer for data breach?"<br><br>
-    <strong>ContractOS:</strong><br>
-    1. Extracts 607 facts from the document<br>
-    2. Resolves 31 bindings ("Service Provider" &rarr; "TechServe Solutions")<br>
-    3. Searches FAISS index for indemnity-related facts<br>
-    4. Reasons with Claude, grounded in extracted evidence<br>
-    5. Returns answer with <span class="green">confidence: 0.92</span>, provenance chain (3 facts cited), clickable source references
+    <span class="fragment fade-in" data-fragment-index="1"><strong>ContractOS:</strong><br></span>
+    <span class="fragment fade-up" data-fragment-index="2">1. Extracts <span class="green">520+ facts</span> from the document<br></span>
+    <span class="fragment fade-up" data-fragment-index="3">2. Resolves 27 bindings ("Service Provider" &rarr; "TechServe Solutions")<br></span>
+    <span class="fragment fade-up" data-fragment-index="4">3. Searches FAISS index for indemnity-related facts<br></span>
+    <span class="fragment fade-up" data-fragment-index="5">4. Reasons with Claude, grounded in extracted evidence<br></span>
+    <span class="fragment fade-up" data-fragment-index="6">5. Returns answer with <span class="green">confidence: very_high</span>, provenance chain, <span class="highlight">clickable source highlighting</span></span>
   </div>
-  <p style="font-size:0.65em; color:#94a3b8;">The user didn't search. They didn't read 50 pages. They asked a question and got a grounded, explainable, auditable answer.</p>
 </section>
 
 <!-- SLIDE 8: Feature — Playbook Review -->
-<section>
+<section data-transition="slide">
   <h2>Playbook Compliance Review</h2>
   <p>Compare contracts against your organization's standard positions.</p>
-  <div class="traffic-light">
+  <div class="traffic-light fragment fade-up" data-fragment-index="1">
     <div class="traffic-item">
       <div class="traffic-dot g">&#10003;</div>
       <div class="traffic-label"><strong>GREEN</strong><br>Meets standard</div>
@@ -340,19 +629,19 @@
     </div>
   </div>
   <div class="feature-grid">
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="2">
       <h4>10 Clause Types</h4>
       <p>Liability, indemnification, confidentiality, termination, IP, data protection, force majeure, governing law, assignment, payment</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="3">
       <h4>Automated Redlines</h4>
       <p>LLM-generated alternative language with rationale and fallback positions for every YELLOW/RED finding</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="4">
       <h4>Risk Matrix</h4>
       <p>5&times;5 Severity &times; Likelihood scoring with aggregate risk profile and tier distribution</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="5">
       <h4>Real-Time Streaming</h4>
       <p>SSE delivers each clause evaluation as it happens — watch the AI reason in real time</p>
     </div>
@@ -360,44 +649,41 @@
 </section>
 
 <!-- SLIDE 9: Feature — NDA Triage -->
-<section>
+<section data-transition="slide">
   <h2>NDA Triage Screening</h2>
   <p>Automated 10-point checklist with hybrid pattern + LLM evaluation.</p>
   <br>
   <table class="compare-table" style="max-width:650px; margin:0 auto;">
     <tr><th>#</th><th>Check</th><th>Method</th></tr>
-    <tr><td>1</td><td>Mutual obligations</td><td>Pattern + LLM</td></tr>
-    <tr><td>2</td><td>Standard carveouts</td><td>Pattern matching</td></tr>
-    <tr><td>3</td><td>Term duration</td><td>Pattern extraction</td></tr>
-    <tr><td>4</td><td>Governing law</td><td>Pattern extraction</td></tr>
-    <tr><td>5</td><td>IP assignment</td><td>LLM analysis</td></tr>
-    <tr><td>6</td><td>Non-compete</td><td>LLM analysis</td></tr>
-    <tr><td>7</td><td>Indemnification</td><td>Pattern + LLM</td></tr>
-    <tr><td>8</td><td>Problematic provisions</td><td>LLM analysis</td></tr>
-    <tr><td>9</td><td>Data protection</td><td>Pattern + LLM</td></tr>
-    <tr><td>10</td><td>Agreement structure</td><td>Structural analysis</td></tr>
+    <tr class="fragment fade-up"><td>1</td><td>Mutual obligations</td><td>Pattern + LLM</td></tr>
+    <tr class="fragment fade-up"><td>2</td><td>Standard carveouts</td><td>Pattern matching</td></tr>
+    <tr class="fragment fade-up"><td>3</td><td>Term duration</td><td>Pattern extraction</td></tr>
+    <tr class="fragment fade-up"><td>4</td><td>Governing law</td><td>Pattern extraction</td></tr>
+    <tr class="fragment fade-up"><td>5-6</td><td>IP assignment &bull; Non-compete</td><td>LLM analysis</td></tr>
+    <tr class="fragment fade-up"><td>7-8</td><td>Indemnification &bull; Problematic provisions</td><td>Pattern + LLM</td></tr>
+    <tr class="fragment fade-up"><td>9-10</td><td>Data protection &bull; Agreement structure</td><td>Structural + LLM</td></tr>
   </table>
   <br>
-  <p style="font-size:0.7em;"><span class="green">GREEN</span> = auto-approve &bull; <span class="yellow">YELLOW</span> = expedited review &bull; <span class="red">RED</span> = full legal review</p>
+  <p class="fragment fade-in" style="font-size:0.7em;"><span class="green">GREEN</span> = auto-approve &bull; <span class="yellow">YELLOW</span> = expedited review &bull; <span class="red">RED</span> = full legal review</p>
 </section>
 
 <!-- SLIDE 10: Feature — Risk & Obligations -->
-<section>
+<section data-transition="slide">
   <h2>Risk Memo & Obligation Extraction</h2>
   <div class="feature-grid" style="margin-top:30px;">
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="1">
       <h4>Risk Assessment Memo</h4>
-      <p>Executive summary, key risks with severity/likelihood scoring, missing protections, prioritized recommendations, escalation items requiring senior counsel.</p>
+      <p>Executive summary, key risks with severity/likelihood scoring, missing protections, prioritized recommendations, escalation items.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="2">
       <h4>Obligation Extraction</h4>
-      <p>All contractual obligations categorized: Affirmative (must do), Negative (must not do), Conditional (if X then Y) — with deadlines and breach consequences.</p>
+      <p>All contractual obligations categorized: Affirmative (must do), Negative (must not do), Conditional (if X then Y) — with deadlines.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="3">
       <h4>Hidden Fact Discovery</h4>
-      <p>LLM-powered analysis surfacing implicit obligations, liability exposure, unstated assumptions, and ambiguous terms that patterns miss.</p>
+      <p>LLM-powered analysis surfacing implicit obligations, liability exposure, unstated assumptions, and ambiguous terms.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card fragment fade-up" data-fragment-index="4">
       <h4>Clause Gap Analysis</h4>
       <p>Identifies mandatory facts missing from each clause type — what should be there but isn't.</p>
     </div>
@@ -405,98 +691,98 @@
 </section>
 
 <!-- SLIDE 11: Feature — MCP Integration -->
-<section>
+<section data-transition="slide">
   <h2>MCP Server Integration</h2>
   <p>Full contract intelligence as an <span class="purple">MCP server</span> — works in Cursor, Claude Desktop, Claude Code.</p>
   <div class="mcp-tools">
-    <div class="mcp-tool"><code>upload_contract</code><br>Upload & analyse</div>
-    <div class="mcp-tool"><code>ask_question</code><br>Q&A with provenance</div>
-    <div class="mcp-tool"><code>review_against_playbook</code><br>Compliance review</div>
-    <div class="mcp-tool"><code>triage_nda</code><br>10-point screening</div>
-    <div class="mcp-tool"><code>discover_hidden_facts</code><br>Implicit risk discovery</div>
-    <div class="mcp-tool"><code>extract_obligations</code><br>Obligation extraction</div>
-    <div class="mcp-tool"><code>generate_risk_memo</code><br>Risk assessment</div>
-    <div class="mcp-tool"><code>compare_clauses</code><br>Cross-contract comparison</div>
-    <div class="mcp-tool"><code>search_contracts</code><br>Semantic search</div>
-    <div class="mcp-tool"><code>get_clause_gaps</code><br>Gap analysis</div>
-    <div class="mcp-tool"><code>generate_report</code><br>HTML reports</div>
-    <div class="mcp-tool"><code>load_sample_contract</code><br>Built-in samples</div>
+    <div class="mcp-tool fragment fade-up"><code>upload_contract</code><br>Upload & analyse</div>
+    <div class="mcp-tool fragment fade-up"><code>ask_question</code><br>Q&A with provenance</div>
+    <div class="mcp-tool fragment fade-up"><code>review_against_playbook</code><br>Compliance review</div>
+    <div class="mcp-tool fragment fade-up"><code>triage_nda</code><br>10-point screening</div>
+    <div class="mcp-tool fragment fade-up"><code>discover_hidden_facts</code><br>Implicit risk discovery</div>
+    <div class="mcp-tool fragment fade-up"><code>extract_obligations</code><br>Obligation extraction</div>
+    <div class="mcp-tool fragment fade-up"><code>generate_risk_memo</code><br>Risk assessment</div>
+    <div class="mcp-tool fragment fade-up"><code>compare_clauses</code><br>Cross-contract comparison</div>
+    <div class="mcp-tool fragment fade-up"><code>search_contracts</code><br>Semantic search</div>
+    <div class="mcp-tool fragment fade-up"><code>get_clause_gaps</code><br>Gap analysis</div>
+    <div class="mcp-tool fragment fade-up"><code>generate_report</code><br>HTML reports</div>
+    <div class="mcp-tool fragment fade-up"><code>load_sample_contract</code><br>Built-in samples</div>
   </div>
   <p style="font-size:0.6em; color:#94a3b8;">+ 10 Resources (read-only data) &bull; 5 Prompts (reusable workflows) &bull; stdio + HTTP transport</p>
 </section>
 
 <!-- SLIDE 12: Demo Scenario 1 — Procurement -->
-<section>
+<section data-transition="convex">
   <h2>Demo Scenario 1</h2>
   <h3>Complex Procurement Framework (GBP 85M)</h3>
   <div class="scenario-box">
-    <strong>The Situation:</strong> "Due to a recent interstate transport strike, a lorry carrying raw materials from our supplier GlobalSource got delayed. The goods arrived at our godown 10 days late. We had to procure from a local vendor at higher cost to keep production running. Now the original shipment has arrived too."<br><br>
-    <strong>The Question:</strong> "What are my legal options under this contract? Can I reject the late delivery, cancel the order, and claim my money back? Am I entitled to liquidated damages for the delay?"
+    <span class="fragment fade-in" data-fragment-index="1"><strong>The Situation:</strong> "Due to a recent interstate transport strike, a lorry carrying raw materials from our supplier GlobalSource got delayed. The goods arrived at our godown 10 days late. We had to procure from a local vendor at higher cost."</span><br><br>
+    <span class="fragment fade-in" data-fragment-index="2"><strong>The Question:</strong> "What are my legal options? Can I reject the late delivery, cancel the order, and claim my money back? Am I entitled to liquidated damages?"</span>
   </div>
-  <p style="font-size:0.65em;">ContractOS analyses force majeure clauses, liquidated damages schedules, delivery obligations, and rejection rights — all with provenance back to specific contract sections.</p>
+  <p class="fragment fade-in" data-fragment-index="3" style="font-size:0.65em;">ContractOS analyses force majeure clauses, liquidated damages schedules, delivery obligations, and rejection rights — all with <span class="highlight">provenance back to specific contract sections</span>.</p>
 </section>
 
 <!-- SLIDE 13: Demo Scenario 2 — IT Outsourcing -->
-<section>
+<section data-transition="convex">
   <h2>Demo Scenario 2</h2>
   <h3>IT Outsourcing Agreement ($47.5M)</h3>
   <div class="scenario-box">
-    <strong>The Situation:</strong> "Our outsourcing vendor TechServe experienced a data breach affecting 50,000 customer records including PII. Their SLA requires a 15-minute response time for Severity 1 incidents, but they took 3 days to notify us — violating both the SLA and the 24-hour breach notification requirement."<br><br>
-    <strong>The Question:</strong> "Can we terminate the contract for cause? What damages can we claim? Does the liability cap apply to data breaches? What are TechServe's indemnification obligations?"
+    <span class="fragment fade-in" data-fragment-index="1"><strong>The Situation:</strong> "Our outsourcing vendor TechServe experienced a data breach affecting 50,000 customer records including PII. They took 3 days to notify us — violating the 24-hour breach notification requirement."</span><br><br>
+    <span class="fragment fade-in" data-fragment-index="2"><strong>The Question:</strong> "Can we terminate for cause? What damages can we claim? Does the liability cap apply to data breaches?"</span>
   </div>
-  <p style="font-size:0.65em;">ContractOS traces through SLA tables, breach notification clauses, liability carve-outs, and indemnification provisions — showing exactly which sections apply.</p>
+  <p class="fragment fade-in" data-fragment-index="3" style="font-size:0.65em;">ContractOS traces through SLA tables, breach notification clauses, liability carve-outs, and indemnification provisions — showing <span class="highlight">exactly which sections apply</span>.</p>
 </section>
 
 <!-- SLIDE 14: Cross-Contract Intelligence -->
-<section>
+<section data-transition="zoom">
   <h2>Cross-Contract Intelligence</h2>
   <p>Compare provisions across multiple contracts simultaneously.</p>
   <br>
   <table class="compare-table" style="max-width:700px; margin:0 auto;">
     <tr><th>Clause</th><th>Procurement (GBP 85M)</th><th>IT Outsourcing ($47.5M)</th></tr>
-    <tr><td>Force Majeure</td><td>90-day threshold, mutual</td><td>60-day threshold, pandemic-specific</td></tr>
-    <tr><td>Liability Cap</td><td>Not explicitly stated</td><td>150% annual fees ($14.25M)</td></tr>
-    <tr><td>Termination Notice</td><td>60 days</td><td>180 days</td></tr>
-    <tr><td>Data Breach</td><td>Not addressed</td><td>24-hour notification, unlimited liability</td></tr>
-    <tr><td>Governing Law</td><td>England & Wales</td><td>New York</td></tr>
+    <tr class="fragment fade-up"><td>Force Majeure</td><td>90-day threshold, mutual</td><td>60-day threshold, pandemic-specific</td></tr>
+    <tr class="fragment fade-up"><td>Liability Cap</td><td>150% of framework value</td><td>150% annual fees ($14.25M)</td></tr>
+    <tr class="fragment fade-up"><td>Termination Notice</td><td>90 days (buyer only)</td><td>180 days (mutual)</td></tr>
+    <tr class="fragment fade-up"><td>Data Breach</td><td>Not addressed</td><td>24-hour notification, unlimited liability</td></tr>
+    <tr class="fragment fade-up"><td>Governing Law</td><td>England & Wales</td><td>New York</td></tr>
   </table>
   <br>
-  <p style="font-size:0.7em;"><span class="highlight">Ask:</span> "Which contract has stronger force majeure protection?" — and get a grounded, comparative answer.</p>
+  <p class="fragment fade-in" style="font-size:0.7em;"><span class="highlight">Ask:</span> "Which contract has stronger force majeure protection?" — and get a grounded, comparative answer with provenance from <em>both</em> documents.</p>
 </section>
 
 <!-- SLIDE 15: By the Numbers -->
-<section>
+<section data-transition="zoom">
   <h2>By the Numbers</h2>
   <div class="metric-grid">
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="1">
       <span class="number">794</span>
       <span class="label">Tests Passing</span>
     </div>
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="2">
       <span class="number">34</span>
       <span class="label">API Endpoints</span>
     </div>
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="3">
       <span class="number">13</span>
       <span class="label">MCP Tools</span>
     </div>
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="4">
       <span class="number">50</span>
       <span class="label">Real NDAs Tested</span>
     </div>
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="5">
       <span class="number">9.8K</span>
       <span class="label">Lines of Production Code</span>
     </div>
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="6">
       <span class="number">14.8K</span>
       <span class="label">Lines of Test Code</span>
     </div>
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="7">
       <span class="number">63</span>
       <span class="label">Python Modules</span>
     </div>
-    <div class="metric-card">
+    <div class="metric-card fragment fade-up" data-fragment-index="8">
       <span class="number">13</span>
       <span class="label">Dev Phases Complete</span>
     </div>
@@ -504,49 +790,49 @@
 </section>
 
 <!-- SLIDE 16: Tech Stack -->
-<section>
+<section data-transition="slide">
   <h2>Technology Stack</h2>
   <div class="tech-grid">
-    <div class="tech-item"><strong>Python 3.12+</strong>Backend & CLI</div>
-    <div class="tech-item"><strong>FastAPI</strong>Async REST API</div>
-    <div class="tech-item"><strong>Anthropic Claude</strong>LLM Reasoning</div>
-    <div class="tech-item"><strong>FAISS</strong>Vector Search</div>
-    <div class="tech-item"><strong>sentence-transformers</strong>MiniLM-L6-v2 Embeddings</div>
-    <div class="tech-item"><strong>SQLite (WAL)</strong>TrustGraph Storage</div>
-    <div class="tech-item"><strong>python-docx</strong>DOCX Parsing</div>
-    <div class="tech-item"><strong>PyMuPDF</strong>PDF Parsing</div>
-    <div class="tech-item"><strong>SSE</strong>Real-Time Streaming</div>
-    <div class="tech-item"><strong>MCP (FastMCP)</strong>Model Context Protocol</div>
-    <div class="tech-item"><strong>D3.js</strong>Graph Visualization</div>
-    <div class="tech-item"><strong>Docker</strong>Single-Container Deploy</div>
+    <div class="tech-item fragment fade-up"><strong>Python 3.12+</strong>Backend & CLI</div>
+    <div class="tech-item fragment fade-up"><strong>FastAPI</strong>Async REST API</div>
+    <div class="tech-item fragment fade-up"><strong>Anthropic Claude</strong>LLM Reasoning</div>
+    <div class="tech-item fragment fade-up"><strong>FAISS</strong>Vector Search</div>
+    <div class="tech-item fragment fade-up"><strong>sentence-transformers</strong>MiniLM-L6-v2 Embeddings</div>
+    <div class="tech-item fragment fade-up"><strong>SQLite (WAL)</strong>TrustGraph Storage</div>
+    <div class="tech-item fragment fade-up"><strong>python-docx</strong>DOCX Parsing</div>
+    <div class="tech-item fragment fade-up"><strong>PyMuPDF</strong>PDF Parsing</div>
+    <div class="tech-item fragment fade-up"><strong>SSE</strong>Real-Time Streaming</div>
+    <div class="tech-item fragment fade-up"><strong>MCP (FastMCP)</strong>Model Context Protocol</div>
+    <div class="tech-item fragment fade-up"><strong>D3.js</strong>Graph Visualization</div>
+    <div class="tech-item fragment fade-up"><strong>Docker</strong>Single-Container Deploy</div>
   </div>
 </section>
 
 <!-- SLIDE 17: TDD & Quality -->
-<section>
+<section data-transition="slide">
   <h2>Test-Driven Development</h2>
   <p>The entire system was built TDD — tests written before code.</p>
   <br>
   <div style="max-width:600px; margin:0 auto;">
-    <div class="tdd-bar">
+    <div class="tdd-bar fragment fade-up" data-fragment-index="1">
       <span style="font-size:0.6em; width:100px; text-align:right;">Unit</span>
-      <div class="tdd-fill" style="background:var(--green); width:340px;">539 tests</div>
+      <div class="tdd-fill" style="background:linear-gradient(90deg, var(--green), #22c55e); width:340px;">539 tests</div>
     </div>
-    <div class="tdd-bar">
+    <div class="tdd-bar fragment fade-up" data-fragment-index="2">
       <span style="font-size:0.6em; width:100px; text-align:right;">Integration</span>
-      <div class="tdd-fill" style="background:var(--accent); width:200px;">156 tests</div>
+      <div class="tdd-fill" style="background:linear-gradient(90deg, var(--accent), #3b82f6); width:200px;">156 tests</div>
     </div>
-    <div class="tdd-bar">
+    <div class="tdd-bar fragment fade-up" data-fragment-index="3">
       <span style="font-size:0.6em; width:100px; text-align:right;">Benchmark</span>
-      <div class="tdd-fill" style="background:var(--purple); width:100px;">61 tests</div>
+      <div class="tdd-fill" style="background:linear-gradient(90deg, var(--purple), #8b5cf6); width:100px;">61 tests</div>
     </div>
-    <div class="tdd-bar">
+    <div class="tdd-bar fragment fade-up" data-fragment-index="4">
       <span style="font-size:0.6em; width:100px; text-align:right;">Contract</span>
-      <div class="tdd-fill" style="background:var(--yellow); width:60px;">27 tests</div>
+      <div class="tdd-fill" style="background:linear-gradient(90deg, var(--yellow), #f59e0b); width:60px;">27 tests</div>
     </div>
   </div>
   <br>
-  <div class="feature-grid" style="max-width:600px; margin:20px auto;">
+  <div class="feature-grid fragment fade-up" data-fragment-index="5" style="max-width:600px; margin:20px auto;">
     <div class="feature-card" style="text-align:center;">
       <h4>1.5x Test-to-Code Ratio</h4>
       <p>14,800 lines of tests vs 9,800 lines of production code</p>
@@ -559,68 +845,74 @@
 </section>
 
 <!-- SLIDE 18: Live Demo -->
-<section>
-  <h2>Live Demo</h2>
+<section data-transition="zoom">
+  <h2 class="glow-text" style="-webkit-text-fill-color:unset;">Live Demo</h2>
   <br>
   <div style="text-align:center;">
-    <p style="font-size:1.2em; color:var(--accent); font-weight:600;">Watch ContractOS in Action</p>
+    <p style="font-size:1.2em; color:var(--accent); font-weight:700;">Watch ContractOS in Action</p>
     <br>
-    <div class="feature-grid" style="max-width:600px; margin:0 auto;">
-      <div class="feature-card" style="text-align:center;">
-        <h4>Act 1</h4>
-        <p>Procurement Framework<br>Lorry strike scenario<br>Force majeure &amp; liquidated damages</p>
+    <div style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
+      <div class="glass-card fragment fade-up" data-fragment-index="1" style="width:200px; text-align:center;">
+        <h4 style="color:var(--green); font-size:0.8em; margin:0 0 8px;">Act 1</h4>
+        <p style="font-size:0.55em !important; color:#94a3b8; margin:0;">Procurement Framework<br>Lorry strike scenario<br>Force majeure &amp; damages</p>
       </div>
-      <div class="feature-card" style="text-align:center;">
-        <h4>Act 2</h4>
-        <p>IT Outsourcing<br>Data breach scenario<br>SLA violation &amp; termination</p>
+      <div class="glass-card fragment fade-up" data-fragment-index="2" style="width:200px; text-align:center;">
+        <h4 style="color:var(--accent); font-size:0.8em; margin:0 0 8px;">Act 2</h4>
+        <p style="font-size:0.55em !important; color:#94a3b8; margin:0;">IT Outsourcing<br>Data breach scenario<br>Multi-doc workspace</p>
+      </div>
+      <div class="glass-card fragment fade-up" data-fragment-index="3" style="width:200px; text-align:center;">
+        <h4 style="color:var(--purple); font-size:0.8em; margin:0 0 8px;">Act 3</h4>
+        <p style="font-size:0.55em !important; color:#94a3b8; margin:0;">Cross-Contract Intel<br>Compare &amp; Q&amp;A<br>Merged TrustGraph</p>
       </div>
     </div>
     <br>
-    <p style="font-size:0.7em; color:#94a3b8;">[Demo video plays here]</p>
+    <p class="fragment fade-in" data-fragment-index="4" style="font-size:0.7em; color:#94a3b8;">[Demo video plays here]</p>
   </div>
 </section>
 
 <!-- SLIDE 19: What's Next -->
-<section>
+<section data-transition="slide">
   <h2>What's Next</h2>
   <br>
-  <div style="max-width:600px; margin:0 auto;">
-    <div class="roadmap-item">
+  <div style="max-width:620px; margin:0 auto;">
+    <div class="roadmap-item fragment fade-up">
       <div class="roadmap-dot done"></div>
-      <div class="roadmap-text"><strong>Phase 1-13: Complete</strong> — Full extraction, Q&A, playbook review, NDA triage, MCP server, streaming, reports</div>
+      <div class="roadmap-text"><strong>Phase 1-13: Complete</strong> — Full extraction, Q&A, playbook review, NDA triage, MCP server, streaming, cross-contract intelligence</div>
     </div>
-    <div class="roadmap-item">
-      <div class="roadmap-dot"></div>
+    <div class="roadmap-item fragment fade-up">
+      <div class="roadmap-dot next"></div>
       <div class="roadmap-text"><strong>Contract Families</strong> — Master agreements + amendments as DAGs with precedence rules</div>
     </div>
-    <div class="roadmap-item">
-      <div class="roadmap-dot"></div>
+    <div class="roadmap-item fragment fade-up">
+      <div class="roadmap-dot next"></div>
       <div class="roadmap-text"><strong>Multi-Tenant Workspaces</strong> — Organization-scoped playbooks, role-based access, team collaboration</div>
     </div>
-    <div class="roadmap-item">
-      <div class="roadmap-dot"></div>
+    <div class="roadmap-item fragment fade-up">
+      <div class="roadmap-dot next"></div>
       <div class="roadmap-text"><strong>Clause Library</strong> — Pre-approved clause templates with version history and approval workflows</div>
     </div>
-    <div class="roadmap-item">
-      <div class="roadmap-dot"></div>
+    <div class="roadmap-item fragment fade-up">
+      <div class="roadmap-dot next"></div>
       <div class="roadmap-text"><strong>Portfolio Analytics</strong> — Risk heatmaps across entire contract portfolios, renewal tracking, obligation calendars</div>
     </div>
-    <div class="roadmap-item">
-      <div class="roadmap-dot"></div>
+    <div class="roadmap-item fragment fade-up">
+      <div class="roadmap-dot next"></div>
       <div class="roadmap-text"><strong>Word/Outlook Add-in</strong> — In-document copilot for Microsoft 365 with real-time review</div>
     </div>
   </div>
 </section>
 
 <!-- SLIDE 20: Thank You -->
-<section>
-  <h1>Thank You</h1>
-  <p class="final-tagline">Don't read contracts. Understand them.</p>
-  <p class="final-sub">ContractOS — The Operating System for Contract Intelligence</p>
-  <br>
-  <div style="font-size:0.6em; color:#64748b; margin-top:40px;">
-    <p>794 tests &bull; 34 API endpoints &bull; 13 MCP tools &bull; 50 real NDAs tested</p>
-    <p>Built with Python &bull; FastAPI &bull; FAISS &bull; Anthropic Claude &bull; SQLite &bull; Docker</p>
+<section class="title-bg" data-transition="zoom">
+  <div style="margin-top:30px;">
+    <h1 class="glow-text">Thank You</h1>
+    <p class="final-tagline">Don't read contracts. Understand them.</p>
+    <p class="final-sub">ContractOS — The Operating System for Contract Intelligence</p>
+    <br>
+    <div style="font-size:0.6em; color:#475569; margin-top:40px;">
+      <p>794 tests &bull; 34 API endpoints &bull; 13 MCP tools &bull; 50 real NDAs tested</p>
+      <p>Built with Python &bull; FastAPI &bull; FAISS &bull; Anthropic Claude &bull; SQLite &bull; Docker</p>
+    </div>
   </div>
 </section>
 
@@ -632,12 +924,33 @@
 <script>
 Reveal.initialize({
   hash: true,
-  slideNumber: true,
+  slideNumber: 'c/t',
   transition: 'slide',
   transitionSpeed: 'default',
   backgroundTransition: 'fade',
   center: true,
-  plugins: [RevealHighlight]
+  width: 1200,
+  height: 700,
+  margin: 0.04,
+  plugins: [RevealHighlight],
+  autoAnimateEasing: 'ease-in-out',
+  autoAnimateDuration: 0.8,
+});
+
+// Animate architecture diagram layers when slide becomes visible
+Reveal.on('slidechanged', function(event) {
+  var archDiagram = event.currentSlide.querySelector('#archDiagram');
+  if (archDiagram) {
+    setTimeout(function() { archDiagram.classList.add('revealed'); }, 300);
+  }
+});
+
+// Also trigger on initial load if we start on the arch slide
+Reveal.on('ready', function(event) {
+  var archDiagram = event.currentSlide.querySelector('#archDiagram');
+  if (archDiagram) {
+    setTimeout(function() { archDiagram.classList.add('revealed'); }, 500);
+  }
 });
 </script>
 </body>
