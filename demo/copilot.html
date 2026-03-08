@@ -68,6 +68,54 @@
     /* ── Main Layout ────────────────────────────────────── */
     .main { display: flex; flex: 1; overflow: hidden; }
 
+    /* ── Document Sidebar (multi-doc) ─────────────────── */
+    .doc-sidebar {
+      width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+    }
+    .doc-sidebar.collapsed { width: 0; border: none; overflow: hidden; }
+    .doc-sidebar-header {
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; font-weight: 600; color: var(--text-dim);
+    }
+    .doc-sidebar-header .count { font-size: 10px; color: var(--accent); }
+    .doc-list { flex: 1; overflow-y: auto; padding: 6px; }
+    .doc-card {
+      padding: 8px 10px; border-radius: 8px; margin-bottom: 4px;
+      border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;
+      font-size: 11px; position: relative;
+    }
+    .doc-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .doc-card.active { border-color: var(--accent); background: rgba(108,92,231,0.15); }
+    .doc-card .doc-title { font-weight: 600; color: var(--text); margin-bottom: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-card .doc-meta { color: var(--text-dim); font-size: 10px; display: flex; gap: 8px; }
+    .doc-card .doc-check {
+      position: absolute; top: 6px; right: 6px; width: 16px; height: 16px;
+      border-radius: 4px; border: 1px solid var(--border); display: flex;
+      align-items: center; justify-content: center; font-size: 10px;
+      background: transparent; cursor: pointer; transition: all 0.15s;
+    }
+    .doc-card .doc-check.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .doc-sidebar-actions {
+      padding: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px;
+    }
+    .doc-sidebar-actions .action-btn {
+      padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-dim); font-size: 11px;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .doc-sidebar-actions .action-btn:hover { border-color: var(--accent); color: var(--text); }
+    .doc-sidebar-actions .action-btn.compare { border-color: rgba(0,210,211,0.4); color: var(--green); }
+    .doc-sidebar-actions .action-btn.compare:hover { background: rgba(0,210,211,0.1); }
+    .doc-sidebar-actions .action-btn.compare:disabled { opacity: 0.4; cursor: not-allowed; }
+    .cross-query-badge {
+      display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px;
+      border-radius: 4px; background: rgba(0,210,211,0.15); color: var(--green);
+      margin-left: 4px;
+    }
+
     /* ── Document Viewer ────────────────────────────────── */
     .doc-viewer {
       flex: 1; overflow: auto; background: #2a2d3a; position: relative;
@@ -632,6 +680,7 @@
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText" style="font-size:12px; color:var(--text-dim)">Checking...</span>
       <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border:none" onclick="document.getElementById('fileInput').click()">📤 Upload Contract</button>
+      <button class="btn btn-outline btn-sm" onclick="toggleDocSidebar()" id="docSidebarToggle">📁 Workspace</button>
       <button class="btn btn-outline btn-sm" onclick="toggleCopilot()" id="copilotToggle">Hide Copilot</button>
       <span style="width:1px;height:24px;background:var(--border);margin:0 4px"></span>
       <a href="/demo/" class="btn btn-outline btn-sm" style="text-decoration:none">API Console</a>
@@ -644,6 +693,24 @@
 
   <!-- Main -->
   <div class="main">
+    <!-- Document Sidebar (multi-doc workspace) -->
+    <div class="doc-sidebar" id="docSidebar">
+      <div class="doc-sidebar-header">
+        <span>📁 Workspace</span>
+        <span class="count" id="docCount">0 docs</span>
+      </div>
+      <div class="doc-list" id="docList">
+        <div style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">
+          Upload contracts to build your workspace
+        </div>
+      </div>
+      <div class="doc-sidebar-actions">
+        <button class="action-btn" onclick="document.getElementById('fileInput').click()">+ Upload Contract</button>
+        <button class="action-btn compare" id="compareBtn" onclick="compareSelectedContracts()" disabled>⚖️ Compare Selected</button>
+        <button class="action-btn" id="crossQueryBtn" onclick="toggleCrossQuery()" style="display:none">🔗 Cross-Contract Q&A</button>
+      </div>
+    </div>
+
     <div class="doc-viewer empty" id="docViewer">
       <div class="empty-state">
         <div class="icon">📑</div>
@@ -748,7 +815,195 @@
     let pdfDoc = null;
     let zoomLevel = 1.0;
     let isAsking = false;
-    let currentSessionId = null;  // Tracks conversation context across Q&A turns
+    let currentSessionId = null;
+
+    // Multi-document workspace state
+    const workspace = {
+      documents: [],       // [{document_id, title, file, format, fact_count, clause_count, binding_count, word_count}]
+      selectedIds: [],     // IDs selected for cross-query / comparison
+      crossQueryMode: false,
+    };
+
+    function addToWorkspace(docId, title, file, data) {
+      if (workspace.documents.find(d => d.document_id === docId)) return;
+      workspace.documents.push({
+        document_id: docId,
+        title: title || docId,
+        file: file,
+        format: file ? file.name.split('.').pop().toLowerCase() : 'docx',
+        fact_count: data.fact_count || 0,
+        clause_count: data.clause_count || 0,
+        binding_count: data.binding_count || 0,
+        word_count: data.word_count || 0,
+      });
+      renderDocList();
+    }
+
+    function renderDocList() {
+      const list = document.getElementById('docList');
+      const count = document.getElementById('docCount');
+      count.textContent = `${workspace.documents.length} doc${workspace.documents.length !== 1 ? 's' : ''}`;
+
+      if (workspace.documents.length === 0) {
+        list.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">Upload contracts to build your workspace</div>';
+        document.getElementById('compareBtn').disabled = true;
+        document.getElementById('crossQueryBtn').style.display = 'none';
+        return;
+      }
+
+      list.innerHTML = workspace.documents.map(doc => {
+        const isActive = doc.document_id === currentDocId;
+        const isSelected = workspace.selectedIds.includes(doc.document_id);
+        return `<div class="doc-card ${isActive ? 'active' : ''}" onclick="switchDocument('${doc.document_id}')" title="${doc.title}">
+          <div class="doc-check ${isSelected ? 'checked' : ''}" onclick="event.stopPropagation(); toggleDocSelect('${doc.document_id}')">
+            ${isSelected ? '✓' : ''}
+          </div>
+          <div class="doc-title">${doc.format === 'pdf' ? '📕' : '📘'} ${doc.title}</div>
+          <div class="doc-meta">
+            <span>${doc.fact_count} facts</span>
+            <span>${doc.clause_count} clauses</span>
+            <span>${(doc.word_count / 1000).toFixed(1)}k words</span>
+          </div>
+        </div>`;
+      }).join('');
+
+      // Show cross-query button when 2+ docs
+      document.getElementById('crossQueryBtn').style.display = workspace.documents.length >= 2 ? 'block' : 'none';
+      updateCompareButton();
+    }
+
+    function toggleDocSelect(docId) {
+      const idx = workspace.selectedIds.indexOf(docId);
+      if (idx >= 0) workspace.selectedIds.splice(idx, 1);
+      else workspace.selectedIds.push(docId);
+      renderDocList();
+    }
+
+    function updateCompareButton() {
+      const btn = document.getElementById('compareBtn');
+      btn.disabled = workspace.selectedIds.length < 2;
+      if (workspace.selectedIds.length >= 2) {
+        btn.textContent = `⚖️ Compare ${workspace.selectedIds.length} Contracts`;
+      } else {
+        btn.textContent = '⚖️ Compare Selected';
+      }
+    }
+
+    async function switchDocument(docId) {
+      const doc = workspace.documents.find(d => d.document_id === docId);
+      if (!doc) return;
+
+      currentDocId = docId;
+      currentSessionId = null;
+
+      // Re-render doc list to show active state
+      renderDocList();
+
+      // Update header
+      document.getElementById('fileInfo').style.display = 'flex';
+      document.getElementById('fileIcon').textContent = doc.format === 'pdf' ? '📕' : '📘';
+      document.getElementById('fileName').textContent = doc.title;
+
+      // Re-render document if we have the file
+      if (doc.file) {
+        currentFile = doc.file;
+        const viewer = document.getElementById('docViewer');
+        viewer.classList.remove('empty');
+        viewer.innerHTML = '';
+        if (doc.format === 'pdf') await renderPDF(doc.file, viewer);
+        else await renderDOCX(doc.file, viewer);
+        document.getElementById('zoomControls').style.display = 'flex';
+      }
+
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('quickActions').style.display = 'flex';
+      loadFacts(docId);
+
+      // Update cross-query badge in input
+      updateQueryMode();
+    }
+
+    function toggleCrossQuery() {
+      workspace.crossQueryMode = !workspace.crossQueryMode;
+      updateQueryMode();
+    }
+
+    function updateQueryMode() {
+      const btn = document.getElementById('crossQueryBtn');
+      const input = document.getElementById('chatInput');
+      if (workspace.crossQueryMode && workspace.documents.length >= 2) {
+        btn.style.background = 'rgba(0,210,211,0.15)';
+        btn.style.borderColor = 'var(--green)';
+        btn.style.color = 'var(--green)';
+        btn.textContent = '🔗 Cross-Query ON (' + workspace.documents.length + ' docs)';
+        input.placeholder = 'Ask across ALL contracts in workspace...';
+      } else {
+        workspace.crossQueryMode = false;
+        btn.style.background = 'transparent';
+        btn.style.borderColor = 'var(--border)';
+        btn.style.color = 'var(--text-dim)';
+        btn.textContent = '🔗 Cross-Contract Q&A';
+        input.placeholder = 'Ask about this contract...';
+      }
+    }
+
+    async function compareSelectedContracts() {
+      if (workspace.selectedIds.length < 2 || isAsking) return;
+      isAsking = true;
+
+      const id1 = workspace.selectedIds[0];
+      const id2 = workspace.selectedIds[1];
+      const doc1 = workspace.documents.find(d => d.document_id === id1);
+      const doc2 = workspace.documents.find(d => d.document_id === id2);
+
+      addUserMsg(`Compare contracts: "${doc1?.title}" vs "${doc2?.title}"`);
+      createReasoningContainer('Comparing contracts...');
+      addReasoningStep('search', '📋', `<strong>Loading clauses</strong> from both contracts`, true);
+
+      try {
+        const r = await fetch(`${API}/contracts/compare`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ document_id_1: id1, document_id_2: id2 }),
+        });
+
+        if (!r.ok) {
+          const err = await safeJson(r).catch(() => ({}));
+          throw new Error(err.detail || r.statusText);
+        }
+
+        const data = await safeJson(r);
+        completeReasoning(data.comparison_time_ms || 0);
+
+        let html = `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">⚖️ Cross-Contract Comparison</div>`;
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">${data.contract_1_title} vs ${data.contract_2_title}</div>`;
+
+        if (data.differences && data.differences.length > 0) {
+          for (const d of data.differences) {
+            const sigColor = d.significance === 'high' ? 'var(--red)' : d.significance === 'medium' ? 'var(--orange)' : 'var(--green)';
+            html += `<div style="padding:8px;margin-bottom:6px;background:var(--surface2);border-radius:6px;border-left:3px solid ${sigColor}">
+              <div style="font-size:12px;font-weight:600;color:var(--text)">${d.aspect}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;font-size:11px">
+                <div style="padding:4px 6px;background:rgba(108,92,231,0.1);border-radius:4px"><strong style="color:var(--accent);font-size:9px">CONTRACT 1</strong><br>${d.contract_1}</div>
+                <div style="padding:4px 6px;background:rgba(0,210,211,0.1);border-radius:4px"><strong style="color:var(--green);font-size:9px">CONTRACT 2</strong><br>${d.contract_2}</div>
+              </div>
+              ${d.risk_implication ? `<div style="font-size:10px;color:var(--orange);margin-top:4px">⚠️ ${d.risk_implication}</div>` : ''}
+            </div>`;
+          }
+        }
+
+        if (data.summary) html += `<div style="margin-top:8px;font-size:12px;color:var(--text);padding:8px;background:var(--surface2);border-radius:6px">${data.summary}</div>`;
+        if (data.recommendation) html += `<div style="margin-top:6px;font-size:11px;color:var(--green);font-style:italic">💡 ${data.recommendation}</div>`;
+        html += `<div style="margin-top:6px;font-size:10px;color:var(--text-dim)">${data.comparison_time_ms}ms</div>`;
+
+        addAssistantMsg(html);
+      } catch (e) {
+        completeReasoning(0);
+        addAssistantMsg(`Error comparing contracts: ${e.message}`);
+      }
+
+      isAsking = false;
+    }
 
     /** Safely parse a fetch Response as JSON; throws a readable error if the
      *  response is not JSON (e.g. 502 HTML proxy error pages). */
@@ -985,19 +1240,29 @@
         const data = await safeJson(r);
         if (r.ok) {
           currentDocId = data.document_id;
-          currentSessionId = null;  // Reset conversation context for new document
+          currentSessionId = null;
           document.getElementById('sendBtn').disabled = false;
           document.getElementById('quickActions').style.display = 'flex';
           showExtractionSummary(data);
           loadFacts(data.document_id);
 
-          addAssistantMsg(
-            `Contract indexed successfully.\n\n` +
+          addToWorkspace(data.document_id, data.title, file, data);
+
+          const docCount = workspace.documents.length;
+          let msg = `Contract indexed successfully.\n\n` +
             `**${data.title}** — ${data.word_count.toLocaleString()} words\n` +
-            `Extracted **${data.fact_count}** facts, **${data.clause_count}** clauses, **${data.binding_count}** bindings.\n\n` +
-            `Ask me anything about this contract. Click any cited fact to jump to it in the document.\n` +
-            `Try **"Discover Hidden Facts"** to let the AI find implicit obligations and risks.`
-          );
+            `Extracted **${data.fact_count}** facts, **${data.clause_count}** clauses, **${data.binding_count}** bindings.\n\n`;
+
+          if (docCount >= 2) {
+            msg += `**${docCount} contracts** in workspace. You can now:\n` +
+              `• Select contracts in the sidebar and click **"Compare Selected"**\n` +
+              `• Enable **"Cross-Contract Q&A"** to ask across all documents\n` +
+              `• Ask scenario questions like _"If delivery is delayed due to a strike, what are my options?"_`;
+          } else {
+            msg += `Ask me anything about this contract. Upload another contract to enable **cross-contract intelligence**.`;
+          }
+
+          addAssistantMsg(msg);
         } else {
           addAssistantMsg(`Upload failed: ${data.detail || JSON.stringify(data)}`);
         }
@@ -1222,7 +1487,7 @@
       document.querySelectorAll('.prov-fact.active-prov').forEach(e => e.classList.remove('active-prov'));
       el.classList.add('active-prov');
 
-      highlightInDocument(node.summary || '', node.document_location || '', node.reference_id || '');
+      highlightInDocument(node.text_span || node.summary || '', node.document_location || '', node.reference_id || '');
     }
 
     function escHtml(s) {
@@ -1230,30 +1495,27 @@
       return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
-    // ── Highlight in Document (FIXED: multi-match support) ──
-    function highlightInDocument(summary, location, refId) {
-      // Clear only the active highlight, keep persistent ones
+    // ── Highlight in Document (uses text_span for precise matching) ──
+    function highlightInDocument(textSpan, location, refId) {
+      // Clear previous highlights
       document.querySelectorAll('.doc-highlight-active').forEach(el => {
         el.classList.remove('doc-highlight-active');
       });
-      // Clear previous flash highlights
       document.querySelectorAll('.doc-highlight').forEach(el => {
         el.classList.remove('doc-highlight', 'doc-highlight-flash');
       });
 
       const viewer = document.getElementById('docViewer');
 
-      // Build multiple search phrases from the summary
-      // Strip the location prefix like 'heading: X:' or 'characters X-Y:'
-      let cleanSummary = summary;
-      // Remove common prefixes from provenance summaries
-      cleanSummary = cleanSummary.replace(/^(?:heading|clause|characters?\s*\d+[-–]\d+|table\s+row\s*\d+.*?col\s*\d+)\s*:\s*/i, '');
-      // Remove surrounding quotes
-      cleanSummary = cleanSummary.replace(/^["']|["']$/g, '').trim();
+      // Clean the text for search — strip provenance prefix like 'heading: X: "..."'
+      let cleanText = textSpan;
+      cleanText = cleanText.replace(/^(?:heading|clause|characters?\s*\d+[-–]\d+|table\s+row\s*\d+.*?col\s*\d+)\s*:\s*/i, '');
+      cleanText = cleanText.replace(/^["']|["']$/g, '').trim();
 
-      const searchPhrases = buildSearchPhrases(cleanSummary);
+      // Build search phrases: exact text_span first, then progressively shorter fragments
+      const searchPhrases = buildSearchPhrases(cleanText);
 
-      // Strategy 1: Search in rendered DOCX paragraphs
+      // Strategy 1: Search in rendered DOCX
       const docxWrapper = viewer.querySelector('.docx-wrapper');
       if (docxWrapper) {
         const found = findAndHighlightText(docxWrapper, searchPhrases);
@@ -1263,7 +1525,6 @@
       // Strategy 2: PDF — scroll to approximate position
       const pdfContainer = viewer.querySelector('#pdf-container');
       if (pdfContainer) {
-        // Try location hint first
         if (location) {
           const charMatch = location.match(/chars?\s*(\d+)/i) || location.match(/characters?\s*(\d+)/i);
           if (charMatch) {
@@ -1290,50 +1551,42 @@
       }
     }
 
-    // Build multiple search phrases of varying lengths for robust matching
     function buildSearchPhrases(text) {
       if (!text || text.length < 3) return [];
       const phrases = [];
 
-      // Full text (up to 120 chars)
-      if (text.length > 5) phrases.push(text.substring(0, 120));
-      // First sentence or clause
+      // Full text (up to 200 chars for precise matching with text_span)
+      if (text.length > 5) phrases.push(text.substring(0, 200));
+      // First 120 chars
+      if (text.length > 120) phrases.push(text.substring(0, 120));
+      // First sentence
       const firstSentence = text.split(/[.!?;]/)[0].trim();
-      if (firstSentence.length > 5 && firstSentence !== text.substring(0, 120)) {
+      if (firstSentence.length > 5 && firstSentence !== text.substring(0, 200)) {
         phrases.push(firstSentence);
       }
-      // Key fragment: middle portion (often most distinctive)
-      if (text.length > 30) {
-        phrases.push(text.substring(5, 50));
-      }
-      // Shorter fallback
-      if (text.length > 15) {
-        phrases.push(text.substring(0, 25));
-      }
-      // Very short fallback
-      if (text.length > 8) {
-        phrases.push(text.substring(0, 15));
-      }
+      // Middle portion (often most distinctive)
+      if (text.length > 30) phrases.push(text.substring(5, 60));
+      // Shorter fallbacks
+      if (text.length > 15) phrases.push(text.substring(0, 30));
+      if (text.length > 8) phrases.push(text.substring(0, 15));
       return phrases;
     }
 
     function findAndHighlightText(root, searchPhrases) {
       if (!searchPhrases || searchPhrases.length === 0) return false;
 
-      // Try each phrase in order (longest/most specific first)
       for (const phrase of searchPhrases) {
         if (!phrase || phrase.length < 3) continue;
-        const search = phrase.toLowerCase().trim();
+        const search = normalizeWhitespace(phrase.toLowerCase().trim());
 
-        // Walk all text-containing elements
+        // Walk all text nodes and build a concatenated view for cross-node matching
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
         let node;
         let bestMatch = null;
         let bestMatchLen = 0;
 
         while (node = walker.nextNode()) {
-          const text = node.textContent.toLowerCase();
-          // Try matching progressively shorter substrings
+          const text = normalizeWhitespace(node.textContent.toLowerCase());
           for (let len = Math.min(search.length, text.length); len >= Math.min(8, search.length); len--) {
             const sub = search.substring(0, len);
             if (text.includes(sub) && len > bestMatchLen) {
@@ -1349,19 +1602,17 @@
           if (parent) {
             parent.classList.add('doc-highlight', 'doc-highlight-flash', 'doc-highlight-active');
             parent.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Auto-remove flash after 10 seconds, keep highlight
-            setTimeout(() => {
-              parent.classList.remove('doc-highlight-flash');
-            }, 10000);
-            // Auto-remove all after 15 seconds
-            setTimeout(() => {
-              parent.classList.remove('doc-highlight', 'doc-highlight-active');
-            }, 15000);
+            setTimeout(() => parent.classList.remove('doc-highlight-flash'), 10000);
+            setTimeout(() => parent.classList.remove('doc-highlight', 'doc-highlight-active'), 20000);
             return true;
           }
         }
       }
       return false;
+    }
+
+    function normalizeWhitespace(s) {
+      return s.replace(/\s+/g, ' ');
     }
 
     // ── Full Assistant Message with Provenance ──────────────
@@ -1521,7 +1772,12 @@
       const startTime = Date.now();
 
       try {
-        const reqBody = { question: text, document_id: currentDocId };
+        let reqBody;
+        if (workspace.crossQueryMode && workspace.documents.length >= 2) {
+          reqBody = { question: text, document_ids: workspace.documents.map(d => d.document_id) };
+        } else {
+          reqBody = { question: text, document_id: currentDocId };
+        }
         if (currentSessionId) reqBody.session_id = currentSessionId;
 
         const r = await fetch(`${API}/query/ask`, {
@@ -1667,12 +1923,19 @@
         showExtractionSummary(data);
         loadFacts(data.document_id);
 
-        addAssistantMsg(
-          `Sample contract loaded: **${data.title}** — ${data.word_count.toLocaleString()} words\n\n` +
-          `Extracted **${data.fact_count}** facts, **${data.clause_count}** clauses, **${data.binding_count}** bindings.\n\n` +
-          `Ask me anything about this contract. Try the quick-action buttons or **"Discover Hidden Facts"**.\n\n` +
-          `_When you're ready, upload your own contract using the upload button._`
-        );
+        addToWorkspace(data.document_id, data.title, file, data);
+
+        const docCount = workspace.documents.length;
+        let msg = `Sample contract loaded: **${data.title}** — ${data.word_count.toLocaleString()} words\n\n` +
+          `Extracted **${data.fact_count}** facts, **${data.clause_count}** clauses, **${data.binding_count}** bindings.\n\n`;
+
+        if (docCount >= 2) {
+          msg += `**${docCount} contracts** in workspace! Use the sidebar to compare or enable cross-contract Q&A.`;
+        } else {
+          msg += `Load another sample or upload a contract to enable **cross-contract intelligence**.`;
+        }
+
+        addAssistantMsg(msg);
       } catch (e) {
         card.classList.remove('loading');
         addAssistantMsg(`Error loading sample: ${e.message}`);
@@ -1848,7 +2111,8 @@
 
     function highlightFinding(text) {
       if (!text) return;
-      findAndHighlightText(text.substring(0, 80));
+      const docxWrapper = document.getElementById('docViewer').querySelector('.docx-wrapper');
+      if (docxWrapper) findAndHighlightText(docxWrapper, buildSearchPhrases(text));
     }
 
     // ── NDA Triage (SSE Streaming) ──────────────────────────
@@ -2124,8 +2388,38 @@
       isAsking = false;
     }
 
-    // Load samples on page init
+    function toggleDocSidebar() {
+      const sidebar = document.getElementById('docSidebar');
+      sidebar.classList.toggle('collapsed');
+    }
+
+    // Load existing contracts from server into workspace on page init
+    async function loadExistingContracts() {
+      try {
+        const r = await fetch(`${API}/contracts`);
+        if (!r.ok) return;
+        const contracts = await safeJson(r);
+        for (const c of contracts) {
+          if (!workspace.documents.find(d => d.document_id === c.document_id)) {
+            workspace.documents.push({
+              document_id: c.document_id,
+              title: c.title,
+              file: null,
+              format: c.file_format || 'docx',
+              fact_count: c.fact_count || 0,
+              clause_count: c.clause_count || 0,
+              binding_count: c.binding_count || 0,
+              word_count: c.word_count || 0,
+            });
+          }
+        }
+        renderDocList();
+      } catch {}
+    }
+
+    // Load samples and existing contracts on page init
     loadSampleContracts();
+    loadExistingContracts();
   </script>
 </body>
 </html>

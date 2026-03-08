@@ -38,6 +38,10 @@ def format_provenance_node(node: ProvenanceNode) -> dict:
         "document_location": node.document_location,
         "display_label": display_labels.get(node.node_type, "Unknown"),
         "icon": icons.get(node.node_type, "❓"),
+        "text_span": node.text_span,
+        "char_start": node.char_start,
+        "char_end": node.char_end,
+        "document_id": node.document_id,
     }
 
 

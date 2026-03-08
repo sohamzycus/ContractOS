@@ -529,6 +529,7 @@
     <!-- 1. Upload Contract -->
     <h3 style="display: flex; align-items: center; gap: 8px;">
       Upload Contract
+      <span id="uploadedCount" style="font-size: 10px; color: var(--text2); font-weight: 400;"></span>
       <button onclick="clearAllData()" style="margin-left: auto; background: none; border: 1px solid var(--red); color: var(--red); padding: 2px 8px; border-radius: 3px; font-size: 9px; cursor: pointer;" title="Clear all uploaded files and history">Clear All</button>
     </h3>
     <div class="upload-section">
@@ -542,6 +543,14 @@
         <input id="docIdInput" placeholder="doc-xxxxxxxxxxxx">
         <button onclick="loadExistingGraph()">Load</button>
       </div>
+    </div>
+    <!-- Uploaded documents list -->
+    <div id="uploadedDocsList" style="margin-top: 4px;"></div>
+    <div style="margin-top: 4px; display: flex; gap: 4px;">
+      <button id="mergeGraphBtn" onclick="loadMergedGraph()" disabled
+        style="flex:1; background: linear-gradient(135deg, #00b894, #55efc4); color: #1a1d2e; border: none; padding: 6px; border-radius: 4px; font-size: 10px; font-weight: 700; cursor: pointer; opacity: 0.5;">
+        🔗 Merge All Graphs
+      </button>
     </div>
 
     <hr class="section-divider">
@@ -695,6 +704,8 @@ function handleFileSelect(input) {
   }
 }
 
+let uploadedDocTitles = {};  // doc_id -> title
+
 async function uploadAndVisualize() {
   if (!selectedFile) return;
   const btn = document.getElementById('uploadBtn');
@@ -714,19 +725,11 @@ async function uploadAndVisualize() {
       if (!uploadedDocIds.includes(data.document_id)) {
         uploadedDocIds.push(data.document_id);
       }
-      document.getElementById('docBadge').style.display = 'inline';
-      document.getElementById('docBadge').textContent = uploadedDocIds.length > 1
-        ? `${uploadedDocIds.length} docs loaded`
-        : data.document_id;
+      uploadedDocTitles[data.document_id] = data.title || data.document_id;
+      updateUploadedDocsUI();
       document.getElementById('askBtn').disabled = false;
       document.getElementById('reviewBtn').disabled = false;
       document.getElementById('triageBtn').disabled = false;
-      // Update scope selector
-      if (uploadedDocIds.length > 1) {
-        document.getElementById('queryScope').querySelector('option[value="all"]').textContent =
-          `All ${uploadedDocIds.length} Documents`;
-      }
-      // Automatically load the TrustGraph visualization
       await loadGraph(data.document_id);
       loadChatHistory();
     }
@@ -737,6 +740,105 @@ async function uploadAndVisualize() {
   btn.textContent = 'Upload & Visualize';
 }
 
+function updateUploadedDocsUI() {
+  const badge = document.getElementById('docBadge');
+  badge.style.display = 'inline';
+  badge.textContent = uploadedDocIds.length > 1
+    ? `${uploadedDocIds.length} docs loaded`
+    : currentDocumentId;
+
+  const countEl = document.getElementById('uploadedCount');
+  countEl.textContent = uploadedDocIds.length > 0 ? `(${uploadedDocIds.length})` : '';
+
+  // Update scope selector
+  if (uploadedDocIds.length > 1) {
+    document.getElementById('queryScope').querySelector('option[value="all"]').textContent =
+      `All ${uploadedDocIds.length} Documents`;
+  }
+
+  // Merge button
+  const mergeBtn = document.getElementById('mergeGraphBtn');
+  mergeBtn.disabled = uploadedDocIds.length < 2;
+  mergeBtn.style.opacity = uploadedDocIds.length >= 2 ? '1' : '0.5';
+
+  // Render uploaded docs list
+  const list = document.getElementById('uploadedDocsList');
+  if (uploadedDocIds.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = uploadedDocIds.map(id => {
+    const title = uploadedDocTitles[id] || id;
+    const isActive = id === currentDocumentId;
+    return `<div style="padding:4px 8px;margin:2px 0;border-radius:4px;font-size:10px;cursor:pointer;
+      background:${isActive ? 'rgba(108,92,231,0.15)' : 'var(--surface2)'};
+      border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};
+      display:flex;align-items:center;gap:6px;"
+      onclick="switchToDoc('${id}')" title="${title}">
+      <span style="color:${isActive ? 'var(--accent)' : 'var(--text2)'}">●</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${title}</span>
+      <span style="font-size:9px;color:var(--text2)">${id.slice(0,8)}</span>
+    </div>`;
+  }).join('');
+}
+
+async function switchToDoc(docId) {
+  currentDocumentId = docId;
+  updateUploadedDocsUI();
+  document.getElementById('askBtn').disabled = false;
+  document.getElementById('reviewBtn').disabled = false;
+  document.getElementById('triageBtn').disabled = false;
+  await loadGraph(docId);
+}
+
+async function loadMergedGraph() {
+  if (uploadedDocIds.length < 2) return;
+  const btn = document.getElementById('mergeGraphBtn');
+  btn.disabled = true;
+  btn.textContent = '🔗 Loading merged graph...';
+
+  try {
+    // Load graphs for all documents and merge them
+    const allNodes = [];
+    const allEdges = [];
+    let mergedSummary = { total_facts: 0, total_clauses: 0, total_bindings: 0, total_cross_references: 0 };
+    const seenNodeIds = new Set();
+
+    for (const docId of uploadedDocIds) {
+      const resp = await fetch(BASE + '/contracts/' + docId + '/graph');
+      if (!resp.ok) continue;
+      const data = await resp.json();
+
+      for (const n of data.nodes) {
+        if (!seenNodeIds.has(n.id)) {
+          seenNodeIds.add(n.id);
+          allNodes.push(n);
+        }
+      }
+      allEdges.push(...data.edges);
+
+      mergedSummary.total_facts += data.summary.total_facts || 0;
+      mergedSummary.total_clauses += data.summary.total_clauses || 0;
+      mergedSummary.total_bindings += data.summary.total_bindings || 0;
+      mergedSummary.total_cross_references += data.summary.total_cross_references || 0;
+    }
+
+    graphData = {
+      document_id: 'merged',
+      title: `Merged (${uploadedDocIds.length} contracts)`,
+      summary: mergedSummary,
+      nodes: allNodes,
+      edges: allEdges,
+    };
+    renderGraph(graphData);
+  } catch (err) {
+    alert('Failed to merge graphs: ' + err.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔗 Merge All Graphs';
+}
+
 async function loadExistingGraph() {
   const docId = document.getElementById('docIdInput').value.trim();
   if (!docId) return;
@@ -744,12 +846,17 @@ async function loadExistingGraph() {
   if (!uploadedDocIds.includes(docId)) {
     uploadedDocIds.push(docId);
   }
-  document.getElementById('docBadge').style.display = 'inline';
-  document.getElementById('docBadge').textContent = docId;
+  uploadedDocTitles[docId] = docId;
+  updateUploadedDocsUI();
   document.getElementById('askBtn').disabled = false;
   document.getElementById('reviewBtn').disabled = false;
   document.getElementById('triageBtn').disabled = false;
   await loadGraph(docId);
+  // Update title from graph data
+  if (graphData && graphData.title) {
+    uploadedDocTitles[docId] = graphData.title;
+    updateUploadedDocsUI();
+  }
   loadChatHistory();
 }
 
@@ -1709,6 +1816,31 @@ function renderTriageResults(data) {
     ${issuesHTML}
   `;
 }
+
+// Load existing contracts from server on page init
+async function loadExistingContracts() {
+  try {
+    const resp = await fetch(BASE + '/contracts');
+    if (!resp.ok) return;
+    const contracts = await resp.json();
+    for (const c of contracts) {
+      if (!uploadedDocIds.includes(c.document_id)) {
+        uploadedDocIds.push(c.document_id);
+        uploadedDocTitles[c.document_id] = c.title || c.document_id;
+      }
+    }
+    if (uploadedDocIds.length > 0) {
+      currentDocumentId = uploadedDocIds[uploadedDocIds.length - 1];
+      updateUploadedDocsUI();
+      document.getElementById('askBtn').disabled = false;
+      document.getElementById('reviewBtn').disabled = false;
+      document.getElementById('triageBtn').disabled = false;
+      await loadGraph(currentDocumentId);
+      loadChatHistory();
+    }
+  } catch {}
+}
+loadExistingContracts();
 </script>
 </body>
 </html>

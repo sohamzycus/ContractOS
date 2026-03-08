@@ -129,18 +129,21 @@
 
 ## ACT 2: IT Outsourcing Agreement (5-6 minutes)
 
-### Scene 2.1: Upload & Context Switch (45 seconds)
+### Scene 2.1: Upload & Multi-Document Workspace (45 seconds)
 
 #### Voiceover:
-> "Now let's switch to a completely different type of contract. This is a 47.5 million dollar IT Outsourcing Services Agreement between Meridian Global Holdings in New York and TechServe Solutions in India. It covers 350 full-time equivalents across 12 locations, with a detailed SLA framework, data protection requirements, and complex liability provisions."
+> "Now let's add a completely different type of contract to our workspace. This is a 47.5 million dollar IT Outsourcing Services Agreement between Meridian Global Holdings in New York and TechServe Solutions in India. It covers 350 full-time equivalents across 12 locations, with a detailed SLA framework, data protection requirements, and complex liability provisions.
+>
+> Notice the workspace sidebar on the left — it already shows our Procurement Framework. I'll upload the IT Outsourcing agreement alongside it."
 
 #### Screen Action:
-- Click "Clear All" to start fresh (or upload alongside the first contract)
+- Click "Upload Contract" button
 - Upload `complex_it_outsourcing.docx`
 - Wait for extraction
+- Point out the workspace sidebar now showing **2 contracts**
 
 #### Voiceover (when complete):
-> "[Read extraction numbers] — notice how much richer this document is. Over 600 facts extracted, 65 clauses classified, 31 bindings resolved. The DOCX format preserves heading structure, so clause classification is much more detailed."
+> "[Read extraction numbers] — notice how much richer this document is. And look at the workspace sidebar — we now have two contracts loaded. I can click between them to switch the document view, or I can enable cross-contract Q&A to query across both simultaneously."
 
 ---
 
@@ -199,24 +202,42 @@
 
 ---
 
-## ACT 3: Cross-Contract Intelligence (2 minutes)
+## ACT 3: Cross-Contract Intelligence (3 minutes)
 
-### Scene 3.1: Compare Clauses (60 seconds)
+### Scene 3.1: Compare Contracts via Workspace (90 seconds)
 
 #### Voiceover:
-> "Now for the finale — cross-contract intelligence. Let me load both contracts and compare them."
+> "Now for the finale — cross-contract intelligence. Both contracts are already in our workspace. Let me select them both and use the built-in comparison feature."
 
 #### Screen Action:
-- Ensure both contracts are uploaded
-- Type: `Compare the force majeure clauses between the Procurement Framework and the IT Outsourcing agreement. Which one provides stronger protection for the buyer?`
-- Wait for response
+- In the workspace sidebar, click the checkboxes on both contracts to select them
+- Click the **"⚖️ Compare Selected"** button
+- Wait for the comparison results
 
 #### Voiceover:
-> "[Read the comparison]. The procurement framework has a 90-day threshold before termination rights kick in, while the IT outsourcing agreement has a 60-day threshold plus specific pandemic provisions. ContractOS can compare any clause type across any number of contracts — termination, liability, confidentiality, you name it."
+> "ContractOS is now comparing both contracts clause by clause. [Read key differences as they appear]. Look at this side-by-side comparison — for each aspect, you can see exactly how the two contracts differ. The procurement framework has a 90-day threshold before termination rights kick in, while the IT outsourcing agreement has a 60-day threshold plus specific pandemic provisions.
+>
+> Each difference is rated by significance — high, medium, or low — with risk implications noted."
 
 ---
 
-### Scene 3.2: MCP in Cursor (Optional — 60 seconds)
+### Scene 3.2: Cross-Contract Q&A (60 seconds)
+
+#### Voiceover:
+> "But comparison isn't the only cross-contract capability. Let me enable cross-contract Q&A mode."
+
+#### Screen Action:
+- Click **"🔗 Cross-Contract Q&A"** button in the workspace sidebar
+- Notice the input placeholder changes to "Ask across ALL contracts..."
+- Type: `If our vendor's delivery is delayed due to a force majeure event like a transport strike, compare my options under both contracts. Which one gives me stronger termination rights?`
+- Wait for response
+
+#### Voiceover:
+> "Now ContractOS is querying across BOTH contracts simultaneously. [Read key points from the response]. It's pulling facts from both the procurement framework and the IT outsourcing agreement, labeling each source so you know exactly which contract each provision comes from. This is true cross-contract intelligence."
+
+---
+
+### Scene 3.3: MCP in Cursor (Optional — 60 seconds)
 
 #### Voiceover:
 > "One last thing — ContractOS isn't just a web app. It's also an MCP server — that's Anthropic's Model Context Protocol. This means any AI assistant that supports MCP can use ContractOS as a tool."
@@ -250,10 +271,12 @@
 ## Post-Recording Notes
 
 ### Key Moments to Emphasize
-1. **Provenance clicking** — Every time you click a source reference and the document highlights, pause briefly. This is the "wow" moment.
+1. **Provenance clicking** — Every time you click a source reference and the document highlights the exact text, pause briefly. This is the "wow" moment. The text_span now matches precisely.
 2. **Streaming playbook review** — The real-time GREEN/YELLOW/RED updates are visually compelling. Let them play out.
 3. **Liability carve-out** — The data breach scenario where the cap doesn't apply is the strongest "this is why you need AI" moment.
-4. **Cross-contract comparison** — Demonstrates the system isn't just a single-document tool.
+4. **Workspace sidebar** — Show the multi-document workspace with both contracts listed. Click between them to show document switching.
+5. **Compare Selected** — The side-by-side comparison with significance ratings is visually impressive.
+6. **Cross-Contract Q&A** — Toggle it on, ask a question, and show facts labeled from different contracts.
 
 ### Pacing Tips
 - Speak slightly slower than conversational pace
