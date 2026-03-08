@@ -14,6 +14,10 @@ class ProvenanceNode(BaseModel):
     reference_id: str = Field(min_length=1)
     summary: str = Field(min_length=1)
     document_location: str | None = None
+    text_span: str | None = None
+    char_start: int | None = None
+    char_end: int | None = None
+    document_id: str | None = None
 
 
 class ProvenanceChain(BaseModel):

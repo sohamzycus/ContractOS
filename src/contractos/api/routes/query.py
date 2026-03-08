@@ -47,6 +47,10 @@ class ProvenanceNodeResponse(BaseModel):
     document_location: str | None = None
     display_label: str
     icon: str
+    text_span: str | None = None
+    char_start: int | None = None
+    char_end: int | None = None
+    document_id: str | None = None
 
 
 class ProvenanceResponse(BaseModel):

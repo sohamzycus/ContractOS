@@ -1179,3 +1179,130 @@ async def discover_facts(
         count=len(result.discovered_facts),
         confidence=confidence_label(0.75) if result.discovered_facts else confidence_label(0.3),
     )
+
+
+# ── Cross-Contract Comparison ──────────────────────────────────────
+
+
+class ComparisonDifference(BaseModel):
+    """A single difference found between two contracts."""
+
+    aspect: str
+    contract_1: str
+    contract_2: str
+    significance: str = "medium"
+    risk_implication: str = ""
+
+
+class ComparisonRequest(BaseModel):
+    """Request for cross-contract comparison."""
+
+    document_id_1: str
+    document_id_2: str
+    clause_type: str | None = None
+
+
+class ComparisonResponse(BaseModel):
+    """Response from cross-contract comparison."""
+
+    clause_type: str
+    contract_1_id: str
+    contract_1_title: str
+    contract_2_id: str
+    contract_2_title: str
+    differences: list[ComparisonDifference] = Field(default_factory=list)
+    summary: str = ""
+    recommendation: str = ""
+    comparison_time_ms: int = 0
+
+
+@router.post("/compare", response_model=ComparisonResponse)
+async def compare_contracts(
+    request: ComparisonRequest,
+    state: Annotated[AppState, Depends(get_state)],
+) -> ComparisonResponse:
+    """Compare clauses across two contracts.
+
+    If clause_type is not specified, performs a general comparison across
+    all major clause types (termination, liability, payment, etc.).
+    """
+    import time
+
+    from contractos.llm.provider import LLMMessage
+    from contractos.tools.fact_discovery import _parse_lenient_json
+
+    start = time.monotonic()
+
+    c1 = state.trust_graph.get_contract(request.document_id_1)
+    c2 = state.trust_graph.get_contract(request.document_id_2)
+    if c1 is None:
+        raise HTTPException(status_code=404, detail=f"Contract {request.document_id_1} not found")
+    if c2 is None:
+        raise HTTPException(status_code=404, detail=f"Contract {request.document_id_2} not found")
+
+    clause_type = request.clause_type or "all"
+    tg = state.trust_graph
+
+    def _clause_text(doc_id: str, ctype: str) -> str:
+        clauses = tg.get_clauses_by_document(doc_id)
+        if ctype != "all":
+            clauses = [c for c in clauses if ctype.lower() in (c.clause_type.value if hasattr(c.clause_type, "value") else str(c.clause_type)).lower()]
+        all_facts = {f.fact_id: f for f in tg.get_facts_by_document(doc_id)}
+        parts = []
+        for c in clauses:
+            ct = c.clause_type.value if hasattr(c.clause_type, "value") else str(c.clause_type)
+            parts.append(f"[{ct}: {c.heading}]")
+            for fid in c.contained_fact_ids:
+                fact = all_facts.get(fid)
+                if fact and fact.evidence.text_span:
+                    parts.append(fact.evidence.text_span)
+        return "\n".join(parts)
+
+    text_1 = _clause_text(request.document_id_1, clause_type)
+    text_2 = _clause_text(request.document_id_2, clause_type)
+
+    if not text_1:
+        raise HTTPException(status_code=400, detail=f"No clauses of type '{clause_type}' found in {c1.title}")
+    if not text_2:
+        raise HTTPException(status_code=400, detail=f"No clauses of type '{clause_type}' found in {c2.title}")
+
+    prompt = f"""Compare these two contracts and identify key differences.
+Focus on: risk allocation, liability, termination, payment, force majeure, indemnification, IP, and data protection.
+
+Contract 1 — {c1.title} ({clause_type}):
+{text_1[:8000]}
+
+Contract 2 — {c2.title} ({clause_type}):
+{text_2[:8000]}
+
+Respond in JSON:
+{{
+  "differences": [
+    {{"aspect": "...", "contract_1": "...", "contract_2": "...", "significance": "high|medium|low", "risk_implication": "..."}}
+  ],
+  "summary": "Overall comparison summary",
+  "recommendation": "Which contract is more favorable and why"
+}}
+Return at most 10 differences. Keep each field under 80 words."""
+
+    resp = await state.llm.complete(
+        messages=[LLMMessage(role="user", content=prompt)],
+        system="You are a contract comparison expert. Compare contracts precisely and identify material differences.",
+        max_tokens=4096,
+    )
+    parsed = _parse_lenient_json(resp.content)
+    elapsed = int((time.monotonic() - start) * 1000)
+
+    return ComparisonResponse(
+        clause_type=clause_type,
+        contract_1_id=request.document_id_1,
+        contract_1_title=c1.title,
+        contract_2_id=request.document_id_2,
+        contract_2_title=c2.title,
+        differences=[
+            ComparisonDifference(**d) for d in parsed.get("differences", [])
+        ],
+        summary=parsed.get("summary", ""),
+        recommendation=parsed.get("recommendation", ""),
+        comparison_time_ms=elapsed,
+    )

@@ -303,6 +303,10 @@ class DocumentAgent:
                     reference_id=fid,
                     summary=f"{fact.evidence.location_hint}: \"{fact.value[:80]}\"",
                     document_location=fact.evidence.location_hint,
+                    text_span=fact.evidence.text_span,
+                    char_start=fact.evidence.char_start,
+                    char_end=fact.evidence.char_end,
+                    document_id=fact.evidence.document_id,
                 ))
 
         provenance = ProvenanceChain(
