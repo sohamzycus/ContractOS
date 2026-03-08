@@ -256,6 +256,34 @@
   .reveal .fragment.scale-up { transform: scale(0.85); opacity: 0; }
   .reveal .fragment.scale-up.visible { transform: scale(1); opacity: 1; }
 
+  /* Download PPT button */
+  .download-pptx-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.75em;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(110,168,254,0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+  .download-pptx-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(110,168,254,0.4);
+  }
+  .download-pptx-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
   /* Slide number styling */
   .reveal .slide-number { font-family: 'Inter', sans-serif; font-size: 0.6em; color: #475569; }
 
@@ -918,6 +946,11 @@
 
 </div>
 </div>
+
+<a class="download-pptx-btn" href="http://127.0.0.1:8742/presentation/download" download title="Download PowerPoint">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
+  Download PPTX
+</a>
 
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>

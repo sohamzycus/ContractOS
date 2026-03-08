@@ -7,6 +7,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from contractos.api.deps import init_state, shutdown_state
@@ -72,6 +73,31 @@ def create_app(config: ContractOSConfig | None = None) -> FastAPI:
     for _demo_dir in _candidates:
         if _demo_dir.is_dir():
             app.mount("/demo", StaticFiles(directory=str(_demo_dir), html=True), name="demo")
+            break
+
+    # Serve the presentation at /presentation and provide PPTX download
+    _pres_candidates = [
+        _Path(__file__).resolve().parent.parent.parent.parent / "presentation",
+        _Path("/app/presentation"),
+        _Path(_os.getcwd()) / "presentation",
+    ]
+    for _pres_dir in _pres_candidates:
+        if _pres_dir.is_dir():
+            @app.get("/presentation/download")
+            async def download_pptx():
+                """Generate and download the ContractOS Capstone PowerPoint."""
+                pptx_path = _pres_dir / "ContractOS_Capstone.pptx"
+                if not pptx_path.exists():
+                    from presentation.generate_pptx import build_presentation
+                    prs = build_presentation()
+                    prs.save(str(pptx_path))
+                return FileResponse(
+                    path=str(pptx_path),
+                    media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    filename="ContractOS_Capstone.pptx",
+                )
+
+            app.mount("/presentation", StaticFiles(directory=str(_pres_dir), html=True), name="presentation")
             break
 
     return app

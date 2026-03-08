@@ -200,6 +200,14 @@
       box-shadow: 0 4px 24px rgba(0,0,0,0.4); max-width: 900px; width: 100%;
     }
 
+    /* PDF text layer highlight visibility */
+    .pdf-text-layer .doc-highlight,
+    .pdf-text-layer .doc-highlight-active {
+      color: transparent !important;
+      opacity: 1 !important;
+      z-index: 10;
+    }
+
     /* Highlight overlay on document text */
     .doc-highlight {
       background: rgba(254, 202, 87, 0.45) !important;
@@ -685,6 +693,7 @@
       <span style="width:1px;height:24px;background:var(--border);margin:0 4px"></span>
       <a href="/demo/" class="btn btn-outline btn-sm" style="text-decoration:none">API Console</a>
       <a href="/demo/graph.html" class="btn btn-outline btn-sm" style="text-decoration:none">TrustGraph</a>
+      <a href="/presentation/download" class="btn btn-outline btn-sm" style="text-decoration:none;color:var(--accent)" download>⬇ PPT</a>
     </div>
   </div>
 
@@ -904,7 +913,20 @@
       document.getElementById('fileIcon').textContent = doc.format === 'pdf' ? '📕' : '📘';
       document.getElementById('fileName').textContent = doc.title;
 
-      // Re-render document if we have the file
+      // If we don't have the file blob yet, download it from the server
+      if (!doc.file) {
+        try {
+          const r = await fetch(`${API}/contracts/${docId}/file`);
+          if (r.ok) {
+            const blob = await r.blob();
+            doc.file = new File([blob], `${doc.title}.${doc.format}`, {
+              type: doc.format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+          }
+        } catch (e) { console.warn('Could not download file for rendering:', e); }
+      }
+
+      // Render document if we have the file
       if (doc.file) {
         currentFile = doc.file;
         const viewer = document.getElementById('docViewer');
@@ -919,8 +941,21 @@
       document.getElementById('quickActions').style.display = 'flex';
       loadFacts(docId);
 
+      // Show extraction summary
+      updateExtractionSummary(doc);
+
       // Update cross-query badge in input
       updateQueryMode();
+    }
+
+    function updateExtractionSummary(doc) {
+      if (!doc) return;
+      showExtractionSummary({
+        fact_count: doc.fact_count || 0,
+        clause_count: doc.clause_count || 0,
+        binding_count: doc.binding_count || 0,
+        word_count: doc.word_count || 0,
+      });
     }
 
     function toggleCrossQuery() {
@@ -1279,7 +1314,7 @@
       } catch {}
     }
 
-    // ── PDF Rendering ───────────────────────────────────────
+    // ── PDF Rendering (with text layer for highlighting) ────
     async function renderPDF(file, container) {
       const ab = await file.arrayBuffer();
       const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs');
@@ -1289,11 +1324,40 @@
       container.appendChild(c);
       for (let i = 1; i <= pdfDoc.numPages; i++) {
         const page = await pdfDoc.getPage(i);
-        const vp = page.getViewport({ scale: zoomLevel * 1.5 });
+        const scale = zoomLevel * 1.5;
+        const vp = page.getViewport({ scale });
+
+        // Page wrapper for overlaying text on canvas
+        const pageDiv = document.createElement('div');
+        pageDiv.style.position = 'relative';
+        pageDiv.style.width = vp.width + 'px';
+        pageDiv.style.height = vp.height + 'px';
+        pageDiv.style.marginBottom = '12px';
+
+        // Canvas layer
         const canvas = document.createElement('canvas');
         canvas.width = vp.width; canvas.height = vp.height;
+        canvas.style.display = 'block';
         await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-        c.appendChild(canvas);
+        pageDiv.appendChild(canvas);
+
+        // Text layer for search/highlight
+        const textContent = await page.getTextContent();
+        const textDiv = document.createElement('div');
+        textDiv.className = 'pdf-text-layer';
+        textDiv.style.cssText = `position:absolute;top:0;left:0;width:${vp.width}px;height:${vp.height}px;overflow:hidden;opacity:0.25;line-height:1.0;`;
+
+        for (const item of textContent.items) {
+          if (!item.str) continue;
+          const tx = pdfjsLib.Util.transform(vp.transform, item.transform);
+          const span = document.createElement('span');
+          span.textContent = item.str;
+          const fontSize = Math.sqrt(tx[0]*tx[0] + tx[1]*tx[1]);
+          span.style.cssText = `position:absolute;left:${tx[4]}px;top:${tx[5] - fontSize}px;font-size:${fontSize}px;font-family:sans-serif;color:transparent;white-space:pre;pointer-events:all;`;
+          textDiv.appendChild(span);
+        }
+        pageDiv.appendChild(textDiv);
+        c.appendChild(pageDiv);
       }
     }
 
@@ -1522,9 +1586,15 @@
         if (found) return;
       }
 
-      // Strategy 2: PDF — scroll to approximate position
+      // Strategy 2: PDF text layer — search the transparent text spans
       const pdfContainer = viewer.querySelector('#pdf-container');
       if (pdfContainer) {
+        const textLayers = pdfContainer.querySelectorAll('.pdf-text-layer');
+        for (const layer of textLayers) {
+          const found = findAndHighlightText(layer, searchPhrases);
+          if (found) return;
+        }
+        // Fallback: scroll to approximate position by char offset
         if (location) {
           const charMatch = location.match(/chars?\s*(\d+)/i) || location.match(/characters?\s*(\d+)/i);
           if (charMatch) {
@@ -2399,6 +2469,8 @@
         const r = await fetch(`${API}/contracts`);
         if (!r.ok) return;
         const contracts = await safeJson(r);
+        if (!contracts || contracts.length === 0) return;
+
         for (const c of contracts) {
           if (!workspace.documents.find(d => d.document_id === c.document_id)) {
             workspace.documents.push({
@@ -2414,7 +2486,13 @@
           }
         }
         renderDocList();
-      } catch {}
+
+        // Auto-select the first contract so the user can immediately ask questions
+        if (!currentDocId && workspace.documents.length > 0) {
+          const first = workspace.documents[0];
+          await switchDocument(first.document_id);
+        }
+      } catch (e) { console.error('loadExistingContracts error:', e); }
     }
 
     // Load samples and existing contracts on page init
