@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractOS — Capstone Presentation</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+<style>
+  :root {
+    --r-background-color: #0a0a1a;
+    --r-main-color: #e8e8f0;
+    --r-heading-color: #ffffff;
+    --r-link-color: #6ea8fe;
+    --accent: #6ea8fe;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --purple: #a78bfa;
+  }
+  .reveal { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+  .reveal h1, .reveal h2, .reveal h3 { font-weight: 700; text-transform: none; letter-spacing: -0.02em; }
+  .reveal h1 { font-size: 2.4em; }
+  .reveal h2 { font-size: 1.6em; }
+  .reveal h3 { font-size: 1.2em; color: var(--accent); }
+  .reveal p, .reveal li { font-size: 0.75em; line-height: 1.6; }
+  .reveal .subtitle { color: var(--accent); font-size: 1.1em; font-weight: 500; margin-top: -10px; }
+  .reveal .tagline { color: #94a3b8; font-size: 0.85em; font-style: italic; margin-top: 20px; }
+  .reveal .highlight { color: var(--accent); font-weight: 600; }
+  .reveal .green { color: var(--green); }
+  .reveal .yellow { color: var(--yellow); }
+  .reveal .red { color: var(--red); }
+  .reveal .purple { color: var(--purple); }
+
+  .truth-model { display: flex; gap: 16px; justify-content: center; margin: 30px 0; flex-wrap: wrap; }
+  .truth-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 18px 22px;
+    width: 200px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  .truth-card:hover { transform: translateY(-4px); }
+  .truth-card h4 { margin: 0 0 8px 0; font-size: 0.9em; }
+  .truth-card p { font-size: 0.6em !important; color: #94a3b8; margin: 0; }
+  .truth-card.fact { border-color: var(--green); }
+  .truth-card.fact h4 { color: var(--green); }
+  .truth-card.binding { border-color: var(--accent); }
+  .truth-card.binding h4 { color: var(--accent); }
+  .truth-card.inference { border-color: var(--yellow); }
+  .truth-card.inference h4 { color: var(--yellow); }
+  .truth-card.opinion { border-color: var(--red); }
+  .truth-card.opinion h4 { color: var(--red); }
+
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 30px 0; }
+  .metric-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .metric-card .number { font-size: 2em; font-weight: 800; color: var(--accent); display: block; }
+  .metric-card .label { font-size: 0.6em; color: #94a3b8; margin-top: 4px; display: block; }
+
+  .arch-layer {
+    background: rgba(255,255,255,0.03);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px;
+    margin: 8px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.65em;
+    text-align: left;
+  }
+  .arch-layer strong { color: var(--accent); }
+
+  .pipeline-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin: 10px 0;
+  }
+  .pipeline-badge {
+    background: var(--accent);
+    color: #0a0a1a;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.1em;
+    flex-shrink: 0;
+  }
+  .pipeline-arrow { color: #475569; font-size: 1.5em; }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .feature-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: left;
+  }
+  .feature-card h4 { color: var(--accent); margin: 0 0 6px 0; font-size: 0.8em; }
+  .feature-card p { font-size: 0.55em !important; color: #94a3b8; margin: 0; }
+
+  .traffic-light { display: flex; gap: 24px; justify-content: center; margin: 20px 0; }
+  .traffic-item { text-align: center; }
+  .traffic-dot {
+    width: 50px; height: 50px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px; font-weight: 700; font-size: 0.7em;
+  }
+  .traffic-dot.g { background: var(--green); color: #0a0a1a; }
+  .traffic-dot.y { background: var(--yellow); color: #0a0a1a; }
+  .traffic-dot.r { background: var(--red); color: #0a0a1a; }
+  .traffic-label { font-size: 0.55em; color: #94a3b8; }
+
+  .scenario-box {
+    background: rgba(110,168,254,0.08);
+    border: 1px solid rgba(110,168,254,0.2);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    text-align: left;
+    font-size: 0.7em;
+    line-height: 1.7;
+    font-style: italic;
+    color: #cbd5e1;
+  }
+  .scenario-box strong { color: var(--accent); font-style: normal; }
+
+  .tech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+  .tech-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    font-size: 0.6em;
+  }
+  .tech-item strong { color: var(--accent); display: block; margin-bottom: 4px; font-size: 1.1em; }
+
+  .tdd-bar { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+  .tdd-fill {
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 0.6em;
+    font-weight: 600;
+    color: #0a0a1a;
+  }
+
+  .mcp-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0; }
+  .mcp-tool {
+    background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.55em;
+    text-align: left;
+  }
+  .mcp-tool code { color: var(--purple); font-size: 1.05em; }
+
+  .compare-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.6em; }
+  .compare-table th, .compare-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .compare-table th { color: var(--accent); font-weight: 600; }
+
+  .roadmap-item { display: flex; align-items: flex-start; gap: 14px; margin: 14px 0; text-align: left; }
+  .roadmap-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+  .roadmap-dot.done { background: var(--green); }
+  .roadmap-text { font-size: 0.65em; }
+  .roadmap-text strong { color: #fff; }
+
+  .final-tagline { font-size: 1.5em !important; font-weight: 700; color: var(--accent); margin-top: 40px; }
+  .final-sub { color: #64748b; font-size: 0.8em !important; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: Title -->
+<section>
+  <h1>ContractOS</h1>
+  <p class="subtitle">The Operating System for Contract Intelligence</p>
+  <p class="tagline">Capstone Project Presentation</p>
+  <br>
+  <p style="font-size:0.6em; color:#64748b;">Built with Python &bull; FastAPI &bull; FAISS &bull; Anthropic Claude &bull; MCP</p>
+</section>
+
+<!-- SLIDE 2: The Problem -->
+<section>
+  <h2>The Problem</h2>
+  <p>Contracts encode obligations, risks, and rights <span class="highlight">implicitly</span>.</p>
+  <div class="feature-grid" style="margin-top:30px;">
+    <div class="feature-card">
+      <h4>Buried in Tables</h4>
+      <p>SLA penalties, pricing tiers, and delivery schedules hidden in schedule annexes that nobody reads until it's too late.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Scattered Clauses</h4>
+      <p>"Subject to Section 5.2" — cross-references create a web of dependencies that humans struggle to trace.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Defined Terms</h4>
+      <p>"Service Provider" means TechServe... but also their subcontractors? Definitions transform meaning silently.</p>
+    </div>
+    <div class="feature-card">
+      <h4>No Provenance</h4>
+      <p>When an AI says "the liability cap is $14M" — where exactly does it say that? Can you trust it?</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: Market Gap -->
+<section>
+  <h2>What Existing Tools Get Wrong</h2>
+  <br>
+  <table class="compare-table">
+    <tr><th>Approach</th><th>Problem</th></tr>
+    <tr><td>Keyword Search</td><td>Misses "shall indemnify" when searching for "liability"</td></tr>
+    <tr><td>Document Chatbots</td><td>Hallucinate answers with no source grounding</td></tr>
+    <tr><td>Flat Embedding Search</td><td>Treats a 50-page contract as a text blob</td></tr>
+    <tr><td>Manual Review</td><td>8+ hours per contract, inconsistent, doesn't scale</td></tr>
+  </table>
+  <br>
+  <p style="font-size:0.8em;">They all fail at the same thing: <span class="highlight">separating what a contract says from what it means from what someone thinks about it.</span></p>
+</section>
+
+<!-- SLIDE 4: Our Solution -->
+<section>
+  <h2>Our Solution: The Truth Model</h2>
+  <p>A strict four-layer epistemological model for contract intelligence.</p>
+  <div class="truth-model">
+    <div class="truth-card fact">
+      <h4>FACT</h4>
+      <p>Directly grounded in contract text. Immutable.</p>
+      <p style="margin-top:8px; color:var(--green);">"Term: 24 months"</p>
+    </div>
+    <div class="truth-card binding">
+      <h4>BINDING</h4>
+      <p>Explicit semantic mapping. Scoped.</p>
+      <p style="margin-top:8px; color:var(--accent);">"Company" = Acme Corp</p>
+    </div>
+    <div class="truth-card inference">
+      <h4>INFERENCE</h4>
+      <p>Derived claim with confidence. Revisable.</p>
+      <p style="margin-top:8px; color:var(--yellow);">Expires Dec 2025 (0.92)</p>
+    </div>
+    <div class="truth-card opinion">
+      <h4>OPINION</h4>
+      <p>Contextual judgment. Never persisted as truth.</p>
+      <p style="margin-top:8px; color:var(--red);">Missing force majeure = risk</p>
+    </div>
+  </div>
+  <p class="tagline">Every answer is auditable. Every claim is traceable to source text.</p>
+</section>
+
+<!-- SLIDE 5: Architecture -->
+<section>
+  <h2>Architecture</h2>
+  <div style="max-width:700px; margin:20px auto;">
+    <div class="arch-layer" style="border-color:#6ea8fe;"><strong>Interaction</strong> &mdash; Browser Copilot &bull; API Console &bull; TrustGraph Viz &bull; MCP</div>
+    <div class="arch-layer" style="border-color:#a78bfa;"><strong>MCP Layer</strong> &mdash; 13 Tools &bull; 10 Resources &bull; 5 Prompts (stdio + HTTP)</div>
+    <div class="arch-layer" style="border-color:#4ade80;"><strong>Agents</strong> &mdash; DocumentAgent &bull; ComplianceAgent &bull; NDATriageAgent &bull; DraftAgent</div>
+    <div class="arch-layer" style="border-color:#fbbf24;"><strong>Tools</strong> &mdash; FactExtractor &bull; BindingResolver &bull; ClauseClassifier &bull; AliasDetector &bull; CrossRefExtractor</div>
+    <div class="arch-layer" style="border-color:#f87171;"><strong>Fabric</strong> &mdash; TrustGraph (SQLite) &bull; EmbeddingIndex (FAISS) &bull; WorkspaceStore</div>
+    <div class="arch-layer" style="border-color:#64748b;"><strong>Data</strong> &mdash; Raw Documents &bull; Config &bull; Audit Log</div>
+  </div>
+  <p style="font-size:0.6em; color:#94a3b8; margin-top:16px;">Downward-only data flow &bull; Every output is typed &bull; Agents are stateless &bull; Interaction layer never reasons</p>
+</section>
+
+<!-- SLIDE 6: Three-Phase Pipeline -->
+<section>
+  <h2>Three-Phase Extraction Pipeline</h2>
+  <br>
+  <div style="text-align:center;">
+    <div style="display:inline-flex; align-items:center; gap:20px; flex-wrap:wrap; justify-content:center;">
+      <div style="text-align:center;">
+        <div class="pipeline-badge" style="background:var(--green);">1</div>
+        <p style="font-size:0.6em; margin-top:8px;"><strong>Pattern Extraction</strong><br><span style="color:#94a3b8;">Regex + structural parsing<br>Definitions, dates, amounts<br>Zero LLM calls</span></p>
+      </div>
+      <span class="pipeline-arrow">&rarr;</span>
+      <div style="text-align:center;">
+        <div class="pipeline-badge" style="background:var(--accent);">2</div>
+        <p style="font-size:0.6em; margin-top:8px;"><strong>Semantic Indexing</strong><br><span style="color:#94a3b8;">FAISS + MiniLM-L6-v2<br>384-dim vectors<br>Per-document indexes</span></p>
+      </div>
+      <span class="pipeline-arrow">&rarr;</span>
+      <div style="text-align:center;">
+        <div class="pipeline-badge" style="background:var(--purple);">3</div>
+        <p style="font-size:0.6em; margin-top:8px;"><strong>LLM Discovery</strong><br><span style="color:#94a3b8;">Anthropic Claude<br>Hidden obligations, risks<br>Cross-clause implications</span></p>
+      </div>
+    </div>
+  </div>
+  <br>
+  <p style="font-size:0.7em;">Phases 1 & 2 are <span class="green">deterministic and reproducible</span>. Phase 3 is <span class="purple">AI-augmented</span> — it finds what patterns miss.</p>
+</section>
+
+<!-- SLIDE 7: Feature — Upload & Q&A -->
+<section>
+  <h2>Upload & Semantic Q&A</h2>
+  <p>Upload any PDF or DOCX. Ask questions. Get grounded answers.</p>
+  <br>
+  <div class="scenario-box">
+    <strong>User:</strong> "Does this contract indemnify the buyer for data breach?"<br><br>
+    <strong>ContractOS:</strong><br>
+    1. Extracts 607 facts from the document<br>
+    2. Resolves 31 bindings ("Service Provider" &rarr; "TechServe Solutions")<br>
+    3. Searches FAISS index for indemnity-related facts<br>
+    4. Reasons with Claude, grounded in extracted evidence<br>
+    5. Returns answer with <span class="green">confidence: 0.92</span>, provenance chain (3 facts cited), clickable source references
+  </div>
+  <p style="font-size:0.65em; color:#94a3b8;">The user didn't search. They didn't read 50 pages. They asked a question and got a grounded, explainable, auditable answer.</p>
+</section>
+
+<!-- SLIDE 8: Feature — Playbook Review -->
+<section>
+  <h2>Playbook Compliance Review</h2>
+  <p>Compare contracts against your organization's standard positions.</p>
+  <div class="traffic-light">
+    <div class="traffic-item">
+      <div class="traffic-dot g">&#10003;</div>
+      <div class="traffic-label"><strong>GREEN</strong><br>Meets standard</div>
+    </div>
+    <div class="traffic-item">
+      <div class="traffic-dot y">!</div>
+      <div class="traffic-label"><strong>YELLOW</strong><br>Deviates — negotiate</div>
+    </div>
+    <div class="traffic-item">
+      <div class="traffic-dot r">&#10007;</div>
+      <div class="traffic-label"><strong>RED</strong><br>Missing or unacceptable</div>
+    </div>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>10 Clause Types</h4>
+      <p>Liability, indemnification, confidentiality, termination, IP, data protection, force majeure, governing law, assignment, payment</p>
+    </div>
+    <div class="feature-card">
+      <h4>Automated Redlines</h4>
+      <p>LLM-generated alternative language with rationale and fallback positions for every YELLOW/RED finding</p>
+    </div>
+    <div class="feature-card">
+      <h4>Risk Matrix</h4>
+      <p>5&times;5 Severity &times; Likelihood scoring with aggregate risk profile and tier distribution</p>
+    </div>
+    <div class="feature-card">
+      <h4>Real-Time Streaming</h4>
+      <p>SSE delivers each clause evaluation as it happens — watch the AI reason in real time</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 9: Feature — NDA Triage -->
+<section>
+  <h2>NDA Triage Screening</h2>
+  <p>Automated 10-point checklist with hybrid pattern + LLM evaluation.</p>
+  <br>
+  <table class="compare-table" style="max-width:650px; margin:0 auto;">
+    <tr><th>#</th><th>Check</th><th>Method</th></tr>
+    <tr><td>1</td><td>Mutual obligations</td><td>Pattern + LLM</td></tr>
+    <tr><td>2</td><td>Standard carveouts</td><td>Pattern matching</td></tr>
+    <tr><td>3</td><td>Term duration</td><td>Pattern extraction</td></tr>
+    <tr><td>4</td><td>Governing law</td><td>Pattern extraction</td></tr>
+    <tr><td>5</td><td>IP assignment</td><td>LLM analysis</td></tr>
+    <tr><td>6</td><td>Non-compete</td><td>LLM analysis</td></tr>
+    <tr><td>7</td><td>Indemnification</td><td>Pattern + LLM</td></tr>
+    <tr><td>8</td><td>Problematic provisions</td><td>LLM analysis</td></tr>
+    <tr><td>9</td><td>Data protection</td><td>Pattern + LLM</td></tr>
+    <tr><td>10</td><td>Agreement structure</td><td>Structural analysis</td></tr>
+  </table>
+  <br>
+  <p style="font-size:0.7em;"><span class="green">GREEN</span> = auto-approve &bull; <span class="yellow">YELLOW</span> = expedited review &bull; <span class="red">RED</span> = full legal review</p>
+</section>
+
+<!-- SLIDE 10: Feature — Risk & Obligations -->
+<section>
+  <h2>Risk Memo & Obligation Extraction</h2>
+  <div class="feature-grid" style="margin-top:30px;">
+    <div class="feature-card">
+      <h4>Risk Assessment Memo</h4>
+      <p>Executive summary, key risks with severity/likelihood scoring, missing protections, prioritized recommendations, escalation items requiring senior counsel.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Obligation Extraction</h4>
+      <p>All contractual obligations categorized: Affirmative (must do), Negative (must not do), Conditional (if X then Y) — with deadlines and breach consequences.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Hidden Fact Discovery</h4>
+      <p>LLM-powered analysis surfacing implicit obligations, liability exposure, unstated assumptions, and ambiguous terms that patterns miss.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Clause Gap Analysis</h4>
+      <p>Identifies mandatory facts missing from each clause type — what should be there but isn't.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 11: Feature — MCP Integration -->
+<section>
+  <h2>MCP Server Integration</h2>
+  <p>Full contract intelligence as an <span class="purple">MCP server</span> — works in Cursor, Claude Desktop, Claude Code.</p>
+  <div class="mcp-tools">
+    <div class="mcp-tool"><code>upload_contract</code><br>Upload & analyse</div>
+    <div class="mcp-tool"><code>ask_question</code><br>Q&A with provenance</div>
+    <div class="mcp-tool"><code>review_against_playbook</code><br>Compliance review</div>
+    <div class="mcp-tool"><code>triage_nda</code><br>10-point screening</div>
+    <div class="mcp-tool"><code>discover_hidden_facts</code><br>Implicit risk discovery</div>
+    <div class="mcp-tool"><code>extract_obligations</code><br>Obligation extraction</div>
+    <div class="mcp-tool"><code>generate_risk_memo</code><br>Risk assessment</div>
+    <div class="mcp-tool"><code>compare_clauses</code><br>Cross-contract comparison</div>
+    <div class="mcp-tool"><code>search_contracts</code><br>Semantic search</div>
+    <div class="mcp-tool"><code>get_clause_gaps</code><br>Gap analysis</div>
+    <div class="mcp-tool"><code>generate_report</code><br>HTML reports</div>
+    <div class="mcp-tool"><code>load_sample_contract</code><br>Built-in samples</div>
+  </div>
+  <p style="font-size:0.6em; color:#94a3b8;">+ 10 Resources (read-only data) &bull; 5 Prompts (reusable workflows) &bull; stdio + HTTP transport</p>
+</section>
+
+<!-- SLIDE 12: Demo Scenario 1 — Procurement -->
+<section>
+  <h2>Demo Scenario 1</h2>
+  <h3>Complex Procurement Framework (GBP 85M)</h3>
+  <div class="scenario-box">
+    <strong>The Situation:</strong> "Due to a recent interstate transport strike, a lorry carrying raw materials from our supplier GlobalSource got delayed. The goods arrived at our godown 10 days late. We had to procure from a local vendor at higher cost to keep production running. Now the original shipment has arrived too."<br><br>
+    <strong>The Question:</strong> "What are my legal options under this contract? Can I reject the late delivery, cancel the order, and claim my money back? Am I entitled to liquidated damages for the delay?"
+  </div>
+  <p style="font-size:0.65em;">ContractOS analyses force majeure clauses, liquidated damages schedules, delivery obligations, and rejection rights — all with provenance back to specific contract sections.</p>
+</section>
+
+<!-- SLIDE 13: Demo Scenario 2 — IT Outsourcing -->
+<section>
+  <h2>Demo Scenario 2</h2>
+  <h3>IT Outsourcing Agreement ($47.5M)</h3>
+  <div class="scenario-box">
+    <strong>The Situation:</strong> "Our outsourcing vendor TechServe experienced a data breach affecting 50,000 customer records including PII. Their SLA requires a 15-minute response time for Severity 1 incidents, but they took 3 days to notify us — violating both the SLA and the 24-hour breach notification requirement."<br><br>
+    <strong>The Question:</strong> "Can we terminate the contract for cause? What damages can we claim? Does the liability cap apply to data breaches? What are TechServe's indemnification obligations?"
+  </div>
+  <p style="font-size:0.65em;">ContractOS traces through SLA tables, breach notification clauses, liability carve-outs, and indemnification provisions — showing exactly which sections apply.</p>
+</section>
+
+<!-- SLIDE 14: Cross-Contract Intelligence -->
+<section>
+  <h2>Cross-Contract Intelligence</h2>
+  <p>Compare provisions across multiple contracts simultaneously.</p>
+  <br>
+  <table class="compare-table" style="max-width:700px; margin:0 auto;">
+    <tr><th>Clause</th><th>Procurement (GBP 85M)</th><th>IT Outsourcing ($47.5M)</th></tr>
+    <tr><td>Force Majeure</td><td>90-day threshold, mutual</td><td>60-day threshold, pandemic-specific</td></tr>
+    <tr><td>Liability Cap</td><td>Not explicitly stated</td><td>150% annual fees ($14.25M)</td></tr>
+    <tr><td>Termination Notice</td><td>60 days</td><td>180 days</td></tr>
+    <tr><td>Data Breach</td><td>Not addressed</td><td>24-hour notification, unlimited liability</td></tr>
+    <tr><td>Governing Law</td><td>England & Wales</td><td>New York</td></tr>
+  </table>
+  <br>
+  <p style="font-size:0.7em;"><span class="highlight">Ask:</span> "Which contract has stronger force majeure protection?" — and get a grounded, comparative answer.</p>
+</section>
+
+<!-- SLIDE 15: By the Numbers -->
+<section>
+  <h2>By the Numbers</h2>
+  <div class="metric-grid">
+    <div class="metric-card">
+      <span class="number">794</span>
+      <span class="label">Tests Passing</span>
+    </div>
+    <div class="metric-card">
+      <span class="number">34</span>
+      <span class="label">API Endpoints</span>
+    </div>
+    <div class="metric-card">
+      <span class="number">13</span>
+      <span class="label">MCP Tools</span>
+    </div>
+    <div class="metric-card">
+      <span class="number">50</span>
+      <span class="label">Real NDAs Tested</span>
+    </div>
+    <div class="metric-card">
+      <span class="number">9.8K</span>
+      <span class="label">Lines of Production Code</span>
+    </div>
+    <div class="metric-card">
+      <span class="number">14.8K</span>
+      <span class="label">Lines of Test Code</span>
+    </div>
+    <div class="metric-card">
+      <span class="number">63</span>
+      <span class="label">Python Modules</span>
+    </div>
+    <div class="metric-card">
+      <span class="number">13</span>
+      <span class="label">Dev Phases Complete</span>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 16: Tech Stack -->
+<section>
+  <h2>Technology Stack</h2>
+  <div class="tech-grid">
+    <div class="tech-item"><strong>Python 3.12+</strong>Backend & CLI</div>
+    <div class="tech-item"><strong>FastAPI</strong>Async REST API</div>
+    <div class="tech-item"><strong>Anthropic Claude</strong>LLM Reasoning</div>
+    <div class="tech-item"><strong>FAISS</strong>Vector Search</div>
+    <div class="tech-item"><strong>sentence-transformers</strong>MiniLM-L6-v2 Embeddings</div>
+    <div class="tech-item"><strong>SQLite (WAL)</strong>TrustGraph Storage</div>
+    <div class="tech-item"><strong>python-docx</strong>DOCX Parsing</div>
+    <div class="tech-item"><strong>PyMuPDF</strong>PDF Parsing</div>
+    <div class="tech-item"><strong>SSE</strong>Real-Time Streaming</div>
+    <div class="tech-item"><strong>MCP (FastMCP)</strong>Model Context Protocol</div>
+    <div class="tech-item"><strong>D3.js</strong>Graph Visualization</div>
+    <div class="tech-item"><strong>Docker</strong>Single-Container Deploy</div>
+  </div>
+</section>
+
+<!-- SLIDE 17: TDD & Quality -->
+<section>
+  <h2>Test-Driven Development</h2>
+  <p>The entire system was built TDD — tests written before code.</p>
+  <br>
+  <div style="max-width:600px; margin:0 auto;">
+    <div class="tdd-bar">
+      <span style="font-size:0.6em; width:100px; text-align:right;">Unit</span>
+      <div class="tdd-fill" style="background:var(--green); width:340px;">539 tests</div>
+    </div>
+    <div class="tdd-bar">
+      <span style="font-size:0.6em; width:100px; text-align:right;">Integration</span>
+      <div class="tdd-fill" style="background:var(--accent); width:200px;">156 tests</div>
+    </div>
+    <div class="tdd-bar">
+      <span style="font-size:0.6em; width:100px; text-align:right;">Benchmark</span>
+      <div class="tdd-fill" style="background:var(--purple); width:100px;">61 tests</div>
+    </div>
+    <div class="tdd-bar">
+      <span style="font-size:0.6em; width:100px; text-align:right;">Contract</span>
+      <div class="tdd-fill" style="background:var(--yellow); width:60px;">27 tests</div>
+    </div>
+  </div>
+  <br>
+  <div class="feature-grid" style="max-width:600px; margin:20px auto;">
+    <div class="feature-card" style="text-align:center;">
+      <h4>1.5x Test-to-Code Ratio</h4>
+      <p>14,800 lines of tests vs 9,800 lines of production code</p>
+    </div>
+    <div class="feature-card" style="text-align:center;">
+      <h4>50 Real NDAs</h4>
+      <p>ContractNLI dataset from Stanford NLP — corporate, M&A, government, SEC filings</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 18: Live Demo -->
+<section>
+  <h2>Live Demo</h2>
+  <br>
+  <div style="text-align:center;">
+    <p style="font-size:1.2em; color:var(--accent); font-weight:600;">Watch ContractOS in Action</p>
+    <br>
+    <div class="feature-grid" style="max-width:600px; margin:0 auto;">
+      <div class="feature-card" style="text-align:center;">
+        <h4>Act 1</h4>
+        <p>Procurement Framework<br>Lorry strike scenario<br>Force majeure &amp; liquidated damages</p>
+      </div>
+      <div class="feature-card" style="text-align:center;">
+        <h4>Act 2</h4>
+        <p>IT Outsourcing<br>Data breach scenario<br>SLA violation &amp; termination</p>
+      </div>
+    </div>
+    <br>
+    <p style="font-size:0.7em; color:#94a3b8;">[Demo video plays here]</p>
+  </div>
+</section>
+
+<!-- SLIDE 19: What's Next -->
+<section>
+  <h2>What's Next</h2>
+  <br>
+  <div style="max-width:600px; margin:0 auto;">
+    <div class="roadmap-item">
+      <div class="roadmap-dot done"></div>
+      <div class="roadmap-text"><strong>Phase 1-13: Complete</strong> — Full extraction, Q&A, playbook review, NDA triage, MCP server, streaming, reports</div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-text"><strong>Contract Families</strong> — Master agreements + amendments as DAGs with precedence rules</div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-text"><strong>Multi-Tenant Workspaces</strong> — Organization-scoped playbooks, role-based access, team collaboration</div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-text"><strong>Clause Library</strong> — Pre-approved clause templates with version history and approval workflows</div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-text"><strong>Portfolio Analytics</strong> — Risk heatmaps across entire contract portfolios, renewal tracking, obligation calendars</div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-text"><strong>Word/Outlook Add-in</strong> — In-document copilot for Microsoft 365 with real-time review</div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 20: Thank You -->
+<section>
+  <h1>Thank You</h1>
+  <p class="final-tagline">Don't read contracts. Understand them.</p>
+  <p class="final-sub">ContractOS — The Operating System for Contract Intelligence</p>
+  <br>
+  <div style="font-size:0.6em; color:#64748b; margin-top:40px;">
+    <p>794 tests &bull; 34 API endpoints &bull; 13 MCP tools &bull; 50 real NDAs tested</p>
+    <p>Built with Python &bull; FastAPI &bull; FAISS &bull; Anthropic Claude &bull; SQLite &bull; Docker</p>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: true,
+  transition: 'slide',
+  transitionSpeed: 'default',
+  backgroundTransition: 'fade',
+  center: true,
+  plugins: [RevealHighlight]
+});
+</script>
+</body>
+</html>

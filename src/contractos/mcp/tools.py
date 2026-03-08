@@ -505,8 +505,19 @@ Keep each field under 80 words. Return at most 8 differences."""
         if not clauses_2:
             return {"error": f"Clause type '{clause_type}' not found in document {document_id_2}"}
 
-        text_1 = "\n".join(c.text for c in clauses_1 if c.text)
-        text_2 = "\n".join(c.text for c in clauses_2 if c.text)
+        def _clause_text(clauses, doc_id):
+            parts = []
+            all_facts = {f.fact_id: f for f in tg.get_facts_by_document(doc_id)}
+            for c in clauses:
+                parts.append(f"[{c.heading}]")
+                for fid in c.contained_fact_ids:
+                    fact = all_facts.get(fid)
+                    if fact and fact.text_span:
+                        parts.append(fact.text_span)
+            return "\n".join(parts)
+
+        text_1 = _clause_text(clauses_1, document_id_1)
+        text_2 = _clause_text(clauses_2, document_id_2)
 
         from contractos.llm.provider import LLMMessage
         from contractos.tools.fact_discovery import _parse_lenient_json
