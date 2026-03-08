@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -116,7 +117,43 @@ class AnthropicProvider(LLMProvider):
         if text.startswith("```"):
             lines = text.split("\n")
             text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
-        return json.loads(text)
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # LLM sometimes returns extra text after the JSON object.
+            # Extract the first balanced top-level JSON object.
+            brace_start = text.find("{")
+            if brace_start < 0:
+                raise
+            depth = 0
+            in_str = False
+            esc = False
+            for i in range(brace_start, len(text)):
+                ch = text[i]
+                if esc:
+                    esc = False
+                    continue
+                if ch == '\\' and in_str:
+                    esc = True
+                    continue
+                if ch == '"' and not esc:
+                    in_str = not in_str
+                    continue
+                if in_str:
+                    continue
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        candidate = text[brace_start : i + 1]
+                        try:
+                            return json.loads(candidate)
+                        except json.JSONDecodeError:
+                            cleaned = re.sub(r",\s*([}\]])", r"\1", candidate)
+                            return json.loads(cleaned)
+            raise
 
 
 class MockLLMProvider(LLMProvider):
