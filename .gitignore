@@ -36,7 +36,9 @@ out/
 
 # ContractOS data
 .contractos/
+data/uploads/
 *.db
+*.pptx
 
 # Spec-kit
 .specify/scripts/

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from contractos.api.deps import AppState, get_state
@@ -140,6 +141,12 @@ async def upload_contract(
     doc_id = f"doc-{uuid.uuid4().hex[:12]}"
     now = datetime.now()
 
+    # Persist the original file so it can be downloaded later for rendering
+    storage_dir = Path("data/uploads")
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    stored_path = storage_dir / f"{doc_id}.{ext}"
+    stored_path.write_bytes(content)
+
     # Write to temp file for parsing
     suffix = f".{ext}"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -173,7 +180,7 @@ async def upload_contract(
         contract = Contract(
             document_id=doc_id,
             title=file.filename.rsplit(".", 1)[0],
-            file_path=f"uploads/{file.filename}",
+            file_path=str(stored_path.resolve()),
             file_format=ext,
             file_hash=file_hash,
             parties=parties,
@@ -219,7 +226,7 @@ async def upload_contract(
         contract = Contract(
             document_id=doc_id,
             title=file.filename.rsplit(".", 1)[0],
-            file_path=f"uploads/{file.filename}",
+            file_path=str(stored_path.resolve()),
             file_format=ext,
             file_hash=file_hash,
             parties=[],
@@ -278,6 +285,28 @@ async def list_contracts(
             status="indexed",
         ))
     return result
+
+
+@router.get("/{document_id}/file")
+async def download_contract_file(
+    document_id: str,
+    state: Annotated[AppState, Depends(get_state)],
+) -> FileResponse:
+    """Download the original contract file for rendering in the UI."""
+    contract = state.trust_graph.get_contract(document_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail=f"Contract {document_id} not found")
+
+    file_path = Path(contract.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Original file no longer available")
+
+    media = "application/pdf" if contract.file_format == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    return FileResponse(
+        path=str(file_path),
+        media_type=media,
+        filename=f"{contract.title}.{contract.file_format}",
+    )
 
 
 @router.delete("/clear", response_model=ClearAllResponse)
@@ -424,11 +453,11 @@ async def load_sample_contract(
                 if b.binding_type.value == "alias" and b.resolves_to not in parties:
                     parties.append(b.resolves_to)
 
-        # Store contract metadata
+        # Store contract metadata — use absolute path so file download works
         contract = Contract(
             document_id=doc_id,
             title=filename.rsplit(".", 1)[0],
-            file_path=f"samples/{filename}",
+            file_path=str(sample_path.resolve()),
             file_format=ext,
             file_hash=file_hash,
             parties=parties,
