@@ -1228,7 +1228,7 @@ async function clearAllData() {
 
 function renderAnswer(data) {
   const panel = document.getElementById('answerPanel');
-  const conf = data.confidence ? `${data.confidence.label} (${data.confidence.score})` : 'N/A';
+  const conf = data.confidence ? `${data.confidence.label} (${data.confidence.value ?? data.confidence.score ?? '?'})` : 'N/A';
   const retrieval = data.retrieval_method === 'faiss_semantic'
     ? '<span class="badge-green">FAISS Semantic</span>'
     : '<span class="badge-orange">Full Scan</span>';

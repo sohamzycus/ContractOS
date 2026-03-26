@@ -1699,7 +1699,8 @@
         metaDiv.className = 'msg-meta';
         if (meta.confidence) {
           const label = meta.confidence.label || 'unknown';
-          metaDiv.innerHTML += `<span class="confidence ${label}">${label} (${meta.confidence.score})</span>`;
+          const score = meta.confidence.value != null ? meta.confidence.value : meta.confidence.score;
+          metaDiv.innerHTML += `<span class="confidence ${label}">${label} (${score != null ? score : '?'})</span>`;
         }
         if (meta.retrieval_method) metaDiv.innerHTML += `<span>via ${meta.retrieval_method}</span>`;
         if (meta.generation_time_ms) metaDiv.innerHTML += `<span>${(meta.generation_time_ms/1000).toFixed(1)}s</span>`;
@@ -1865,7 +1866,7 @@
           if (data.session_id) currentSessionId = data.session_id;
 
           const provCount = data.provenance ? data.provenance.node_count : 0;
-          addReasoningStep('graph', '🔗', `<strong>Built provenance chain</strong> — ${provCount} sources<div class="step-detail">Confidence: ${data.confidence?.label || 'N/A'} (${data.confidence?.score || '?'}) · Retrieval: ${data.retrieval_method || 'N/A'}</div>`);
+          addReasoningStep('graph', '🔗', `<strong>Built provenance chain</strong> — ${provCount} sources<div class="step-detail">Confidence: ${data.confidence?.label || 'N/A'} (${data.confidence?.value ?? data.confidence?.score ?? '?'}) · Retrieval: ${data.retrieval_method || 'N/A'}</div>`);
 
           await sleep(200);
 
