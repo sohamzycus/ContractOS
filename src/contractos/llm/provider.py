@@ -113,47 +113,71 @@ class AnthropicProvider(LLMProvider):
             messages, system=system, temperature=temperature, max_tokens=max_tokens,
         )
         text = response.content.strip()
-        # Handle markdown code fences
+        return self._parse_json_response(text)
+
+    @staticmethod
+    def _parse_json_response(text: str) -> dict[str, Any]:
+        """Robustly extract a JSON object from LLM output.
+
+        Handles markdown fences, trailing text, trailing commas,
+        and other common LLM formatting quirks.
+        """
+        # Strip markdown code fences
         if text.startswith("```"):
             lines = text.split("\n")
-            text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
+            if len(lines) > 2:
+                end = len(lines) - 1 if lines[-1].strip().startswith("```") else len(lines)
+                text = "\n".join(lines[1:end])
 
+        # Fast path: direct parse
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            # LLM sometimes returns extra text after the JSON object.
-            # Extract the first balanced top-level JSON object.
-            brace_start = text.find("{")
-            if brace_start < 0:
-                raise
-            depth = 0
-            in_str = False
-            esc = False
-            for i in range(brace_start, len(text)):
-                ch = text[i]
-                if esc:
-                    esc = False
+            pass
+
+        # Find the first '{' and try progressively shorter substrings
+        brace_start = text.find("{")
+        if brace_start < 0:
+            raise json.JSONDecodeError("No JSON object found", text, 0)
+
+        # Walk through the string tracking brace depth outside of strings.
+        # We use an index-based approach that correctly handles \" and \\\".
+        depth = 0
+        i = brace_start
+        in_str = False
+        n = len(text)
+        while i < n:
+            ch = text[i]
+            if in_str:
+                if ch == "\\":
+                    i += 2  # skip escaped character entirely
                     continue
-                if ch == '\\' and in_str:
-                    esc = True
-                    continue
-                if ch == '"' and not esc:
-                    in_str = not in_str
-                    continue
-                if in_str:
-                    continue
-                if ch == '{':
+                if ch == '"':
+                    in_str = False
+            else:
+                if ch == '"':
+                    in_str = True
+                elif ch == "{":
                     depth += 1
-                elif ch == '}':
+                elif ch == "}":
                     depth -= 1
                     if depth == 0:
                         candidate = text[brace_start : i + 1]
                         try:
                             return json.loads(candidate)
                         except json.JSONDecodeError:
+                            # Try cleaning trailing commas
                             cleaned = re.sub(r",\s*([}\]])", r"\1", candidate)
-                            return json.loads(cleaned)
-            raise
+                            try:
+                                return json.loads(cleaned)
+                            except json.JSONDecodeError:
+                                pass
+                        break
+            i += 1
+
+        raise json.JSONDecodeError(
+            "Could not extract valid JSON from LLM response", text[:200], 0
+        )
 
 
 class MockLLMProvider(LLMProvider):
