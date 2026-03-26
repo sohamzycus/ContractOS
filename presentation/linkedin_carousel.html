@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractOS — LinkedIn Carousel</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: 1080px 1350px; margin: 0; }
+  @media print {
+    .slide { page-break-after: always; box-shadow: none !important; }
+    .slide:last-child { page-break-after: avoid; }
+    .controls { display: none !important; }
+  }
+
+  :root {
+    --bg: #0a0a1a;
+    --surface: #111827;
+    --card: #1a1d2e;
+    --border: rgba(255,255,255,0.06);
+    --accent: #6ea8fe;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --purple: #a78bfa;
+    --text: #f1f5f9;
+    --dim: #94a3b8;
+    --dark: #475569;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    gap: 40px;
+  }
+
+  .controls {
+    position: fixed; top: 20px; right: 20px; z-index: 100;
+    display: flex; gap: 10px;
+  }
+  .controls button {
+    background: var(--accent); color: var(--bg); border: none;
+    padding: 10px 20px; border-radius: 10px; font-weight: 700;
+    font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  .controls button:hover { opacity: 0.9; }
+  .controls .hint {
+    color: var(--dim); font-size: 12px; align-self: center;
+  }
+
+  .slide {
+    width: 1080px;
+    height: 1350px;
+    background: var(--bg);
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* Slide number pill */
+  .slide-num {
+    position: absolute; top: 40px; right: 40px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 6px 16px;
+    font-size: 14px; color: var(--dim); font-weight: 600;
+  }
+
+  /* Gradient accent bar at top */
+  .accent-bar {
+    height: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+  }
+
+  .slide-content {
+    padding: 60px 70px;
+    height: calc(100% - 6px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Typography ─────────────────────────────── */
+  .mega-title {
+    font-size: 72px; font-weight: 900; color: #fff;
+    line-height: 1.1; letter-spacing: -0.03em;
+  }
+  .mega-title .accent { color: var(--accent); }
+  .mega-title .gradient {
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  h2 {
+    font-size: 48px; font-weight: 800; color: #fff;
+    line-height: 1.15; letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  h2 .accent { color: var(--accent); }
+  h2 .green { color: var(--green); }
+  h2 .yellow { color: var(--yellow); }
+  h2 .red { color: var(--red); }
+  h2 .purple { color: var(--purple); }
+
+  h3 {
+    font-size: 28px; font-weight: 700; color: var(--accent);
+    margin-bottom: 12px; letter-spacing: -0.01em;
+  }
+
+  .body-text {
+    font-size: 24px; line-height: 1.6; color: var(--dim);
+    font-weight: 400;
+  }
+  .body-text strong { color: var(--text); font-weight: 600; }
+
+  .small-text {
+    font-size: 18px; line-height: 1.5; color: var(--dim);
+  }
+
+  /* ── Cards ──────────────────────────────────── */
+  .card-grid { display: grid; gap: 20px; }
+  .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 30px;
+  }
+  .card h4 {
+    font-size: 22px; font-weight: 800; margin-bottom: 10px;
+    letter-spacing: -0.01em;
+  }
+  .card p {
+    font-size: 17px; line-height: 1.5; color: var(--dim);
+  }
+
+  /* ── Metric cards ───────────────────────────── */
+  .metric {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    text-align: center;
+  }
+  .metric .number {
+    font-size: 52px; font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: block; line-height: 1.2;
+  }
+  .metric .label {
+    font-size: 16px; color: var(--dim); margin-top: 6px;
+    font-weight: 500;
+  }
+
+  /* ── Truth model cards ──────────────────────── */
+  .truth-card {
+    border-radius: 20px; padding: 30px;
+    background: var(--card);
+    text-align: center;
+  }
+  .truth-card .icon { font-size: 40px; margin-bottom: 10px; }
+  .truth-card h4 { font-size: 24px; font-weight: 900; letter-spacing: 0.05em; }
+  .truth-card p { font-size: 15px; color: var(--dim); margin-top: 8px; }
+  .truth-card .example { font-size: 14px; margin-top: 12px; font-style: italic; }
+
+  /* ── Pipeline ───────────────────────────────── */
+  .pipeline-step {
+    display: flex; align-items: flex-start; gap: 24px;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .pipeline-step:last-child { border-bottom: none; }
+  .pipeline-num {
+    width: 60px; height: 60px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 900; color: var(--bg);
+    flex-shrink: 0;
+  }
+  .pipeline-text h4 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+  .pipeline-text p { font-size: 18px; color: var(--dim); line-height: 1.5; }
+
+  /* ── Traffic light ──────────────────────────── */
+  .traffic { display: flex; gap: 24px; justify-content: center; }
+  .traffic-item { text-align: center; }
+  .traffic-dot {
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 900; margin: 0 auto 12px;
+  }
+
+  /* ── Quote box ──────────────────────────────── */
+  .quote-box {
+    background: linear-gradient(135deg, rgba(110,168,254,0.08), rgba(167,139,250,0.05));
+    border: 1px solid rgba(110,168,254,0.15);
+    border-radius: 20px;
+    padding: 36px;
+    font-size: 26px;
+    line-height: 1.6;
+    color: var(--text);
+    font-style: italic;
+  }
+  .quote-box .attr {
+    font-style: normal; font-size: 18px; color: var(--dim);
+    margin-top: 16px; display: block;
+  }
+
+  /* ── Spacer ─────────────────────────────────── */
+  .spacer { flex: 1; }
+
+  /* ── Footer ─────────────────────────────────── */
+  .slide-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+  }
+  .slide-footer .brand {
+    font-size: 20px; font-weight: 800; color: var(--accent);
+  }
+  .slide-footer .tag {
+    font-size: 14px; color: var(--dark);
+  }
+
+  /* ── CTA button ─────────────────────────────── */
+  .cta-btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #fff; padding: 18px 36px; border-radius: 16px;
+    font-size: 22px; font-weight: 700; text-decoration: none;
+    margin-top: 16px;
+  }
+
+  /* ── Layer bar ──────────────────────────────── */
+  .layer-bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 20px 24px; border-radius: 16px;
+    background: var(--card);
+    margin-bottom: 14px;
+  }
+  .layer-bar .dot {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  }
+  .layer-bar .name {
+    font-size: 18px; font-weight: 700; color: #fff; min-width: 200px;
+  }
+  .layer-bar .desc {
+    font-size: 15px; color: var(--dim); flex: 1;
+  }
+
+  /* ── Scenario ───────────────────────────────── */
+  .scenario {
+    background: var(--card); border-radius: 20px; padding: 36px;
+    border-left: 5px solid var(--accent);
+  }
+  .scenario .label {
+    font-size: 14px; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px;
+  }
+  .scenario .text {
+    font-size: 22px; line-height: 1.6; color: var(--text);
+  }
+
+  /* ── Tech pill ──────────────────────────────── */
+  .tech-pills { display: flex; flex-wrap: wrap; gap: 12px; }
+  .tech-pill {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 22px;
+    font-size: 17px; font-weight: 600; color: var(--text);
+  }
+  .tech-pill span { color: var(--dim); font-weight: 400; font-size: 14px; display: block; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span class="hint">Print to PDF (Ctrl+P) → Save as PDF → Upload to LinkedIn as document</span>
+  <button onclick="window.print()">Export to PDF</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 1 — HOOK (This is the thumbnail — must stop the scroll)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content" style="justify-content:center; text-align:center;">
+    <div style="margin-bottom:40px;">
+      <div style="font-size:18px; font-weight:700; color:var(--accent); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:30px;">CAPSTONE PROJECT</div>
+      <div class="mega-title">
+        I built an<br><span class="accent">AI Operating System</span><br>for Contracts
+      </div>
+      <p style="font-size:26px; color:var(--dim); margin-top:30px; line-height:1.5;">
+        794 tests. 34 API endpoints. 13 MCP tools.<br>
+        Every answer traceable to source text.
+      </p>
+    </div>
+    <div style="margin-top:40px;">
+      <div style="display:inline-block; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px 40px;">
+        <span style="font-size:48px; font-weight:900; background:linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">ContractOS</span>
+      </div>
+    </div>
+    <div class="slide-footer" style="border:none; justify-content:center; padding-top:60px;">
+      <span style="font-size:16px; color:var(--dark);">Swipe → to see how it works</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">2 / 10</div>
+    <h2>The problem with<br>contract AI today</h2>
+    <p class="body-text" style="margin-bottom:40px;">
+      Most tools treat contracts as <strong>flat text blobs</strong>.<br>
+      They miss what matters most.
+    </p>
+    <div class="card-grid cols-2" style="flex:1;">
+      <div class="card" style="border-left:4px solid var(--red);">
+        <h4 style="color:var(--red);">🔍 Keyword Search</h4>
+        <p>Misses "shall indemnify" when you search for "liability"</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red);">
+        <h4 style="color:var(--red);">🤖 Document Chatbots</h4>
+        <p>Hallucinate answers with zero source grounding</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red);">
+        <h4 style="color:var(--red);">📊 Flat Embeddings</h4>
+        <p>Treat a 50-page contract as a single text blob</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red);">
+        <h4 style="color:var(--red);">⏱️ Manual Review</h4>
+        <p>8+ hours per contract. Inconsistent. Doesn't scale.</p>
+      </div>
+    </div>
+    <div class="quote-box" style="margin-top:30px;">
+      "When an AI says the liability cap is $14M — <strong>where exactly does it say that?</strong>"
+    </div>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 3 — THE TRUTH MODEL (Core Innovation)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">3 / 10</div>
+    <h2>My solution:<br>The <span class="accent">Truth Model</span></h2>
+    <p class="body-text" style="margin-bottom:36px;">
+      A strict 4-layer model that separates what a contract <strong>says</strong> from what it <strong>means</strong>, what can be <strong>derived</strong>, and what someone <strong>thinks</strong>.
+    </p>
+    <div class="card-grid cols-2" style="gap:20px; flex:1;">
+      <div class="truth-card" style="border:2px solid var(--green);">
+        <div class="icon">📌</div>
+        <h4 style="color:var(--green);">FACT</h4>
+        <p>Directly grounded in contract text. Immutable.</p>
+        <div class="example" style="color:var(--green);">"Term: 24 months"</div>
+      </div>
+      <div class="truth-card" style="border:2px solid var(--accent);">
+        <div class="icon">🔗</div>
+        <h4 style="color:var(--accent);">BINDING</h4>
+        <p>Explicit semantic mapping. Scoped.</p>
+        <div class="example" style="color:var(--accent);">"Company" = Acme Corp</div>
+      </div>
+      <div class="truth-card" style="border:2px solid var(--yellow);">
+        <div class="icon">💡</div>
+        <h4 style="color:var(--yellow);">INFERENCE</h4>
+        <p>Derived claim with confidence. Revisable.</p>
+        <div class="example" style="color:var(--yellow);">Expires Dec 2025 (0.92)</div>
+      </div>
+      <div class="truth-card" style="border:2px solid var(--red);">
+        <div class="icon">⚖️</div>
+        <h4 style="color:var(--red);">OPINION</h4>
+        <p>Contextual judgment. Never persisted as truth.</p>
+        <div class="example" style="color:var(--red);">Missing force majeure = risk</div>
+      </div>
+    </div>
+    <p style="font-size:20px; color:var(--dim); text-align:center; margin-top:24px;">
+      Every answer is <strong style="color:var(--green);">auditable</strong>. Every claim is <strong style="color:var(--accent);">traceable</strong> to source text.
+    </p>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 4 — THREE-PHASE PIPELINE
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">4 / 10</div>
+    <h2>Three-Phase<br><span class="accent">Extraction Pipeline</span></h2>
+    <p class="body-text" style="margin-bottom:30px;">
+      Upload a PDF or DOCX. Get structured intelligence in seconds.
+    </p>
+    <div style="flex:1;">
+      <div class="pipeline-step">
+        <div class="pipeline-num" style="background:var(--green);">1</div>
+        <div class="pipeline-text">
+          <h4>Pattern Extraction</h4>
+          <p>Regex + structural parsing. Definitions, dates, amounts, durations, table data. <strong style="color:var(--green);">Zero LLM calls.</strong></p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-num" style="background:var(--accent);">2</div>
+        <div class="pipeline-text">
+          <h4>Semantic Indexing</h4>
+          <p>FAISS + MiniLM-L6-v2 (384-dim vectors). Every fact, clause, and binding becomes searchable by meaning.</p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-num" style="background:var(--purple);">3</div>
+        <div class="pipeline-text">
+          <h4>LLM Discovery</h4>
+          <p>Anthropic Claude finds what patterns miss — hidden obligations, implicit risks, cross-clause implications.</p>
+        </div>
+      </div>
+    </div>
+    <div class="quote-box" style="margin-top:20px; font-size:22px;">
+      Phases 1 & 2 are <strong style="color:var(--green);">deterministic and reproducible</strong>.<br>
+      Phase 3 is <strong style="color:var(--purple);">AI-augmented</strong> — it finds what patterns miss.
+    </div>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 5 — WHAT IT DOES (Features)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">5 / 10</div>
+    <h2>What it <span class="accent">actually does</span></h2>
+    <div class="card-grid cols-2" style="flex:1; margin-top:16px; gap:18px;">
+      <div class="card" style="border-top:3px solid var(--accent);">
+        <h4 style="color:var(--accent);">🧠 Semantic Q&A</h4>
+        <p>Ask questions in plain English. Get grounded answers with confidence scores and clickable provenance chains.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--green);">
+        <h4 style="color:var(--green);">📋 Playbook Review</h4>
+        <p>Clause-by-clause compliance check. GREEN / YELLOW / RED with automated redline suggestions.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--yellow);">
+        <h4 style="color:var(--yellow);">🔍 NDA Triage</h4>
+        <p>10-point automated screening. Pattern + LLM hybrid. Auto-approve, expedite, or escalate.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--red);">
+        <h4 style="color:var(--red);">⚠️ Risk Memo</h4>
+        <p>Executive risk assessment with severity scoring, missing protections, and prioritized recommendations.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--purple);">
+        <h4 style="color:var(--purple);">💡 Hidden Fact Discovery</h4>
+        <p>LLM-powered analysis surfacing implicit obligations, unstated assumptions, and ambiguous terms.</p>
+      </div>
+      <div class="card" style="border-top:3px solid #6ee7b7;">
+        <h4 style="color:#6ee7b7;">⚖️ Cross-Contract Compare</h4>
+        <p>Upload multiple contracts. Compare clauses side-by-side. Ask questions across all documents.</p>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 6 — ARCHITECTURE
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">6 / 10</div>
+    <h2>5-Layer <span class="accent">Architecture</span></h2>
+    <p class="body-text" style="margin-bottom:30px;">
+      Downward-only data flow. Every output is typed. Agents are stateless.
+    </p>
+    <div style="flex:1;">
+      <div class="layer-bar" style="border-left:4px solid var(--accent);">
+        <div class="dot" style="background:var(--accent);"></div>
+        <div class="name" style="color:var(--accent);">Interaction</div>
+        <div class="desc">Browser Copilot · REST API (34 endpoints) · TrustGraph Viz · MCP Server</div>
+      </div>
+      <div class="layer-bar" style="border-left:4px solid var(--purple);">
+        <div class="dot" style="background:var(--purple);"></div>
+        <div class="name" style="color:var(--purple);">Agents</div>
+        <div class="desc">DocumentAgent · ComplianceAgent · NDATriageAgent · DraftAgent</div>
+      </div>
+      <div class="layer-bar" style="border-left:4px solid var(--green);">
+        <div class="dot" style="background:var(--green);"></div>
+        <div class="name" style="color:var(--green);">Extraction Tools</div>
+        <div class="desc">FactExtractor · BindingResolver · ClauseClassifier · AliasDetector · DocParser</div>
+      </div>
+      <div class="layer-bar" style="border-left:4px solid var(--yellow);">
+        <div class="dot" style="background:var(--yellow);"></div>
+        <div class="name" style="color:var(--yellow);">Data Fabric</div>
+        <div class="desc">TrustGraph (SQLite WAL) · EmbeddingIndex (FAISS 384-dim) · LLM Provider</div>
+      </div>
+      <div class="layer-bar" style="border-left:4px solid var(--red);">
+        <div class="dot" style="background:var(--red);"></div>
+        <div class="name" style="color:var(--red);">Truth Model</div>
+        <div class="desc">Fact (immutable) · Binding (scoped) · Inference (confidence) · Opinion (ephemeral)</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:20px;">
+      <div style="display:inline-block; background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.2); border-radius:12px; padding:14px 28px;">
+        <span style="font-size:18px; font-weight:700; color:var(--red);">↑ PROVENANCE CHAIN — every answer traces back to source text</span>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 7 — MCP + DEMO SCENARIO
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">7 / 10</div>
+    <h2>See it in <span class="accent">action</span></h2>
+    <div class="scenario" style="margin-bottom:28px;">
+      <div class="label">Real scenario — GBP 85M Procurement Framework</div>
+      <div class="text">
+        "A lorry carrying raw materials got delayed 10 days due to a transport strike. We had to procure from a local vendor at higher cost. <strong>What are my legal options? Can I claim liquidated damages?</strong>"
+      </div>
+    </div>
+    <div class="scenario" style="margin-bottom:28px; border-left-color:var(--purple);">
+      <div class="label" style="color:var(--purple);">ContractOS response</div>
+      <div class="text" style="font-size:20px;">
+        Analyses force majeure clauses, liquidated damages schedules, delivery obligations, and rejection rights — <strong>with provenance back to specific contract sections and clickable source highlighting</strong>.
+      </div>
+    </div>
+    <h3 style="margin-top:20px;">MCP Server — works everywhere</h3>
+    <p class="body-text" style="margin-bottom:20px;">
+      Full intelligence as an <strong style="color:var(--purple);">Anthropic MCP server</strong>:
+    </p>
+    <div class="tech-pills">
+      <div class="tech-pill">upload_contract</div>
+      <div class="tech-pill">ask_question</div>
+      <div class="tech-pill">review_against_playbook</div>
+      <div class="tech-pill">triage_nda</div>
+      <div class="tech-pill">discover_hidden_facts</div>
+      <div class="tech-pill">extract_obligations</div>
+      <div class="tech-pill">generate_risk_memo</div>
+      <div class="tech-pill">compare_clauses</div>
+      <div class="tech-pill">+ 5 more tools</div>
+    </div>
+    <p style="font-size:16px; color:var(--dark); margin-top:16px;">Works in Cursor · Claude Desktop · Claude Code · Any MCP client</p>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 8 — BY THE NUMBERS
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">8 / 10</div>
+    <h2>By the <span class="accent">numbers</span></h2>
+    <p class="body-text" style="margin-bottom:36px;">
+      Built entirely with <strong>TDD</strong> — tests written before code.
+    </p>
+    <div class="card-grid cols-4" style="gap:16px;">
+      <div class="metric"><span class="number">794</span><span class="label">Tests Passing</span></div>
+      <div class="metric"><span class="number">34</span><span class="label">API Endpoints</span></div>
+      <div class="metric"><span class="number">13</span><span class="label">MCP Tools</span></div>
+      <div class="metric"><span class="number">50</span><span class="label">Real NDAs Tested</span></div>
+    </div>
+    <div class="card-grid cols-4" style="gap:16px; margin-top:16px;">
+      <div class="metric"><span class="number">9.8K</span><span class="label">Lines of Code</span></div>
+      <div class="metric"><span class="number">14.8K</span><span class="label">Lines of Tests</span></div>
+      <div class="metric"><span class="number">63</span><span class="label">Python Modules</span></div>
+      <div class="metric"><span class="number">13</span><span class="label">Dev Phases</span></div>
+    </div>
+    <div style="margin-top:36px;">
+      <h3>Test-to-Code Ratio: 1.5x</h3>
+      <div style="display:flex; gap:12px; align-items:center; margin-top:12px;">
+        <span style="font-size:16px; color:var(--dim); width:100px; text-align:right;">Unit</span>
+        <div style="height:36px; width:500px; background:var(--green); border-radius:10px; display:flex; align-items:center; padding-left:16px; font-weight:800; color:var(--bg); font-size:16px;">539 tests</div>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center; margin-top:10px;">
+        <span style="font-size:16px; color:var(--dim); width:100px; text-align:right;">Integration</span>
+        <div style="height:36px; width:300px; background:var(--accent); border-radius:10px; display:flex; align-items:center; padding-left:16px; font-weight:800; color:var(--bg); font-size:16px;">156 tests</div>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center; margin-top:10px;">
+        <span style="font-size:16px; color:var(--dim); width:100px; text-align:right;">Benchmark</span>
+        <div style="height:36px; width:160px; background:var(--purple); border-radius:10px; display:flex; align-items:center; padding-left:16px; font-weight:800; color:var(--bg); font-size:16px;">61 tests</div>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center; margin-top:10px;">
+        <span style="font-size:16px; color:var(--dim); width:100px; text-align:right;">Contract</span>
+        <div style="height:36px; width:100px; background:var(--yellow); border-radius:10px; display:flex; align-items:center; padding-left:16px; font-weight:800; color:var(--bg); font-size:16px;">27</div>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 9 — TECH STACK
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content">
+    <div class="slide-num">9 / 10</div>
+    <h2>Tech <span class="accent">Stack</span></h2>
+    <div class="card-grid cols-3" style="flex:1; margin-top:20px; gap:16px;">
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--accent);">Python 3.12+</h4>
+        <p>Backend & CLI</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--accent);">FastAPI</h4>
+        <p>Async REST API + SSE</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--purple);">Anthropic Claude</h4>
+        <p>LLM Reasoning</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--green);">FAISS</h4>
+        <p>Vector Search (384-dim)</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--green);">sentence-transformers</h4>
+        <p>MiniLM-L6-v2 Embeddings</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--yellow);">SQLite (WAL)</h4>
+        <p>TrustGraph Storage</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--accent);">MCP (FastMCP)</h4>
+        <p>Model Context Protocol</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--accent);">D3.js</h4>
+        <p>Graph Visualization</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h4 style="color:var(--accent);">Docker</h4>
+        <p>Single-Container Deploy</p>
+      </div>
+    </div>
+    <div class="quote-box" style="margin-top:24px; font-size:22px; text-align:center; font-style:normal;">
+      <strong>No frameworks. No shortcuts.</strong><br>
+      Every extraction pipeline, every agent, every tool — built from scratch.
+    </div>
+    <div class="slide-footer">
+      <span class="brand">ContractOS</span>
+      <span class="tag">The Operating System for Contract Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 10 — CTA (Call to Action)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="accent-bar"></div>
+  <div class="slide-content" style="justify-content:center; text-align:center;">
+    <div>
+      <div style="font-size:18px; font-weight:700; color:var(--accent); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:30px;">OPEN SOURCE</div>
+      <div class="mega-title" style="font-size:64px;">
+        Don't read contracts.<br><span class="gradient">Understand them.</span>
+      </div>
+      <p style="font-size:24px; color:var(--dim); margin-top:30px; line-height:1.6;">
+        794 tests · 34 API endpoints · 13 MCP tools · 50 real NDAs tested<br>
+        Built with Python · FastAPI · FAISS · Anthropic Claude · Docker
+      </p>
+    </div>
+    <div style="margin-top:50px; display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
+      <a class="cta-btn" href="https://github.com/sohamzycus/ContractOS/" style="background:linear-gradient(135deg, #333, #555);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        Star on GitHub
+      </a>
+      <a class="cta-btn" href="https://youtu.be/6NPiJdmkFXk">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        Watch Demo
+      </a>
+    </div>
+    <div style="margin-top:60px;">
+      <div style="display:inline-block; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px 48px;">
+        <span style="font-size:52px; font-weight:900; background:linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">ContractOS</span>
+      </div>
+    </div>
+    <p style="font-size:16px; color:var(--dark); margin-top:30px;">
+      Like this? Drop a ⭐ on GitHub and share this post!
+    </p>
+    <div class="slide-footer" style="border:none; justify-content:center;">
+      <span style="font-size:14px; color:var(--dark);">github.com/sohamzycus/ContractOS</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
